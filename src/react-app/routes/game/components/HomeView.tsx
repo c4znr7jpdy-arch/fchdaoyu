@@ -5,7 +5,6 @@ import { PersistentStatusesCard } from '@app/components/feature/cultivator/Persi
 import { YieldCard } from '@app/components/feature/cultivator/YieldCard';
 import { DivineFortune } from '@app/components/feature/home/DivineFortune';
 import { RecentBattles } from '@app/components/feature/ranking/RecentBattles';
-import { WorldChatPreview } from '@app/components/feature/world-chat/WorldChatPreview';
 import { InkSection } from '@app/components/layout';
 import { InkButton, InkNotice } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
@@ -18,13 +17,6 @@ function CaveAside() {
           今日卜辞
         </div>
         <DivineFortune />
-      </section>
-
-      <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4">
-        <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-          世界传音
-        </div>
-        <WorldChatPreview />
       </section>
 
       <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4">

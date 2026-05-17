@@ -57,7 +57,7 @@ export function GameBottomDock({
   return (
     <footer className="battle-dock border-battle-rule-strong border-t border-dashed">
       <div className="mx-auto max-w-5xl px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.8rem)] md:px-6">
-        <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_4rem] items-center gap-1.5 text-[0.76rem] md:text-sm">
+        <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_4rem] items-center gap-1.5 text-sm">
           <button
             type="button"
             onClick={onOpenCultivator}

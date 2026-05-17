@@ -107,13 +107,6 @@ export const router = createBrowserRouter(
           handle={title('【重设口令】')}
         />
       </Route>
-
-      <Route
-        path="/ui-demo/game-hud"
-        lazy={lazyRoute(() => import('@app/routes/game/ui-demo/route'))}
-        handle={title('界面 Demo')}
-      />
-
       <Route path="/game" element={<GameLayout />} loader={requireUserLoader}>
         <Route element={<GameGenesisLayout />}>
           <Route

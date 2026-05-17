@@ -2,11 +2,9 @@ import { ItemDetailModal } from '@app/routes/game/inventory/components/ItemDetai
 import type { ItemDetailPayload } from '@app/routes/game/inventory/components/itemDetailPayload';
 import type { Tier } from '@app/components/ui/InkBadge';
 import { InkBadge, tierColorMap } from '@app/components/ui/InkBadge';
-import { InkButton } from '@app/components/ui/InkButton';
 import { cn } from '@shared/lib/cn';
 import type {
   ItemShowcaseSnapshotMap,
-  WorldChatDuelInvitePayload,
   WorldChatItemShowcasePayload,
   WorldChatMessageDTO,
 } from '@shared/types/world-chat';
@@ -60,12 +58,6 @@ function isItemShowcasePayload(
     typeof payload.itemType === 'string' &&
     typeof payload.itemId === 'string'
   );
-}
-
-function isDuelInvitePayload(
-  payload: WorldChatMessageDTO['payload'],
-): payload is WorldChatDuelInvitePayload {
-  return typeof payload === 'object' && payload !== null;
 }
 
 export function parseShowcaseItem(payload: WorldChatItemShowcasePayload): {
@@ -178,12 +170,6 @@ export function WorldChatMessageItem({ message }: WorldChatMessageItemProps) {
     return parseShowcaseItem(message.payload);
   }, [message]);
 
-  const duelInvitePath =
-    message.messageType === 'duel_invite' &&
-    isDuelInvitePayload(message.payload)
-      ? (message.payload.routePath ?? '/game/bet-battle')
-      : '/game/bet-battle';
-
   return (
     <>
       <div className="border-ink/10 border-b border-dashed py-2">
@@ -209,16 +195,7 @@ export function WorldChatMessageItem({ message }: WorldChatMessageItemProps) {
         </div>
         <div className="text-sm leading-6 break-all">
           {message.messageType === 'duel_invite' ? (
-            <span className="inline-flex flex-wrap items-center gap-2">
-              <span>{message.textContent || '赌战台有新战帖'}</span>
-              <InkButton
-                href={duelInvitePath}
-                variant="secondary"
-                className="px-2 py-0.5 text-xs"
-              >
-                前往应战
-              </InkButton>
-            </span>
+            message.textContent || '赌战台有新战帖'
           ) : message.messageType === 'item_showcase' && showcaseData ? (
             <span>
               <button

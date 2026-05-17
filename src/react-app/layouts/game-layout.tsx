@@ -4,6 +4,12 @@ import {
   GameTopHud,
   useGameHudModel,
 } from '@app/components/game-shell';
+import {
+  WorldChatHost,
+} from '@app/components/feature/world-chat/WorldChatHost';
+import {
+  WorldChatHostProvider,
+} from '@app/components/feature/world-chat/useWorldChatHostModel';
 import { InkButton } from '@app/components/ui/InkButton';
 import { PlayerProvider, usePlayer } from '@app/lib/player/PlayerProvider';
 import {
@@ -310,23 +316,26 @@ export function GameViewportLayout() {
 
   return (
     <div className="bg-paper h-screen overflow-hidden">
-      <div className="flex h-full flex-col">
-        <GameTopHud
-          snapshot={hud}
-          onOpenCultivator={openCultivatorOverview}
-        />
-        <main className="min-h-0 flex-1 overflow-hidden">
-          <Outlet />
-        </main>
-        <GameBottomDock
-          sceneId={scene?.id ?? null}
-          unreadMailCount={hud?.unreadMailCount ?? 0}
-          isExpanded={isDockExpanded}
-          onToggleExpanded={toggleDockExpanded}
-          onOpenCultivator={openCultivatorOverview}
-          dockMode={scene?.dock ?? 'core'}
-        />
-      </div>
+      <WorldChatHostProvider>
+        <div className="flex h-full flex-col">
+          <GameTopHud
+            snapshot={hud}
+            onOpenCultivator={openCultivatorOverview}
+          />
+          <main className="min-h-0 flex-1 overflow-hidden">
+            <Outlet />
+          </main>
+          <WorldChatHost />
+          <GameBottomDock
+            sceneId={scene?.id ?? null}
+            unreadMailCount={hud?.unreadMailCount ?? 0}
+            isExpanded={isDockExpanded}
+            onToggleExpanded={toggleDockExpanded}
+            onOpenCultivator={openCultivatorOverview}
+            dockMode={scene?.dock ?? 'core'}
+          />
+        </div>
+      </WorldChatHostProvider>
       <CultivatorOverviewOverlay
         isOpen={isCultivatorOpen}
         onClose={closeCultivatorOverview}
