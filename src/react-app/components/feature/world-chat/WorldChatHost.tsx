@@ -69,8 +69,8 @@ function WorldChatDockDrawer() {
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100%+0.35rem)] z-30 px-3 md:px-6">
-      <section className="border-battle-rule-strong bg-[rgba(248,243,230,0.98)] pointer-events-auto mx-auto flex max-h-[min(54svh,28rem)] max-w-5xl flex-col overflow-hidden border border-dashed shadow-[0_16px_40px_rgba(44,24,16,0.16)] backdrop-blur-sm">
+    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(100%+0.25rem)] z-30 px-3 md:px-6">
+      <section className="border-battle-rule-strong bg-bgpaper pointer-events-auto mx-auto flex h-[min(54svh,28rem)] max-w-5xl flex-col overflow-hidden border border-dashed shadow backdrop-blur-sm">
         <div className="border-battle-rule-strong flex items-center justify-between gap-3 border-b border-dashed px-4 py-2.5">
           <div className="text-ink min-w-0 text-base leading-6">世界传音</div>
           <button
@@ -81,7 +81,7 @@ function WorldChatDockDrawer() {
             [收起]
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-hidden px-4 py-3">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">
           <WorldChatChannel variant="drawer" />
         </div>
       </section>

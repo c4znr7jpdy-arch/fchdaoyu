@@ -46,7 +46,7 @@ export function InkInput({
 }: InkInputProps) {
   const fieldClass = cn(
     inkFieldVariants({ variant, size }),
-    multiline && 'battle-scroll min-h-32 resize-y',
+    multiline && 'battle-scroll min-h-24 resize-y',
     disabled && 'opacity-50 cursor-not-allowed',
   );
 

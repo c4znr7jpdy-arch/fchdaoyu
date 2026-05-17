@@ -97,7 +97,9 @@ export function WorldChatChannel({
     showcaseTab
   ] as ShowcaseItemByTab[ShowcaseTab][];
   const shellClass =
-    variant === 'drawer' ? 'flex h-full min-h-0 flex-col gap-3' : 'space-y-4';
+    variant === 'drawer'
+      ? 'flex h-full min-h-0 flex-col overflow-hidden'
+      : 'space-y-4';
   const listClass =
     variant === 'drawer'
       ? 'battle-scroll min-h-0 flex-1 overflow-y-auto pr-1'
@@ -292,9 +294,10 @@ export function WorldChatChannel({
           )}
         </div>
 
-        <div className={cn('space-y-2', variant === 'drawer' ? 'pt-1' : 'pt-3')}>
+        <div
+          className='pt-3'
+        >
           <InkInput
-            label={variant === 'drawer' ? '传音' : '发送世界消息'}
             value={input}
             multiline
             rows={variant === 'drawer' ? 1 : 3}
