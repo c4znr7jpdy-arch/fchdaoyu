@@ -1,4 +1,5 @@
 import {
+  MaterialSelector,
   SelectedMaterialsWithDose,
 } from '@app/components/feature/creation';
 import { GameSceneFrame } from '@app/components/game-shell';
@@ -16,7 +17,6 @@ import {
   ItemShowcaseModal,
 } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
-import { MaterialSelector } from '@app/routes/game/components/MaterialSelector';
 import { CREATION_INPUT_CONSTRAINTS } from '@shared/engine/creation-v2/config/CreationBalance';
 import { isPillConsumable } from '@shared/lib/consumables';
 import { cn } from '@shared/lib/cn';

@@ -239,189 +239,126 @@ export function MaterialSelector({
                   </select>
                 </label>
               </div>
-              <div className="flex justify-end">
-                <InkButton
-                  variant="secondary"
-                  onClick={() => {
-                    setRankFilter('all');
-                    setTypeFilter('all');
-                    setElementFilter('all');
-                    setSortBy('createdAt');
-                    setSortOrder('desc');
-                  }}
-                  disabled={isLoading || isRefreshing}
-                >
-                  重置筛选
-                </InkButton>
-              </div>
             </div>
           )}
         </div>
       )}
 
-      {isLoading && !isInitialized ? (
-        <div className="bg-ink/5 border-ink/10 max-h-60 overflow-y-auto border border-dashed p-2">
-          <div className="space-y-2">
-            {[1, 2, 3].map((idx) => (
-              <div
-                key={idx}
-                className="border-ink/10 bg-bgpaper/55 animate-pulse border border-dashed p-3"
-              >
-                <div className="bg-ink/10 mb-2 h-5 w-1/2" />
-                <div className="bg-ink/10 h-4 w-5/6" />
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : error ? (
-        <InkNotice>材料加载失败：{error}</InkNotice>
-      ) : materials.length > 0 ? (
-        <div className="bg-ink/5 border-ink/10 max-h-60 overflow-y-auto border border-dashed p-2">
-          <div className="space-y-2">
-            {materials.map((material) => {
-              const typeInfo = getMaterialTypeInfo(material.type);
-              const isSelected = selectedMaterialIds.includes(material.id!);
-
-              return (
-                <div
-                  key={material.id}
-                  onClick={() =>
-                    !isSubmitting &&
-                    material.id &&
-                    onToggleMaterial(material.id, material)
-                  }
-                  className={`cursor-pointer border p-3 transition-colors ${
-                    isSelected
-                      ? 'border-ink/35 bg-ink/12'
-                      : 'border-ink/10 bg-bgpaper/55 hover:bg-bgpaper/70 hover:border-ink/20'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      readOnly
-                      className="accent-ink-primary mt-1"
-                    />
-
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="text-ink leading-tight font-bold wrap-break-word">
-                          {typeInfo.icon} {material.name}
-                        </span>
-                        <InkBadge tier={material.rank}>
-                          {`${typeInfo.label} · ${material.element}`}
+      {error ? (
+        <InkNotice tone="danger">{error}</InkNotice>
+      ) : materials.length === 0 ? (
+        <InkNotice>{emptyNoticeText}</InkNotice>
+      ) : (
+        <div className="space-y-2">
+          {showSelectedMaterialsPanel && selectedMaterialIds.length > 0 ? (
+            <div className="bg-ink/5 border-ink/10 border p-2">
+              <div className="text-sm font-medium">已选材料</div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedMaterialIds.map((id) => {
+                  const material = selectedMaterialMap?.[id];
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className="bg-paper border-ink/15 hover:border-crimson flex items-center gap-2 border px-2 py-1 text-xs transition"
+                      onClick={() => onToggleMaterial(id, material)}
+                      disabled={isSubmitting}
+                    >
+                      <span>{material?.name ?? '未知材料'}</span>
+                      {material?.rank ? (
+                        <InkBadge tier={material.rank as Quality}>
+                          {material.rank}
                         </InkBadge>
-                      </div>
-                      <p className="text-ink-secondary text-xs leading-relaxed wrap-break-word">
-                        持有数量：{material.quantity}
-                      </p>
-                      <p className="text-ink-secondary text-xs leading-relaxed wrap-break-word">
-                        {material.description || '无描述'}
-                      </p>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {materials.map((material, index) => {
+            const materialId = material.id;
+            const isSelected = materialId
+              ? selectedMaterialIds.includes(materialId)
+              : false;
+
+            return (
+              <button
+                key={materialId ?? `${material.name}-${index}`}
+                type="button"
+                className={cn(
+                  'border-ink/10 hover:border-crimson flex w-full items-center justify-between gap-3 border px-3 py-2 text-left transition',
+                  isSelected && 'border-crimson bg-crimson/5',
+                )}
+                onClick={() => {
+                  if (materialId) {
+                    onToggleMaterial(materialId, material);
+                  }
+                }}
+                disabled={isSubmitting || !materialId}
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{material.name}</span>
+                    {material.rank ? (
+                      <InkBadge tier={material.rank as Quality}>
+                        {material.rank}
+                      </InkBadge>
+                    ) : null}
+                    <span className="text-ink-secondary text-xs">
+                      {material.type
+                        ? getMaterialTypeInfo(material.type).label
+                        : '未分类'}
+                    </span>
+                    {material.element ? (
+                      <span className="text-ink-secondary text-xs">
+                        {material.element}
+                      </span>
+                    ) : null}
+                  </div>
+                  {material.description ? (
+                    <div className="text-ink-secondary mt-1 text-xs leading-6">
+                      {material.description}
                     </div>
+                  ) : null}
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="font-medium">x{material.quantity}</div>
+                  <div className="text-ink-secondary text-xs">
+                    {isSelected ? '已投入' : '可投入'}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <InkNotice>{emptyNoticeText}</InkNotice>
-      )}
-
-      {pagination.totalPages > 1 && (
-        <div className="mt-2 flex items-center justify-center gap-3">
-          <InkButton
-            disabled={isLoading || isRefreshing || pagination.page <= 1}
-            onClick={() => void goPrevPage()}
-          >
-            上一页
-          </InkButton>
-          <span className="text-ink-secondary text-xs">
-            {pagination.page} / {pagination.totalPages}
-          </span>
-          <InkButton
-            disabled={
-              isLoading ||
-              isRefreshing ||
-              pagination.page >= pagination.totalPages
-            }
-            onClick={() => void goNextPage()}
-          >
-            下一页
-          </InkButton>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {showSelectedMaterialsPanel && (
-        <div className="bg-ink/5 border-ink/10 mt-3 border border-dashed p-2">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-semibold">已选材料</span>
-            <span className="text-ink-secondary text-xs">
-              {selectedMaterialIds.length} 种
-            </span>
-          </div>
-          {selectedMaterialIds.length === 0 ? (
-            <p className="text-ink-secondary text-xs">
-              尚未投入材料，选中后会在此处固定显示。
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {selectedMaterialIds.map((id) => {
-                const material =
-                  selectedMaterialMap?.[id] ||
-                  materials.find((candidate) => candidate.id === id);
-                if (!material) {
-                  return (
-                    <div
-                      key={id}
-                      className="border-ink/10 bg-bgpaper/55 flex items-center justify-between border border-dashed p-2"
-                    >
-                      <span className="text-ink-secondary text-xs">
-                        材料信息加载中…
-                      </span>
-                      <InkButton
-                        variant="secondary"
-                        onClick={() => onToggleMaterial(id)}
-                        disabled={isSubmitting}
-                      >
-                        取消
-                      </InkButton>
-                    </div>
-                  );
-                }
-                const typeInfo = getMaterialTypeInfo(material.type);
-                return (
-                  <div
-                    key={id}
-                    className="border-ink/10 bg-bgpaper/55 border border-dashed p-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold">
-                          {typeInfo.icon} {material.name}
-                        </p>
-                        <p className="text-ink-secondary text-xs">
-                          {typeInfo.label} · {material.rank} ·{' '}
-                          {material.element || '无属性'} · 数量 {material.quantity}
-                        </p>
-                      </div>
-                      <InkButton
-                        variant="secondary"
-                        onClick={() => onToggleMaterial(id)}
-                        disabled={isSubmitting}
-                      >
-                        取消
-                      </InkButton>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+      <div className="mt-3 flex items-center justify-between">
+        <InkButton
+          variant="secondary"
+          onClick={() => void goPrevPage()}
+          disabled={pagination.page <= 1 || isLoading || isRefreshing}
+        >
+          上一页
+        </InkButton>
+        <span className="text-ink-secondary text-xs">
+          第 {pagination.page} / {Math.max(1, pagination.totalPages)} 页
+        </span>
+        <InkButton
+          variant="secondary"
+          onClick={() => void goNextPage()}
+          disabled={
+            pagination.totalPages <= 1 ||
+            pagination.page >= pagination.totalPages ||
+            isLoading ||
+            isRefreshing
+          }
+        >
+          下一页
+        </InkButton>
+      </div>
     </>
   );
 }

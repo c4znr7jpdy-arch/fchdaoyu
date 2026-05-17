@@ -1,9 +1,11 @@
-import { InkPageShell, InkSection } from '@app/components/layout';
+import { InkSection } from '@app/components/layout';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkNotice } from '@app/components/ui/InkNotice';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+const genesisPanelClassName =
+  'border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4 md:px-5 md:py-5';
 
 interface ReincarnateContext {
   story?: string;
@@ -20,7 +22,6 @@ export default function ReincarnatePage() {
     let cancelled = false;
 
     const init = async () => {
-      // 优先使用本地 sessionStorage（刚坐化的场景）
       if (typeof window !== 'undefined') {
         const raw = window.sessionStorage.getItem('reincarnateContext');
         if (raw) {
@@ -38,7 +39,6 @@ export default function ReincarnatePage() {
         }
       }
 
-      // 重新登录或直接访问转世页时，从服务端获取最近坐化角色信息
       try {
         const res = await fetch('/api/cultivators/reincarnate-context');
         const json = await res.json();
@@ -59,37 +59,50 @@ export default function ReincarnatePage() {
   }, []);
 
   return (
-    <InkPageShell
-      title="转世重修"
-      subtitle="身死道不灭，握紧前世余荫再闯仙途"
-      backHref="/game"
-    >
-      <InkSection title="【前世余音】">
-        {context?.story ? (
-          <div className="border-ink-border bg-bgpaper/80 border border-dashed p-4 text-sm leading-7 whitespace-pre-line">
-            {context.story}
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <section className={genesisPanelClassName}>
+        <InkSection title="【前世余音】">
+          {context?.story ? (
+            <div className="border-ink-border bg-bgpaper/80 border border-dashed p-4 text-sm leading-7 whitespace-pre-line">
+              {context.story}
+            </div>
+          ) : (
+            <InkNotice>尚无前世故事，可直接返回主界面或重新创建角色。</InkNotice>
+          )}
+          {context?.name && (
+            <p className="text-ink-secondary mt-3 text-sm">
+              前世：{context.name}（{context.realm}
+              {context.realm_stage}）
+            </p>
+          )}
+        </InkSection>
+      </section>
+
+      <aside className="space-y-4">
+        <section className={genesisPanelClassName}>
+          <div className="text-battle-muted text-[0.72rem] tracking-[0.18em]">
+            轮回引导
           </div>
-        ) : (
-          <InkNotice>尚无前世故事，可直接返回主界面或重新创建角色。</InkNotice>
-        )}
-        {context?.name && (
-          <p className="text-ink-secondary mt-3 text-sm">
-            前世：{context.name}（{context.realm}
-            {context.realm_stage}）
-          </p>
-        )}
-      </InkSection>
-      <InkSection title="【再踏仙途】">
-        <p className="text-sm leading-6">
-          轮回之门已开，点击下方按钮可携前世记忆（故事文案）重新创建角色。
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <InkButton variant="primary" href="/game/create">
-            以新身入道 →
-          </InkButton>
-          <InkButton onClick={() => navigate('/game')}>返回主界 →</InkButton>
-        </div>
-      </InkSection>
-    </InkPageShell>
+          <div className="text-ink mt-3 space-y-3 text-sm leading-7">
+            <p>轮回之门已开，前世故事只作为入道文案参考，本世根骨与机缘仍将重新推演。</p>
+            <p>确认后会返回凝气篇，以新身重新定名、择命、入世。</p>
+          </div>
+        </section>
+
+        <section className={genesisPanelClassName}>
+          <InkSection title="【再踏仙途】">
+            <p className="text-sm leading-6">
+              握紧前世余音，重新凝聚真身，继续此段道途。
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <InkButton variant="primary" href="/game/create">
+                以新身入道 →
+              </InkButton>
+              <InkButton onClick={() => navigate('/game')}>返回主界 →</InkButton>
+            </div>
+          </InkSection>
+        </section>
+      </aside>
+    </div>
   );
 }

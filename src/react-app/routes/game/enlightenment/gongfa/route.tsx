@@ -1,6 +1,10 @@
-import { MaterialSelector } from '@app/routes/game/components/MaterialSelector';
 import {
-  CreationIntentPanel, CreationProductResultModal, SelectedMaterialsWithDose, type CreationProductResultRecord, } from '@app/components/feature/creation';
+  CreationIntentPanel,
+  CreationProductResultModal,
+  MaterialSelector,
+  SelectedMaterialsWithDose,
+  type CreationProductResultRecord,
+} from '@app/components/feature/creation';
 import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';

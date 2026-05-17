@@ -10,7 +10,7 @@ import {
   toProductDisplayModel,
   type ProductRecordLike,
 } from '@app/components/feature/products';
-import { InkPageShell, InkSection } from '@app/components/layout';
+import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
   InkActionGroup,
@@ -31,7 +31,7 @@ import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { cn } from '@shared/lib/cn';
 import type { Cultivator } from '@shared/types/cultivator';
 import { useMemo, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate } from 'react-router';
 
 
 const MIN_PROMPT_LENGTH = 2;
@@ -82,6 +82,9 @@ const MULTIPLIER_ATTRS = new Set<AttributeType>([
   AttributeType.CRIT_DAMAGE_MULT,
 ]);
 
+const genesisPanelClassName =
+  'border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4 md:px-5 md:py-5';
+
 function formatAttributeValue(attrType: AttributeType, value: number): string {
   if (PERCENT_ATTRS.has(attrType)) {
     return `${(value * 100).toFixed(1)}%`;
@@ -118,7 +121,6 @@ function chunkPairs<T>(items: T[]): T[][] {
  */
 export default function CreatePage() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const { pushToast, openDialog } = useInkUI();
   const { hasActiveCultivator, isLoading, refresh } = useCultivator();
   const [userPrompt, setUserPrompt] = useState('');
@@ -386,191 +388,233 @@ export default function CreatePage() {
 
   if (isLoading) {
     return (
-      <InkPageShell
-        title="【凝气篇】"
-        subtitle="以心念唤道，凝气成形"
-        backHref="/game"
-        currentPath={pathname}
-        showBottomNav={false}
-      >
+      <div className="flex min-h-[50vh] items-center justify-center">
         <InkNotice tone="info">检查道身状态……</InkNotice>
-      </InkPageShell>
+      </div>
     );
   }
 
   if (hasActiveCultivator) {
     return (
-      <InkPageShell
-        title="【凝气篇】"
-        subtitle="每位修士仅限一具真身"
-        backHref="/game"
-        currentPath={pathname}
-        showBottomNav={false}
-      >
-        <InkNotice tone="warning">
-          您已拥有道身，若想重修需先完成转世。
-          <div className="mt-3">
-            <InkButton href="/game">返回道身</InkButton>
-          </div>
-        </InkNotice>
-      </InkPageShell>
+      <div className="mx-auto max-w-3xl">
+        <section className={genesisPanelClassName}>
+          <InkNotice tone="warning">
+            您已拥有道身，若想重修需先完成转世。
+            <div className="mt-3">
+              <InkButton href="/game">返回道身</InkButton>
+            </div>
+          </InkNotice>
+        </section>
+      </div>
     );
   }
 
   return (
-    <InkPageShell
-      title="【凝气篇】"
-      subtitle="以心念唤道，凝气成形"
-      backHref="/game"
-      currentPath={pathname}
-      showBottomNav={false}
-    >
-      <InkSection title="【以心念唤道】">
-        <InkInput
-          multiline
-          rows={6}
-          value={userPrompt}
-          onChange={(value) => setUserPrompt(value)}
-          placeholder="例：我想成为一位靠炼丹逆袭的废柴少主……"
-          hint={promptHint}
-          error={promptError}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-              event.preventDefault();
-              handleGenerateCharacter();
-            }
-          }}
-        />
-        <InkActionGroup align="center">
-          {!player && (
-            <InkButton
-              variant="primary"
-              onClick={handleGenerateCharacter}
-              disabled={
-                isGenerating ||
-                !trimmedPrompt ||
-                promptTooLong ||
-                promptTooShort
-              }
-            >
-              {isGenerating ? '灵气汇聚中…' : '凝气成形'}
-            </InkButton>
-          )}
-          {player && (
-            <InkButton onClick={handleRegenerate} variant="secondary">
-              重凝
-            </InkButton>
-          )}
-        </InkActionGroup>
-      </InkSection>
-
-      {player ? (
-        <>
-          <InkSection title="【道身】">
-            <InkList dense>
-              <InkListItem
-                title={
-                  <span>
-                    ☯ 姓名：{player.name}
-                    <InkBadge tier={player.realm} className="ml-2">
-                      {player.realm_stage}
-                    </InkBadge>
-                  </span>
-                }
-                meta={
-                  <div className="py-1">
-                    <p>身世：{player.origin || '散修'}</p>
-                    <p>性格：{player.personality}</p>
-                    {player.background ? <p>背景：{player.background}</p> : null}
-                    {player.balance_notes ? (
-                      <p>天道评语：{player.balance_notes}</p>
-                    ) : null}
-                  </div>
-                }
-                description={
-                  <InkStatusBar
-                    className="mt-2 grid! grid-cols-3! gap-2"
-                    items={[
-                      { label: '年龄：', value: player.age, icon: '⏳' },
-                      { label: '寿元：', value: player.lifespan, icon: '🔮' },
-                      {
-                        label: '性别：',
-                        value: player.gender,
-                        icon: player.gender === '男' ? '♂' : '♀',
-                      },
-                      {
-                        label: '气血：',
-                        value: `${previewStats?.maxHp}`,
-                        icon: '❤️',
-                      },
-                      {
-                        label: '灵力：',
-                        value: `${previewStats?.maxMp}`,
-                        icon: '⚡️',
-                      },
-                    ]}
-                  />
-                }
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)]">
+        <div className="space-y-4">
+          <section className={genesisPanelClassName}>
+            <InkSection title="【以心念唤道】">
+              <InkInput
+                multiline
+                rows={6}
+                value={userPrompt}
+                onChange={(value) => setUserPrompt(value)}
+                placeholder="例：我想成为一位靠炼丹逆袭的废柴少主……"
+                hint={promptHint}
+                error={promptError}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                    event.preventDefault();
+                    handleGenerateCharacter();
+                  }
+                }}
               />
-            </InkList>
-          </InkSection>
+              <InkActionGroup align="center">
+                {!player && (
+                  <InkButton
+                    variant="primary"
+                    onClick={handleGenerateCharacter}
+                    disabled={
+                      isGenerating ||
+                      !trimmedPrompt ||
+                      promptTooLong ||
+                      promptTooShort
+                    }
+                  >
+                    {isGenerating ? '灵气汇聚中…' : '凝气成形'}
+                  </InkButton>
+                )}
+                {player && (
+                  <InkButton onClick={handleRegenerate} variant="secondary">
+                    重凝
+                  </InkButton>
+                )}
+              </InkActionGroup>
+            </InkSection>
+          </section>
 
-          <LingGen spiritualRoots={player.spiritual_roots || []} />
+          {player ? (
+            <section className={genesisPanelClassName}>
+              <InkSection title="【先天命格】">
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="text-ink-secondary text-sm">{`已选 ${selectedFateIndices.length}/3`}</span>
+                  {tempCultivatorId && (
+                    <InkButton
+                      variant="secondary"
+                      disabled={isGeneratingFates || remainingRerolls <= 0}
+                      onClick={() => handleGenerateFates(tempCultivatorId)}
+                    >
+                      {isGeneratingFates
+                        ? '推演中...'
+                        : `逆天改命 (${remainingRerolls})`}
+                    </InkButton>
+                  )}
+                </div>
 
-          <InkSection title="【根基属性】">
-            <div className="border-ink/30 bg-bgpaper overflow-x-auto border-dashed border">
-              <table className="border-ink/10 w-full border-collapse text-sm">
-                <tbody>
-                  {previewStats?.primaryRows.map((item) => (
-                    <tr
-                      key={item.type}
-                      className="border-ink/10 border-b last:border-b-0"
-                    >
-                      <td className="text-crimson w-[40%] py-2 pl-3 pr-2 font-semibold">
-                        {item.label}
-                      </td>
-                      <td className="text-ink-secondary py-2 pr-3 text-right">
-                        <span>{formatAttributeValue(item.type, item.baseValue)}</span>
-                        {item.modifier !== 0 && (
-                          <>
-                            {' '}
-                            <span
-                              className={cn(
-                                'font-semibold',
-                                item.modifier > 0
-                                  ? 'text-emerald-700'
-                                  : 'text-violet-700',
-                              )}
-                            >
-                              {formatModifier(item.type, item.modifier)}
-                            </span>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {secondaryRows.map((pair, rowIdx) => (
-                    <tr
-                      key={`sec-${rowIdx}`}
-                      className="border-ink/10 border-b last:border-b-0"
-                    >
-                      {pair.map((item, colIdx) => (
-                        <td
-                          key={item.type}
-                          colSpan={pair.length === 1 ? 2 : 1}
-                          className={cn(
-                            'min-w-0 w-1/2 py-2 pl-3 pr-2 align-top',
-                            colIdx === 0 &&
-                              pair.length === 2 &&
-                              'border-ink/10 border-r',
-                          )}
+                {isGeneratingFates ? (
+                  <div className="text-ink-secondary py-8 text-center">
+                    <p>正在推演天机...</p>
+                  </div>
+                ) : availableFates.length > 0 ? (
+                  <InkList>
+                    {availableFates.map((fate, idx) => {
+                      const isSelected = selectedFateIndices.includes(idx);
+                      const fateDisplay = toFateDisplayModel(fate);
+                      return (
+                        <div
+                          key={fate.name + idx}
+                          className={`ink-selectable ${
+                            isSelected ? 'ink-selectable-active' : ''
+                          }`}
                         >
-                          <div className="flex min-w-0 items-baseline justify-between gap-2">
-                            <span className="text-ink shrink-0">{item.label}</span>
-                            <span className="text-ink-secondary min-w-0 text-right">
-                              <span>
-                                {formatAttributeValue(item.type, item.baseValue)}
-                              </span>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            className="w-full text-left"
+                            onClick={() => toggleFateSelection(idx)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                toggleFateSelection(idx);
+                              }
+                            }}
+                          >
+                            <ItemCard
+                              name={fate.name}
+                              quality={fate.quality}
+                              meta={<FateEffectInlineList lines={fateDisplay.previewLines} />}
+                              description={fate.description}
+                              actions={
+                                <div
+                                  className="flex gap-2"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <InkButton
+                                    variant="secondary"
+                                    onClick={() => setDetailFate(fate)}
+                                  >
+                                    详情
+                                  </InkButton>
+                                  {isSelected ? (
+                                    <InkTag tone="good">已取</InkTag>
+                                  ) : null}
+                                </div>
+                              }
+                              layout="col"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </InkList>
+                ) : (
+                  <div className="text-ink-secondary py-4 text-center">
+                    <p>暂无气运，请尝试逆天改命</p>
+                  </div>
+                )}
+              </InkSection>
+            </section>
+          ) : (
+            <section className={genesisPanelClassName}>
+              <InkNotice>以心念描摹真身，生成后即可参阅。</InkNotice>
+            </section>
+          )}
+        </div>
+
+        <aside className="space-y-4">
+          {player ? (
+            <>
+              <section className={genesisPanelClassName}>
+                <InkSection title="【道身】">
+                  <InkList dense>
+                    <InkListItem
+                      title={
+                        <span>
+                          ☯ 姓名：{player.name}
+                          <InkBadge tier={player.realm} className="ml-2">
+                            {player.realm_stage}
+                          </InkBadge>
+                        </span>
+                      }
+                      meta={
+                        <div className="py-1">
+                          <p>身世：{player.origin || '散修'}</p>
+                          <p>性格：{player.personality}</p>
+                          {player.background ? <p>背景：{player.background}</p> : null}
+                          {player.balance_notes ? (
+                            <p>天道评语：{player.balance_notes}</p>
+                          ) : null}
+                        </div>
+                      }
+                      description={
+                        <InkStatusBar
+                          className="mt-2 grid! grid-cols-3! gap-2"
+                          items={[
+                            { label: '年龄：', value: player.age, icon: '⏳' },
+                            { label: '寿元：', value: player.lifespan, icon: '🔮' },
+                            {
+                              label: '性别：',
+                              value: player.gender,
+                              icon: player.gender === '男' ? '♂' : '♀',
+                            },
+                            {
+                              label: '气血：',
+                              value: `${previewStats?.maxHp}`,
+                              icon: '❤️',
+                            },
+                            {
+                              label: '灵力：',
+                              value: `${previewStats?.maxMp}`,
+                              icon: '⚡️',
+                            },
+                          ]}
+                        />
+                      }
+                    />
+                  </InkList>
+                </InkSection>
+              </section>
+
+              <section className={genesisPanelClassName}>
+                <LingGen spiritualRoots={player.spiritual_roots || []} />
+              </section>
+
+              <section className={genesisPanelClassName}>
+                <InkSection title="【根基属性】">
+                  <div className="border-ink/30 bg-bgpaper overflow-x-auto border-dashed border">
+                    <table className="border-ink/10 w-full border-collapse text-sm">
+                      <tbody>
+                        {previewStats?.primaryRows.map((item) => (
+                          <tr
+                            key={item.type}
+                            className="border-ink/10 border-b last:border-b-0"
+                          >
+                            <td className="text-crimson w-[40%] py-2 pl-3 pr-2 font-semibold">
+                              {item.label}
+                            </td>
+                            <td className="text-ink-secondary py-2 pr-3 text-right">
+                              <span>{formatAttributeValue(item.type, item.baseValue)}</span>
                               {item.modifier !== 0 && (
                                 <>
                                   {' '}
@@ -586,193 +630,179 @@ export default function CreatePage() {
                                   </span>
                                 </>
                               )}
-                            </span>
-                          </div>
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {(previewStats?.secondaryAll.length ?? 0) > 4 && (
-              <div className="mt-3">
-                <InkButton
-                  onClick={() => setShowAllAttributes((prev) => !prev)}
-                  className="text-sm"
-                >
-                  {showAllAttributes ? '收起次级属性' : '展开全部属性'}
-                </InkButton>
-              </div>
-            )}
-            <p className="text-ink-secondary mt-2 text-xs">
-              当前境界：{player.realm}
-            </p>
-          </InkSection>
-
-          <InkSection title="【先天命格】">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-ink-secondary text-sm">{`已选 ${selectedFateIndices.length}/3`}</span>
-              {tempCultivatorId && (
-                <InkButton
-                  variant="secondary"
-                  disabled={isGeneratingFates || remainingRerolls <= 0}
-                  onClick={() => handleGenerateFates(tempCultivatorId)}
-                >
-                  {isGeneratingFates
-                    ? '推演中...'
-                    : `逆天改命 (${remainingRerolls})`}
-                </InkButton>
-              )}
-            </div>
-
-            {isGeneratingFates ? (
-              <div className="text-ink-secondary py-8 text-center">
-                <p>正在推演天机...</p>
-              </div>
-            ) : availableFates.length > 0 ? (
-              <InkList>
-                {availableFates.map((fate, idx) => {
-                  const isSelected = selectedFateIndices.includes(idx);
-                  const fateDisplay = toFateDisplayModel(fate);
-                  return (
-                    <div
-                      key={fate.name + idx}
-                      className={`ink-selectable ${
-                        isSelected ? 'ink-selectable-active' : ''
-                      }`}
-                    >
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="w-full text-left"
-                        onClick={() => toggleFateSelection(idx)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            toggleFateSelection(idx);
-                          }
-                        }}
-                      >
-                        <ItemCard
-                          name={fate.name}
-                          quality={fate.quality}
-                          meta={<FateEffectInlineList lines={fateDisplay.previewLines} />}
-                          description={fate.description}
-                          actions={
-                            <div
-                              className="flex gap-2"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <InkButton
-                                variant="secondary"
-                                onClick={() => setDetailFate(fate)}
+                            </td>
+                          </tr>
+                        ))}
+                        {secondaryRows.map((pair, rowIdx) => (
+                          <tr
+                            key={`sec-${rowIdx}`}
+                            className="border-ink/10 border-b last:border-b-0"
+                          >
+                            {pair.map((item, colIdx) => (
+                              <td
+                                key={item.type}
+                                colSpan={pair.length === 1 ? 2 : 1}
+                                className={cn(
+                                  'min-w-0 w-1/2 py-2 pl-3 pr-2 align-top',
+                                  colIdx === 0 &&
+                                    pair.length === 2 &&
+                                    'border-ink/10 border-r',
+                                )}
                               >
-                                详情
-                              </InkButton>
-                              {isSelected ? (
-                                <InkTag tone="good">已取</InkTag>
-                              ) : null}
-                            </div>
-                          }
-                          layout="col"
-                        />
-                      </div>
+                                <div className="flex min-w-0 items-baseline justify-between gap-2">
+                                  <span className="text-ink shrink-0">{item.label}</span>
+                                  <span className="text-ink-secondary min-w-0 text-right">
+                                    <span>
+                                      {formatAttributeValue(item.type, item.baseValue)}
+                                    </span>
+                                    {item.modifier !== 0 && (
+                                      <>
+                                        {' '}
+                                        <span
+                                          className={cn(
+                                            'font-semibold',
+                                            item.modifier > 0
+                                              ? 'text-emerald-700'
+                                              : 'text-violet-700',
+                                          )}
+                                        >
+                                          {formatModifier(item.type, item.modifier)}
+                                        </span>
+                                      </>
+                                    )}
+                                  </span>
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {(previewStats?.secondaryAll.length ?? 0) > 4 && (
+                    <div className="mt-3">
+                      <InkButton
+                        onClick={() => setShowAllAttributes((prev) => !prev)}
+                        className="text-sm"
+                      >
+                        {showAllAttributes ? '收起次级属性' : '展开全部属性'}
+                      </InkButton>
                     </div>
-                  );
-                })}
-              </InkList>
-            ) : (
-              <div className="text-ink-secondary py-4 text-center">
-                <p>暂无气运，请尝试逆天改命</p>
+                  )}
+                  <p className="text-ink-secondary mt-2 text-xs">
+                    当前境界：{player.realm}
+                  </p>
+                </InkSection>
+              </section>
+
+              <section className={genesisPanelClassName}>
+                <InkSection title="【功法】">
+                  {(player.cultivations || []).length === 0 ? (
+                    <InkNotice>尚无功法</InkNotice>
+                  ) : (
+                    <InkList>
+                      {player.cultivations.map((technique) => {
+                        const product = toProductDisplayModel(
+                          technique as ProductRecordLike,
+                        );
+                        return (
+                          <ItemCard
+                            key={technique.id ?? technique.name}
+                            icon="📘"
+                            name={technique.name}
+                            quality={technique.quality}
+                            badgeExtra={
+                              technique.element ? (
+                                <InkBadge tone="default">{technique.element}</InkBadge>
+                              ) : undefined
+                            }
+                            meta={<AffixInlineList affixes={product.affixes} />}
+                            description={technique.description}
+                            layout="col"
+                          />
+                        );
+                      })}
+                    </InkList>
+                  )}
+                </InkSection>
+              </section>
+
+              <section className={genesisPanelClassName}>
+                <InkSection title="【神通】">
+                  {(player.skills || []).length === 0 ? (
+                    <InkNotice>尚无神通</InkNotice>
+                  ) : (
+                    <InkList>
+                      {player.skills.map((skill) => {
+                        const product = toProductDisplayModel(
+                          skill as ProductRecordLike,
+                        );
+                        return (
+                          <ItemCard
+                            key={skill.id ?? skill.name}
+                            icon="📜"
+                            name={skill.name}
+                            quality={skill.quality}
+                            badgeExtra={
+                              <InkBadge tone="default">{skill.element}</InkBadge>
+                            }
+                            meta={
+                              <div className="space-y-1">
+                                <AffixInlineList affixes={product.affixes} />
+                                <AbilityMetaLine projection={product.projection} />
+                              </div>
+                            }
+                            description={skill.description}
+                            layout="col"
+                          />
+                        );
+                      })}
+                    </InkList>
+                  )}
+                </InkSection>
+              </section>
+            </>
+          ) : (
+            <section className={genesisPanelClassName}>
+              <div className="text-battle-muted text-[0.72rem] tracking-[0.18em]">
+                入道须知
               </div>
-            )}
-          </InkSection>
-          <FateDetailModal
-            isOpen={detailFate !== null}
-            onClose={() => setDetailFate(null)}
-            fate={detailFate}
-          />
+              <div className="text-ink mt-3 space-y-3 text-sm leading-7">
+                <p>先以一句心念描出真身，再从天机推演出的命格中择三而取。</p>
+                <p>生成结果会展示根基属性、灵根、功法与神通预览，确认无误后再正式入世。</p>
+              </div>
+            </section>
+          )}
+        </aside>
+      </div>
 
-          <InkSection title="【功法】">
-            {(player.cultivations || []).length === 0 ? (
-              <InkNotice>尚无功法</InkNotice>
-            ) : (
-              <InkList>
-                {player.cultivations.map((technique) => {
-                  const product = toProductDisplayModel(
-                    technique as ProductRecordLike,
-                  );
-                  return (
-                    <ItemCard
-                      key={technique.id ?? technique.name}
-                      icon="📘"
-                      name={technique.name}
-                      quality={technique.quality}
-                      badgeExtra={
-                        technique.element ? (
-                          <InkBadge tone="default">{technique.element}</InkBadge>
-                        ) : undefined
-                      }
-                      meta={<AffixInlineList affixes={product.affixes} />}
-                      description={technique.description}
-                      layout="col"
-                    />
-                  );
-                })}
-              </InkList>
-            )}
-          </InkSection>
+      {player ? (
+        <section className={genesisPanelClassName}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-battle-muted text-sm leading-6">
+              真身已初成，确认后将正式落入此世。
+            </div>
+            <InkActionGroup align="center">
+              <InkButton onClick={handleRegenerate} variant="secondary">
+                重凝
+              </InkButton>
+              <InkButton
+                variant="primary"
+                onClick={confirmSaveCharacter}
+                disabled={isSaving}
+              >
+                {isSaving ? '入世中…' : '保存道身'}
+              </InkButton>
+            </InkActionGroup>
+          </div>
+        </section>
+      ) : null}
 
-          <InkSection title="【神通】">
-            {(player.skills || []).length === 0 ? (
-              <InkNotice>尚无神通</InkNotice>
-            ) : (
-              <InkList>
-                {player.skills.map((skill) => {
-                  const product = toProductDisplayModel(
-                    skill as ProductRecordLike,
-                  );
-                  return (
-                    <ItemCard
-                      key={skill.id ?? skill.name}
-                      icon="📜"
-                      name={skill.name}
-                      quality={skill.quality}
-                      badgeExtra={
-                        <InkBadge tone="default">{skill.element}</InkBadge>
-                      }
-                      meta={
-                        <div className="space-y-1">
-                          <AffixInlineList affixes={product.affixes} />
-                          <AbilityMetaLine projection={product.projection} />
-                        </div>
-                      }
-                      description={skill.description}
-                      layout="col"
-                    />
-                  );
-                })}
-              </InkList>
-            )}
-          </InkSection>
-
-          <InkActionGroup align="center">
-            <InkButton onClick={handleRegenerate} variant="secondary">
-              重凝
-            </InkButton>
-            <InkButton
-              variant="primary"
-              onClick={confirmSaveCharacter}
-              disabled={isSaving}
-            >
-              {isSaving ? '入世中…' : '保存道身'}
-            </InkButton>
-          </InkActionGroup>
-        </>
-      ) : (
-        <InkNotice>以心念描摹真身，生成后即可参阅。</InkNotice>
-      )}
-    </InkPageShell>
+      <FateDetailModal
+        isOpen={detailFate !== null}
+        onClose={() => setDetailFate(null)}
+        fate={detailFate}
+      />
+    </div>
   );
 }

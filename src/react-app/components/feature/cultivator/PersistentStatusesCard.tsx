@@ -1,8 +1,8 @@
+import { InkListItem } from '@app/components/ui/InkList';
+import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { getPillToxicityStage, isConditionStatusActive } from '@shared/lib/condition';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { getAllTrackConfigs } from '@shared/lib/trackConfigRegistry';
-import { useCultivator } from '@app/lib/contexts/CultivatorContext';
-import { InkListItem } from '@app/components/ui/InkList';
 import { useState } from 'react';
 
 function formatRemainingTime(expiresAt: string | undefined, now: number): string {

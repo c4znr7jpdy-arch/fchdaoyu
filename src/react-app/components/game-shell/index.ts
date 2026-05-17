@@ -5,5 +5,4 @@ export * from './GameImmersiveLoading';
 export * from './GameSceneFrame';
 export * from './GameTopHud';
 export * from './gameNavigation';
-export * from './immersiveSceneDescriptor';
 export * from './useGameHudModel';

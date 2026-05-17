@@ -1,6 +1,7 @@
 import { GameSceneFrame } from '@app/components/game-shell';
 import { CultivatorStatusCard } from '@app/components/feature/cultivator/CultivatorStatusCard';
 import { LifespanStatusCard } from '@app/components/feature/cultivator/LifespanStatusCard';
+import { PersistentStatusesCard } from '@app/components/feature/cultivator/PersistentStatusesCard';
 import { YieldCard } from '@app/components/feature/cultivator/YieldCard';
 import { DivineFortune } from '@app/components/feature/home/DivineFortune';
 import { RecentBattles } from '@app/components/feature/ranking/RecentBattles';
@@ -8,7 +9,6 @@ import { WorldChatPreview } from '@app/components/feature/world-chat/WorldChatPr
 import { InkSection } from '@app/components/layout';
 import { InkButton, InkNotice } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
-import { PersistentStatusesCard } from './PersistentStatusesCard';
 
 function CaveAside() {
   return (

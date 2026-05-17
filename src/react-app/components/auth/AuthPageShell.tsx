@@ -1,4 +1,4 @@
-import { InkPageShell } from '@app/components/layout';
+import { InkPageShell } from '@app/components/layout/InkPageShell';
 import type { ReactNode } from 'react';
 
 interface AuthPageShellProps {

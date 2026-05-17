@@ -11,9 +11,6 @@ interface TitleEditorModalProps {
   onSave: () => void;
 }
 
-/**
- * 称号编辑弹窗
- */
 export function TitleEditorModal({
   isOpen,
   onClose,

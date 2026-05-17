@@ -209,7 +209,7 @@ describe('route title helpers', () => {
     });
   });
 
-  it('preserves immersive metadata for arena and map routes after special shells remove global dock chrome', () => {
+  it('preserves route metadata for bet-battle hall and map after layout split', () => {
     const mapScene = resolveGameScene(
       [
         {
@@ -236,8 +236,8 @@ describe('route title helpers', () => {
               id: 'bet-battle',
               label: '赌战台',
               group: 'travel',
-              chrome: 'immersive',
-              dock: 'hidden',
+              chrome: 'standard',
+              dock: 'core',
             },
           },
         },
@@ -251,8 +251,8 @@ describe('route title helpers', () => {
     });
     expect(betBattleScene).toMatchObject({
       id: 'bet-battle',
-      chrome: 'immersive',
-      dock: 'hidden',
+      chrome: 'standard',
+      dock: 'core',
     });
   });
 });

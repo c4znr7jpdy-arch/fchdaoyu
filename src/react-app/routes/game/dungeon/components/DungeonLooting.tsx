@@ -1,8 +1,8 @@
 import { DungeonProgressCard } from '@app/components/dungeon/DungeonProgressCard';
-import { InkPageShell, InkSection } from '@app/components/layout';
+import { InkSection } from '@app/components/layout';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
-import { DungeonState } from '@shared/lib/dungeon/types';
+import type { DungeonState } from '@shared/lib/dungeon/types';
 
 interface DungeonLootingProps {
   state: DungeonState;
@@ -20,7 +20,7 @@ export function DungeonLooting({
   processing,
 }: DungeonLootingProps) {
   return (
-    <InkPageShell title="战后休整" backHref="/game">
+    <div className="space-y-6">
       <InkCard className="mb-6 p-6">
         <h3 className="text-xl font-bold mb-4 text-center text-ink">战斗胜利</h3>
         <p className="text-ink-secondary text-center mb-6 leading-relaxed">
@@ -30,11 +30,10 @@ export function DungeonLooting({
         </p>
       </InkCard>
 
-      {/* 副本状态和进度（包含已获机缘展示） */}
       <DungeonProgressCard state={state} onQuit={onQuit} />
 
       <InkSection title="下一步抉择">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-2 border border-dashed border-ink/20 bg-paper p-4 text-center">
             <h4 className="font-bold">继续深入</h4>
             <p className="text-xs text-ink-secondary mb-4">
@@ -66,6 +65,6 @@ export function DungeonLooting({
           </div>
         </div>
       </InkSection>
-    </InkPageShell>
+    </div>
   );
 }

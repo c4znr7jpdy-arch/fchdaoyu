@@ -1,4 +1,4 @@
-import { InkPageShell, InkSection } from '@app/components/layout';
+import { InkSection } from '@app/components/layout';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
 import { InkNotice } from '@app/components/ui/InkNotice';
@@ -6,6 +6,10 @@ import { DungeonOption } from '@shared/lib/dungeon/types';
 import { getMapNode } from '@shared/lib/game/mapSystem';
 import { DungeonViewState } from '@app/lib/hooks/dungeon/useDungeonViewModel';
 import { Cultivator } from '@shared/types/cultivator';
+import {
+  DungeonSceneScreen,
+  resolveDungeonSceneDescriptor,
+} from '../dungeonScene';
 import { BattlePreparation } from './BattlePreparation';
 import { BattleCallbackData, DungeonBattle } from './DungeonBattle';
 import { DungeonExploring } from './DungeonExploring';
@@ -40,86 +44,97 @@ export function DungeonViewRenderer({
   actions,
   onSettlementConfirm,
 }: DungeonViewRendererProps) {
-  // 加载状态
   if (viewState.type === 'loading') {
+    const descriptor = resolveDungeonSceneDescriptor('loading');
+
     return (
-      <InkPageShell title="推演中...">
-        <div className="flex justify-center p-12">
-          <p className="animate-pulse">天机混沌，正在解析...</p>
+      <DungeonSceneScreen descriptor={descriptor}>
+        <div className="text-center">
+          <p className="loading-tip">{descriptor.loadingMessage}</p>
         </div>
-      </InkPageShell>
+      </DungeonSceneScreen>
     );
   }
 
-  // 未认证
   if (viewState.type === 'not_authenticated') {
+    const descriptor = resolveDungeonSceneDescriptor('not_authenticated');
+
     return (
-      <InkPageShell title="单人副本">
-        <InkNotice tone="warning">请先登录或创建角色</InkNotice>
-      </InkPageShell>
+      <DungeonSceneScreen descriptor={descriptor}>
+        <div className="mx-auto w-full max-w-xl">
+          <InkNotice tone="warning">请先登录或创建角色</InkNotice>
+        </div>
+      </DungeonSceneScreen>
     );
   }
 
-  // 战斗中
   if (viewState.type === 'in_battle' && cultivator) {
     return (
-      <DungeonBattle
-        battleId={viewState.battleId}
-        player={cultivator}
-        onBattleComplete={actions.completeBattle}
-      />
+      <DungeonSceneScreen
+        descriptor={resolveDungeonSceneDescriptor('in_battle')}
+        className="h-full"
+      >
+        <DungeonBattle
+          battleId={viewState.battleId}
+          player={cultivator}
+          onBattleComplete={actions.completeBattle}
+        />
+      </DungeonSceneScreen>
     );
   }
 
-  // 战斗准备
   if (viewState.type === 'battle_preparation' && cultivator) {
     return (
-      <BattlePreparation
-        battleId={viewState.state.activeBattleId!}
-        onStart={actions.startBattle}
-        onAbandon={actions.abandonBattle}
-      />
+      <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('battle_preparation')}>
+        <BattlePreparation
+          battleId={viewState.state.activeBattleId!}
+          onStart={actions.startBattle}
+          onAbandon={actions.abandonBattle}
+        />
+      </DungeonSceneScreen>
     );
   }
 
-  // 结算
   if (viewState.type === 'settlement') {
     return (
-      <DungeonSettlement
-        settlement={viewState.settlement}
-        realGains={viewState.realGains}
-        onConfirm={onSettlementConfirm}
-      />
+      <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('settlement')}>
+        <DungeonSettlement
+          settlement={viewState.settlement}
+          realGains={viewState.realGains}
+          onConfirm={onSettlementConfirm}
+        />
+      </DungeonSceneScreen>
     );
   }
 
-  // 战后休整
   if (viewState.type === 'looting') {
     return (
-      <DungeonLooting
-        state={viewState.state}
-        onContinue={actions.continueLooting}
-        onEscape={actions.escapeLooting}
-        onQuit={actions.quitDungeon}
-        processing={processing}
-      />
+      <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('looting')}>
+        <DungeonLooting
+          state={viewState.state}
+          onContinue={actions.continueLooting}
+          onEscape={actions.escapeLooting}
+          onQuit={actions.quitDungeon}
+          processing={processing}
+        />
+      </DungeonSceneScreen>
     );
   }
 
-  // 探索中
   if (viewState.type === 'exploring') {
     return (
-      <DungeonExploring
-        state={viewState.state}
-        lastRound={viewState.lastRound}
-        onAction={actions.performAction}
-        onQuit={actions.quitDungeon}
-        processing={processing}
-      />
+      <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('exploring')}>
+        <DungeonExploring
+          state={viewState.state}
+          lastRound={viewState.lastRound}
+          onAction={actions.performAction}
+          onQuit={actions.quitDungeon}
+          processing={processing}
+        />
+      </DungeonSceneScreen>
     );
   }
 
-  // 地图选择
   if (viewState.type === 'map_selection') {
     const selectedNode = viewState.preSelectedNodeId
       ? getMapNode(viewState.preSelectedNodeId)
@@ -137,11 +152,15 @@ export function DungeonViewRenderer({
     };
 
     return (
-      <InkPageShell title="云游探秘" backHref="/game" subtitle="寻找上古机缘">
+      <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('map_selection')}>
         <InkCard className="mb-6 p-6">
           <div className="space-y-4 text-center">
             <div className="my-4 text-6xl">🏔️</div>
-            <p>修仙界广袄无垠，机缘与危机并存。<br />道友可愿前往，体悟一段未知的旅程？</p>
+            <p>
+              修仙界广袤无垠，机缘与危机并存。
+              <br />
+              道友可愿前往，体悟一段未知的旅程？
+            </p>
           </div>
         </InkCard>
         <InkSection title="选择秘境">
@@ -153,9 +172,11 @@ export function DungeonViewRenderer({
         </InkSection>
         {renderLimitHint()}
         <div className="mt-4 text-center">
-          <InkButton href="/game/dungeon/history" variant="ghost">📖 查看历史记录</InkButton>
+          <InkButton href="/game/dungeon/history" variant="ghost">
+            📖 查看历史记录
+          </InkButton>
         </div>
-      </InkPageShell>
+      </DungeonSceneScreen>
     );
   }
 

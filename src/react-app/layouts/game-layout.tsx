@@ -12,21 +12,20 @@ import {
   type GameSceneHandle,
 } from '@app/lib/router/routeTitle';
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+  DungeonSceneProvider,
+  useResolvedDungeonScene,
+} from '@app/routes/game/dungeon/dungeonScene';
+import {
+  SpecialSceneProvider,
+  useSpecialSceneBackOverride,
+} from './special-scene';
+import { useMemo, useState } from 'react';
 import {
   Outlet,
   useLocation,
   useMatches,
   useNavigate,
 } from 'react-router';
-
-type SpecialLayoutKind = 'combat' | 'arena' | 'map';
 
 type SpecialBackOverride = {
   label?: string;
@@ -46,17 +45,9 @@ type SpecialBackAction =
     };
 
 interface SpecialSceneDescriptor {
-  layoutKind: SpecialLayoutKind;
   sceneLabel: string;
   backAction: SpecialBackAction;
 }
-
-interface SpecialSceneContextValue {
-  backOverride: SpecialBackOverride | null;
-  setBackOverride: (next: SpecialBackOverride | null) => void;
-}
-
-const SpecialSceneContext = createContext<SpecialSceneContextValue | null>(null);
 
 function LoadingScreen({ message }: { message: string }) {
   return (
@@ -115,21 +106,8 @@ function resolveSpecialSceneDescriptor(
     return null;
   }
 
-  if (pathname === '/game/bet-battle') {
-    return {
-      layoutKind: 'arena',
-      sceneLabel: scene.label,
-      backAction: {
-        type: 'path',
-        label: '返回洞府',
-        href: '/game',
-      },
-    };
-  }
-
   if (pathname === '/game/map') {
     return {
-      layoutKind: 'map',
       sceneLabel: scene.label,
       backAction: {
         type: 'history-or-path',
@@ -141,7 +119,6 @@ function resolveSpecialSceneDescriptor(
 
   if (pathname === '/game/battle/challenge') {
     return {
-      layoutKind: 'combat',
       sceneLabel: scene.label,
       backAction: {
         type: 'path',
@@ -153,7 +130,6 @@ function resolveSpecialSceneDescriptor(
 
   if (/^\/game\/battle\/[^/]+$/.test(pathname)) {
     return {
-      layoutKind: 'combat',
       sceneLabel: scene.label,
       backAction: {
         type: 'path',
@@ -165,7 +141,6 @@ function resolveSpecialSceneDescriptor(
 
   if (pathname === '/game/bet-battle/challenge') {
     return {
-      layoutKind: 'combat',
       sceneLabel: scene.label,
       backAction: {
         type: 'path',
@@ -177,7 +152,6 @@ function resolveSpecialSceneDescriptor(
 
   if (pathname === '/game/training-room') {
     return {
-      layoutKind: 'combat',
       sceneLabel: scene.label,
       backAction: {
         type: 'path',
@@ -189,7 +163,6 @@ function resolveSpecialSceneDescriptor(
 
   if (pathname === '/game/battle') {
     return {
-      layoutKind: 'combat',
       sceneLabel: scene.label,
       backAction: {
         type: 'path',
@@ -220,38 +193,9 @@ function useResolvedSpecialScene() {
   };
 }
 
-function SpecialSceneProvider({ children }: { children: ReactNode }) {
-  const [backOverride, setBackOverride] = useState<SpecialBackOverride | null>(
-    null,
-  );
-  const value = useMemo(
-    () => ({
-      backOverride,
-      setBackOverride,
-    }),
-    [backOverride],
-  );
-
-  return (
-    <SpecialSceneContext.Provider value={value}>
-      {children}
-    </SpecialSceneContext.Provider>
-  );
-}
-
-function useSpecialSceneContext() {
-  const context = useContext(SpecialSceneContext);
-
-  if (!context) {
-    throw new Error('useSpecialSceneContext must be used within a special scene layout');
-  }
-
-  return context;
-}
-
 function useSpecialSceneBackActionState(descriptor: SpecialSceneDescriptor | null) {
   const navigate = useNavigate();
-  const { backOverride } = useSpecialSceneContext();
+  const backOverride = useSpecialSceneBackOverride();
 
   const label = backOverride?.label ?? descriptor?.backAction.label ?? '返回';
   const onBack = () => {
@@ -279,20 +223,6 @@ function useSpecialSceneBackActionState(descriptor: SpecialSceneDescriptor | nul
     label,
     onBack,
   };
-}
-
-export function useSpecialSceneBackAction(backOverride: SpecialBackOverride | null) {
-  const { setBackOverride } = useSpecialSceneContext();
-  const label = backOverride?.label;
-  const onBack = backOverride?.onBack;
-
-  useEffect(() => {
-    setBackOverride(onBack ? { label, onBack } : null);
-
-    return () => {
-      setBackOverride(null);
-    };
-  }, [label, onBack, setBackOverride]);
 }
 
 function CombatSceneChrome() {
@@ -325,35 +255,6 @@ function CombatSceneChrome() {
         </div>
       </div>
     </div>
-  );
-}
-
-function ArenaSceneChrome() {
-  const { descriptor } = useResolvedSpecialScene();
-  const { label, onBack } = useSpecialSceneBackActionState(descriptor);
-
-  if (!descriptor) {
-    return null;
-  }
-
-  return (
-    <header className="border-battle-rule-strong border-b border-dashed bg-[rgba(248,243,230,0.92)]">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-3 pt-[calc(env(safe-area-inset-top)+0.8rem)] pb-2 md:px-6">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-battle-muted hover:text-crimson shrink-0 text-sm transition"
-        >
-          [{label}]
-        </button>
-        <div className="min-w-0 text-right">
-          <div className="text-battle-muted text-[0.66rem] tracking-[0.18em]">
-            竞技大厅
-          </div>
-          <div className="text-ink text-sm leading-6">{descriptor.sceneLabel}</div>
-        </div>
-      </div>
-    </header>
   );
 }
 
@@ -455,27 +356,6 @@ export function GameCombatLayout() {
   );
 }
 
-function GameArenaLayoutBody() {
-  return (
-    <div className="bg-paper h-screen overflow-hidden">
-      <div className="flex h-full flex-col overflow-hidden">
-        <ArenaSceneChrome />
-        <main className="min-h-0 flex-1 overflow-hidden">
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  );
-}
-
-export function GameArenaLayout() {
-  return (
-    <SpecialSceneProvider>
-      <GameArenaLayoutBody />
-    </SpecialSceneProvider>
-  );
-}
-
 function GameMapLayoutBody() {
   return (
     <div className="bg-paper h-screen overflow-hidden">
@@ -494,6 +374,136 @@ export function GameMapLayout() {
     <SpecialSceneProvider>
       <GameMapLayoutBody />
     </SpecialSceneProvider>
+  );
+}
+
+interface GenesisSceneDescriptor {
+  sceneLabel: string;
+  subtitle: string;
+  backAction: {
+    label: string;
+    href: string;
+  };
+}
+
+function resolveGenesisSceneDescriptor(pathname: string): GenesisSceneDescriptor {
+  if (pathname === '/game/reincarnate') {
+    return {
+      sceneLabel: '转世重修',
+      subtitle: '身死道不灭，握紧前世余荫再闯仙途。',
+      backAction: {
+        label: '返回主界',
+        href: '/game',
+      },
+    };
+  }
+
+  return {
+    sceneLabel: '凝气篇',
+    subtitle: '以心念唤道，凝气成形，择定此世的根基与气数。',
+    backAction: {
+      label: '返回主界',
+      href: '/game',
+    },
+  };
+}
+
+function GameGenesisLayoutBody() {
+  const location = useLocation();
+  const matches = useMatches();
+  const routeTitle = resolveRouteTitle(matches, location);
+  const descriptor = useMemo(
+    () => resolveGenesisSceneDescriptor(location.pathname),
+    [location.pathname],
+  );
+
+  return (
+    <div className="bg-paper h-screen overflow-hidden">
+      <div className="flex h-full flex-col overflow-hidden">
+        <header className="border-battle-rule-strong border-b border-dashed bg-[rgba(248,243,230,0.92)]">
+          <div className="mx-auto flex max-w-6xl items-start justify-between gap-4 px-3 pt-[calc(env(safe-area-inset-top)+0.8rem)] pb-3 md:px-6">
+            <InkButton href={descriptor.backAction.href}>
+              {descriptor.backAction.label}
+            </InkButton>
+            <div className="min-w-0 text-right">
+              <div className="text-battle-muted text-[0.66rem] tracking-[0.18em]">
+                入道宿主
+              </div>
+              <div className="text-ink mt-1 text-lg leading-6">{routeTitle}</div>
+              <div className="text-battle-muted mt-1 text-sm leading-6">
+                {descriptor.subtitle}
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="battle-scroll min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-6xl px-3 py-4 md:px-6 md:py-5">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function GameGenesisLayout() {
+  return (
+    <PlayerProvider>
+      <GameGenesisLayoutBody />
+    </PlayerProvider>
+  );
+}
+
+function DungeonSceneChrome() {
+  const navigate = useNavigate();
+  const descriptor = useResolvedDungeonScene();
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-3 pt-[calc(env(safe-area-inset-top)+0.65rem)] md:px-5">
+      <div className="border-battle-rule-strong bg-[rgba(248,243,230,0.92)] pointer-events-auto flex items-start justify-between gap-4 border border-dashed px-3 py-2 shadow-[0_10px_30px_rgba(44,24,16,0.08)] backdrop-blur-sm">
+        <button
+          type="button"
+          onClick={() => navigate(descriptor.backAction.href)}
+          className="text-battle-muted hover:text-crimson shrink-0 text-sm transition"
+        >
+          [{descriptor.backAction.label}]
+        </button>
+        <div className="min-w-0 text-right">
+          <div className="text-battle-muted text-[0.66rem] tracking-[0.18em]">
+            副本宿主
+          </div>
+          <div className="text-ink mt-1 text-sm leading-6 md:text-base">
+            {descriptor.sceneLabel}
+          </div>
+          {descriptor.subtitle ? (
+            <div className="text-battle-muted mt-1 text-xs leading-6">
+              {descriptor.subtitle}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GameDungeonLayoutBody() {
+  return (
+    <div className="bg-paper h-screen overflow-hidden">
+      <div className="relative h-full overflow-hidden">
+        <DungeonSceneChrome />
+        <main className="h-full overflow-hidden">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function GameDungeonLayout() {
+  return (
+    <DungeonSceneProvider>
+      <GameDungeonLayoutBody />
+    </DungeonSceneProvider>
   );
 }
 

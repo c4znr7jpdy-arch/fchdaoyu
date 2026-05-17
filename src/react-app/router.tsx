@@ -1,7 +1,8 @@
 import App, { RootRouteErrorBoundary } from '@app/App';
 import GameLayout, {
-  GameArenaLayout,
   GameCombatLayout,
+  GameDungeonLayout,
+  GameGenesisLayout,
   GameMapLayout,
   GameViewportLayout,
   PlayerProviderLayout,
@@ -114,21 +115,18 @@ export const router = createBrowserRouter(
       />
 
       <Route path="/game" element={<GameLayout />} loader={requireUserLoader}>
-        <Route
-          path="create"
-          lazy={lazyRoute(() => import('@app/routes/game/create/route'))}
-          handle={title('凝气篇')}
-        />
-        <Route
-          path="reincarnate"
-          lazy={lazyRoute(() => import('@app/routes/game/reincarnate/route'))}
-          handle={title('转世重修')}
-        />
-        <Route
-          path="ui-demo"
-          lazy={lazyRoute(() => import('@app/routes/game/ui-demo/route'))}
-          handle={title('界面 Demo')}
-        />
+        <Route element={<GameGenesisLayout />}>
+          <Route
+            path="create"
+            lazy={lazyRoute(() => import('@app/routes/game/create/route'))}
+            handle={title('凝气篇')}
+          />
+          <Route
+            path="reincarnate"
+            lazy={lazyRoute(() => import('@app/routes/game/reincarnate/route'))}
+            handle={title('转世重修')}
+          />
+        </Route>
 
         <Route element={<PlayerProviderLayout />}>
           <Route element={<GameViewportLayout />}>
@@ -337,6 +335,18 @@ export const router = createBrowserRouter(
               )}
             />
             <Route
+              path="bet-battle"
+              lazy={lazyRoute(() => import('@app/routes/game/bet-battle/route'))}
+              handle={scene(
+                {
+                  id: 'bet-battle',
+                  label: '赌战台',
+                  group: 'travel',
+                },
+                '赌战台',
+              )}
+            />
+            <Route
               path="dungeon/history"
               lazy={lazyRoute(
                 () => import('@app/routes/game/dungeon/history/route'),
@@ -461,23 +471,6 @@ export const router = createBrowserRouter(
             />
           </Route>
 
-          <Route element={<GameArenaLayout />}>
-            <Route
-              path="bet-battle"
-              lazy={lazyRoute(() => import('@app/routes/game/bet-battle/route'))}
-              handle={scene(
-                {
-                  id: 'bet-battle',
-                  label: '赌战台',
-                  group: 'travel',
-                  chrome: 'immersive',
-                  dock: 'hidden',
-                },
-                '赌战台',
-              )}
-            />
-          </Route>
-
           <Route element={<GameMapLayout />}>
             <Route
               path="map"
@@ -495,20 +488,22 @@ export const router = createBrowserRouter(
             />
           </Route>
 
-          <Route
-            path="dungeon"
-            lazy={lazyRoute(() => import('@app/routes/game/dungeon/route'))}
-            handle={scene(
-              {
-                id: 'dungeon',
-                label: '云游探秘',
-                group: 'travel',
-                chrome: 'immersive',
-                dock: 'hidden',
-              },
-              '云游探秘',
-            )}
-          />
+          <Route element={<GameDungeonLayout />}>
+            <Route
+              path="dungeon"
+              lazy={lazyRoute(() => import('@app/routes/game/dungeon/route'))}
+              handle={scene(
+                {
+                  id: 'dungeon',
+                  label: '云游探秘',
+                  group: 'travel',
+                  chrome: 'immersive',
+                  dock: 'hidden',
+                },
+                '云游探秘',
+              )}
+            />
+          </Route>
         </Route>
       </Route>
 

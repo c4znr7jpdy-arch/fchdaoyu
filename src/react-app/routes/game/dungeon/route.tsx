@@ -1,7 +1,10 @@
-import { InkPageShell } from '@app/components/layout';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { useDungeonViewModel } from '@app/lib/hooks/dungeon/useDungeonViewModel';
 import { Suspense, useCallback } from 'react';
+import {
+  DungeonSceneScreen,
+  resolveDungeonSceneDescriptor,
+} from './dungeonScene';
 import { DungeonViewRenderer } from './components/DungeonViewRenderer';
 import { useNavigate, useSearchParams } from 'react-router';
 
@@ -39,12 +42,13 @@ function DungeonContent() {
   // 修正加载状态：ViewModel 内部已经处理了副本状态的加载
   // 这里只需要处理用户信息的加载
   if (isCultivatorLoading) {
+    const descriptor = resolveDungeonSceneDescriptor('loading');
     return (
-      <InkPageShell title="推演中...">
-        <div className="flex justify-center p-12">
-          <p className="animate-pulse">天机混沌，正在解析...</p>
+      <DungeonSceneScreen descriptor={descriptor}>
+        <div className="text-center">
+          <p className="loading-tip">{descriptor.loadingMessage}</p>
         </div>
-      </InkPageShell>
+      </DungeonSceneScreen>
     );
   }
 
@@ -61,12 +65,16 @@ function DungeonContent() {
 }
 
 export default function DungeonPage() {
+  const descriptor = resolveDungeonSceneDescriptor('loading');
+
   return (
     <Suspense
       fallback={
-        <InkPageShell title="加载中...">
-          <div className="animate-pulse p-8 text-center">正在加载...</div>
-        </InkPageShell>
+        <DungeonSceneScreen descriptor={descriptor}>
+          <div className="text-center">
+            <p className="loading-tip">{descriptor.loadingMessage}</p>
+          </div>
+        </DungeonSceneScreen>
       }
     >
       <DungeonContent />

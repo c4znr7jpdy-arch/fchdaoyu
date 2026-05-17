@@ -1,10 +1,14 @@
 import { DungeonProgressCard } from '@app/components/dungeon/DungeonProgressCard';
-import { InkPageShell, InkSection } from '@app/components/layout';
+import { InkSection } from '@app/components/layout';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
-import { InkTag } from '@app/components/ui/InkTag';
 import { InkChoiceButton } from '@app/components/ui/InkChoiceButton';
-import { DungeonOption, DungeonRound, DungeonState } from '@shared/lib/dungeon/types';
+import { InkTag } from '@app/components/ui/InkTag';
+import type {
+  DungeonOption,
+  DungeonRound,
+  DungeonState,
+} from '@shared/lib/dungeon/types';
 import { useState } from 'react';
 
 interface DungeonExploringProps {
@@ -15,10 +19,6 @@ interface DungeonExploringProps {
   processing: boolean;
 }
 
-/**
- * 副本探索组件
- * 显示场景、选项和历史记录
- */
 export function DungeonExploring({
   state,
   lastRound,
@@ -33,64 +33,61 @@ export function DungeonExploring({
   }
 
   return (
-    <InkPageShell title={state.theme} backHref="/game">
-      {/* 场景描述 */}
+    <div className="space-y-6">
       <InkCard className="mb-6 flex min-h-[200px] flex-col justify-center">
         <p className="text-ink leading-relaxed">
           {lastRound.scene_description}
         </p>
       </InkCard>
 
-      {/* 副本状态和进度 */}
       <DungeonProgressCard state={state} onQuit={onQuit} />
 
-      {/* 选项列表 */}
       <InkSection title="抉择时刻">
         <div className="space-y-3">
-          {lastRound.interaction.options.map((opt: DungeonOption) => {
-            const isSelected = selectedOptionId === opt.id;
+          {lastRound.interaction.options.map((option) => {
+            const isSelected = selectedOptionId === option.id;
             return (
               <InkChoiceButton
-                key={opt.id}
+                key={option.id}
                 layout="card"
                 selected={isSelected}
                 disabled={processing}
-                onClick={() => setSelectedOptionId(opt.id)}
+                onClick={() => setSelectedOptionId(option.id)}
               >
                 <div className="mb-2 flex items-start justify-between gap-3">
                   <span
                     className={`flex-1 leading-tight font-bold ${isSelected ? 'text-crimson' : ''}`}
                   >
-                    {opt.text}
+                    {option.text}
                   </span>
                   <InkTag
                     tone={
-                      opt.risk_level === 'high'
+                      option.risk_level === 'high'
                         ? 'bad'
-                        : opt.risk_level === 'medium'
+                        : option.risk_level === 'medium'
                           ? 'info'
                           : 'good'
                     }
                     variant="outline"
                     className="shrink-0 text-xs"
                   >
-                    {opt.risk_level === 'high'
+                    {option.risk_level === 'high'
                       ? '凶险'
-                      : opt.risk_level === 'medium'
+                      : option.risk_level === 'medium'
                         ? '莫测'
                         : '稳健'}
                   </InkTag>
                 </div>
-                {opt.requirement && (
+                {option.requirement ? (
                   <div className="text-crimson mt-2 text-sm">
-                    需: {opt.requirement}
+                    需: {option.requirement}
                   </div>
-                )}
-                {opt.potential_cost && (
+                ) : null}
+                {option.potential_cost ? (
                   <div className="text-ink-secondary mt-1 text-sm">
-                    代价: {opt.potential_cost}
+                    代价: {option.potential_cost}
                   </div>
-                )}
+                ) : null}
               </InkChoiceButton>
             );
           })}
@@ -101,10 +98,12 @@ export function DungeonExploring({
           className="mx-auto mt-4 block!"
           disabled={!selectedOptionId || processing}
           onClick={async () => {
-            const opt = lastRound.interaction.options.find(
-              (o) => o.id === selectedOptionId,
+            const option = lastRound.interaction.options.find(
+              (item) => item.id === selectedOptionId,
             );
-            if (opt) await onAction(opt);
+            if (option) {
+              await onAction(option);
+            }
             setSelectedOptionId(null);
           }}
         >
@@ -112,25 +111,26 @@ export function DungeonExploring({
         </InkButton>
       </InkSection>
 
-      {/* 历史记录 */}
-      {state.history.length > 0 && (
+      {state.history.length > 0 ? (
         <InkSection title="回顾前路" subdued>
           <div className="text-ink-secondary max-h-40 space-y-2 overflow-y-auto px-2 text-sm">
-            {state.history.map((h, i) => (
-              <div key={i} className="border-ink/10 border-l-2 pl-2">
-                <div className="font-bold">第{h.round}回</div>
-                <div>{h.scene.substring(0, 50)}...</div>
-                {h.choice && <div className="text-crimson">➜ {h.choice}</div>}
-                {h.gained_items && h.gained_items.length > 0 && (
+            {state.history.map((history, index) => (
+              <div key={index} className="border-ink/10 border-l-2 pl-2">
+                <div className="font-bold">第{history.round}回</div>
+                <div>{history.scene.substring(0, 50)}...</div>
+                {history.choice ? (
+                  <div className="text-crimson">➜ {history.choice}</div>
+                ) : null}
+                {history.gained_items && history.gained_items.length > 0 ? (
                   <div className="text-wood mt-0.5 text-xs">
-                    获得: {h.gained_items.join(', ')}
+                    获得: {history.gained_items.join(', ')}
                   </div>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
         </InkSection>
-      )}
-    </InkPageShell>
+      ) : null}
+    </div>
   );
 }

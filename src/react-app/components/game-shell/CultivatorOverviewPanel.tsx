@@ -1,3 +1,5 @@
+import { PersistentStatusesCard } from '@app/components/feature/cultivator/PersistentStatusesCard';
+import { TitleEditorModal } from '@app/components/feature/cultivator/TitleEditorModal';
 import { LingGen } from '@app/components/func';
 import { LifespanStatusCard } from '@app/components/feature/cultivator/LifespanStatusCard';
 import { CultivatorStatusCard } from '@app/components/feature/cultivator/CultivatorStatusCard';
@@ -24,8 +26,6 @@ import {
 } from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
-import { TitleEditorModal } from '@app/routes/game/components/TitleEditorModal';
-import { PersistentStatusesCard } from '@app/routes/game/components/PersistentStatusesCard';
 import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
 import { AttributeType } from '@shared/engine/battle-v5/core/types';
 import { attrLabel } from '@shared/engine/battle-v5/effects/affixText/attributes';

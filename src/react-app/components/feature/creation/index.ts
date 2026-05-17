@@ -10,3 +10,6 @@ export {
   CreationProductResultModal,
   type CreationProductResultRecord,
 } from './CreationProductResultModal';
+export {
+  MaterialSelector,
+} from './MaterialSelector';
