@@ -58,7 +58,7 @@ export default function Zhanji({ record, currentCultivatorId }: ZhanjiProps) {
           <span className="ml-1">
             {winnerName} vs {loserName}
           </span>
-          <span className="ml-1">{typeLabel}</span>
+          <span className={`ml-1 ${typeColor}`}>{typeLabel}</span>
         </div>
         {record.createdAt && (
           <span className="text-ink/50 ml-2 min-w-20 text-right text-xs">

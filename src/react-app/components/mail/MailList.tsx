@@ -47,9 +47,7 @@ export function MailList({ mails, onSelect }: MailListProps) {
                 )}
                 {mail.type === 'system' && <span className="text-lg">📢</span>}
                 {!mail.isRead && (
-                  <span className="text-crimson inline-block text-[0.65rem] leading-none">
-                    ■
-                  </span>
+                  <span className="bg-crimson inline-block h-2 w-2 rounded-full" />
                 )}
 
                 <span

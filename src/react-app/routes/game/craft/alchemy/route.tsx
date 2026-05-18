@@ -67,6 +67,14 @@ type AlchemyPreviewResponse = {
   error?: string;
 };
 
+type PreviewState = {
+  key: string | null;
+  estimatedSpiritStones: number | null;
+  validation: PreviewValidation | null;
+  canAfford: boolean;
+  previewError: string | null;
+};
+
 type FormulaProgress = {
   previousLevel: number;
   level: number;
@@ -100,6 +108,14 @@ type DiscoveryConfirmResponse = {
     formula?: AlchemyFormula;
   };
   error?: string;
+};
+
+const DEFAULT_PREVIEW_STATE: PreviewState = {
+  key: null,
+  estimatedSpiritStones: null,
+  validation: null,
+  canAfford: true,
+  previewError: null,
 };
 
 function getPillFamilyLabel(family: PillFamily): string {
@@ -277,6 +293,7 @@ function AlchemyResultModal({
 
 export default function AlchemyPage() {
   const { cultivator, note, isLoading, refreshCultivator } = useCultivator();
+  const cultivatorId = cultivator?.id ?? null;
   const [activeMode, setActiveMode] = useState<AlchemyMode>('improvised');
   const [selectedFormulaId, setSelectedFormulaId] = useState<string | null>(
     null,
@@ -300,16 +317,16 @@ export default function AlchemyPage() {
   const [isHandlingDiscovery, setIsHandlingDiscovery] = useState(false);
   const [celebrationTick, setCelebrationTick] = useState(0);
   const [materialsRefreshKey, setMaterialsRefreshKey] = useState(0);
-  const [estimatedSpiritStones, setEstimatedSpiritStones] = useState<
-    number | null
-  >(null);
-  const [validation, setValidation] = useState<PreviewValidation | null>(null);
-  const [canAfford, setCanAfford] = useState(true);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewState, setPreviewState] =
+    useState<PreviewState>(DEFAULT_PREVIEW_STATE);
   const [formulas, setFormulas] = useState<AlchemyFormula[]>([]);
-  const [isLoadingFormulas, setIsLoadingFormulas] = useState(false);
   const [formulasError, setFormulasError] = useState<string | null>(null);
+  const [loadedFormulaCultivatorId, setLoadedFormulaCultivatorId] = useState<
+    string | null
+  >(null);
   const { pushToast } = useInkUI();
+  const isLoadingFormulas =
+    Boolean(cultivatorId) && loadedFormulaCultivatorId !== cultivatorId;
 
   const selectedFormula = useMemo(
     () => formulas.find((formula) => formula.id === selectedFormulaId) ?? null,
@@ -319,7 +336,9 @@ export default function AlchemyPage() {
   const loadFormulas = async (options?: {
     selectFormulaId?: string | null;
   }) => {
-    setIsLoadingFormulas(true);
+    if (!cultivatorId) {
+      return;
+    }
 
     try {
       const response = await fetch('/api/alchemy/formulas');
@@ -329,16 +348,16 @@ export default function AlchemyPage() {
         throw new Error(result.error || '丹方列表读取失败');
       }
 
-      setFormulas(result.data.formulas);
-      setFormulasError(null);
+      const nextFormulas = result.data.formulas;
 
-      const preferredId = options?.selectFormulaId ?? selectedFormulaId;
-      const nextSelected = result.data.formulas.find(
-        (formula) => formula.id === preferredId,
-      )
-        ? preferredId
-        : (result.data.formulas[0]?.id ?? null);
-      setSelectedFormulaId(nextSelected);
+      setFormulas(nextFormulas);
+      setFormulasError(null);
+      setSelectedFormulaId((currentSelected) => {
+        const preferredId = options?.selectFormulaId ?? currentSelected;
+        return nextFormulas.find((formula) => formula.id === preferredId)
+          ? preferredId
+          : (nextFormulas[0]?.id ?? null);
+      });
     } catch (error) {
       setFormulasError(
         error instanceof Error
@@ -346,16 +365,127 @@ export default function AlchemyPage() {
           : '丹方列表读取失败，请稍后再试。',
       );
     } finally {
-      setIsLoadingFormulas(false);
+      setLoadedFormulaCultivatorId(cultivatorId);
     }
   };
 
   useEffect(() => {
-    if (!cultivator) return;
-    void loadFormulas();
-  }, [cultivator?.id]);
+    if (!cultivatorId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadInitialFormulas = async () => {
+      try {
+        const response = await fetch('/api/alchemy/formulas');
+        const result: FormulaListResponse = await response.json();
+
+        if (cancelled) return;
+
+        if (!response.ok || !result.success || !result.data) {
+          throw new Error(result.error || '丹方列表读取失败');
+        }
+
+        const nextFormulas = result.data.formulas;
+
+        setFormulas(nextFormulas);
+        setFormulasError(null);
+        setSelectedFormulaId((currentSelected) =>
+          nextFormulas.find((formula) => formula.id === currentSelected)
+            ? currentSelected
+            : (nextFormulas[0]?.id ?? null),
+        );
+      } catch (error) {
+        if (cancelled) return;
+        setFormulasError(
+          error instanceof Error
+            ? error.message
+            : '丹方列表读取失败，请稍后再试。',
+        );
+      } finally {
+        if (!cancelled) {
+          setLoadedFormulaCultivatorId(cultivatorId);
+        }
+      }
+    };
+
+    void loadInitialFormulas();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cultivatorId]);
+
+  const previewRequest = useMemo(() => {
+    if (selectedMaterialIds.length === 0) {
+      return null;
+    }
+    if (activeMode === 'formula' && !selectedFormulaId) {
+      return null;
+    }
+
+    const params = new URLSearchParams({
+      craftType: CRAFT_TYPE,
+      alchemyMode: activeMode,
+      materialIds: selectedMaterialIds.join(','),
+    });
+    if (activeMode === 'formula' && selectedFormulaId) {
+      params.set('formulaId', selectedFormulaId);
+    }
+
+    return {
+      key: `${activeMode}:${selectedFormulaId ?? ''}:${selectedMaterialIds.join(',')}`,
+      url: `/api/craft?${params.toString()}`,
+    };
+  }, [activeMode, selectedFormulaId, selectedMaterialIds]);
 
   useEffect(() => {
+    if (!previewRequest) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadPreview = async () => {
+      try {
+        const response = await fetch(previewRequest.url);
+        const result: AlchemyPreviewResponse = await response.json();
+
+        if (cancelled) return;
+
+        if (!response.ok || !result.success || !result.data) {
+          throw new Error(result.error || '炼丹预估失败');
+        }
+
+        setPreviewState({
+          key: previewRequest.key,
+          estimatedSpiritStones: result.data.cost.spiritStones,
+          validation: result.data.validation,
+          canAfford: result.data.canAfford,
+          previewError: null,
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setPreviewState({
+          key: previewRequest.key,
+          estimatedSpiritStones: null,
+          validation: null,
+          canAfford: true,
+          previewError:
+            error instanceof Error ? error.message : '炼丹预估失败，请稍后再试。',
+        });
+      }
+    };
+
+    void loadPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [previewRequest]);
+
+  const resetWorkbench = () => {
     setStatus('');
     setCreatedConsumable(null);
     setFormulaDiscovery(null);
@@ -365,71 +495,18 @@ export default function AlchemyPage() {
     setSelectedMaterialMap({});
     setDoseMap({});
     setUserPrompt('');
-    setValidation(null);
-    setPreviewError(null);
-    setEstimatedSpiritStones(null);
-    setCanAfford(true);
-  }, [activeMode]);
+    setPreviewState(DEFAULT_PREVIEW_STATE);
+  };
 
-  useEffect(() => {
-    if (selectedMaterialIds.length === 0) {
-      setEstimatedSpiritStones(null);
-      setValidation(null);
-      setCanAfford(true);
-      setPreviewError(null);
-      return;
-    }
-    if (activeMode === 'formula' && !selectedFormulaId) {
-      setEstimatedSpiritStones(null);
-      setValidation(null);
-      setCanAfford(true);
-      setPreviewError(null);
+  const handleModeChange = (value: string) => {
+    const nextMode = value as AlchemyMode;
+    if (nextMode === activeMode) {
       return;
     }
 
-    let cancelled = false;
-
-    const loadPreview = async () => {
-      try {
-        const params = new URLSearchParams({
-          craftType: CRAFT_TYPE,
-          alchemyMode: activeMode,
-          materialIds: selectedMaterialIds.join(','),
-        });
-        if (activeMode === 'formula' && selectedFormulaId) {
-          params.set('formulaId', selectedFormulaId);
-        }
-
-        const response = await fetch(`/api/craft?${params.toString()}`);
-        const result: AlchemyPreviewResponse = await response.json();
-
-        if (cancelled) return;
-
-        if (!response.ok || !result.success || !result.data) {
-          throw new Error(result.error || '炼丹预估失败');
-        }
-
-        setEstimatedSpiritStones(result.data.cost.spiritStones);
-        setValidation(result.data.validation);
-        setCanAfford(result.data.canAfford);
-        setPreviewError(null);
-      } catch (error) {
-        if (cancelled) return;
-        setEstimatedSpiritStones(null);
-        setValidation(null);
-        setCanAfford(true);
-        setPreviewError(
-          error instanceof Error ? error.message : '炼丹预估失败，请稍后再试。',
-        );
-      }
-    };
-
-    void loadPreview();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeMode, selectedFormulaId, selectedMaterialIds]);
+    setActiveMode(nextMode);
+    resetWorkbench();
+  };
 
   const toggleMaterial = (id: string, material?: Material) => {
     setSelectedMaterialIds((prev) => {
@@ -473,19 +550,7 @@ export default function AlchemyPage() {
   };
 
   const resetAll = () => {
-    setStatus('');
-    setCreatedConsumable(null);
-    setFormulaDiscovery(null);
-    setFormulaProgress(null);
-    setIsResultModalOpen(false);
-    setSelectedMaterialIds([]);
-    setSelectedMaterialMap({});
-    setDoseMap({});
-    setUserPrompt('');
-    setValidation(null);
-    setPreviewError(null);
-    setEstimatedSpiritStones(null);
-    setCanAfford(true);
+    resetWorkbench();
   };
 
   const submitPayload = useMemo(
@@ -502,8 +567,15 @@ export default function AlchemyPage() {
     [activeMode, doseMap, selectedFormulaId, selectedMaterialIds, userPrompt],
   );
 
-  const displayValidation = selectedMaterialIds.length > 0 ? validation : null;
-  const displayCanAfford = selectedMaterialIds.length > 0 ? canAfford : true;
+  const hasFreshPreview = previewState.key === previewRequest?.key;
+  const estimatedSpiritStones = hasFreshPreview
+    ? previewState.estimatedSpiritStones
+    : null;
+  const validation = hasFreshPreview ? previewState.validation : null;
+  const canAfford = hasFreshPreview ? previewState.canAfford : true;
+  const previewError = hasFreshPreview ? previewState.previewError : null;
+  const displayValidation = validation;
+  const displayCanAfford = canAfford;
 
   const handleSubmit = async () => {
     if (!cultivator) {
@@ -565,9 +637,7 @@ export default function AlchemyPage() {
       if (activeMode === 'improvised') {
         setUserPrompt('');
       }
-      setValidation(null);
-      setPreviewError(null);
-      setEstimatedSpiritStones(null);
+      setPreviewState(DEFAULT_PREVIEW_STATE);
       setMaterialsRefreshKey((prev) => prev + 1);
       await refreshCultivator();
     } catch (error) {
@@ -710,7 +780,7 @@ export default function AlchemyPage() {
           { label: '丹方炼制', value: 'formula' },
         ]}
         activeValue={activeMode}
-        onChange={(value) => setActiveMode(value as AlchemyMode)}
+        onChange={handleModeChange}
       />
 
       {activeMode === 'formula' && (

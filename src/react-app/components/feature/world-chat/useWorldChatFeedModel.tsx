@@ -9,7 +9,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -84,10 +83,14 @@ export function WorldChatFeedProvider({
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
   const [posting, setPosting] = useState(false);
-  const [lastSeenMessageId, setLastSeenMessageId] = useState<string | null>(null);
-  const initializedSeenRef = useRef(false);
+  const [lastSeenMessageId, setLastSeenMessageId] = useState<string | null>(
+    null,
+  );
 
   const latestMessage = messages[0] ?? null;
+  const newMessageCount = isWorldChatRoute
+    ? 0
+    : countNewWorldChatMessages(messages, lastSeenMessageId);
 
   const fetchPage = useCallback(
     async (targetPage: number, append: boolean) => {
@@ -171,6 +174,40 @@ export function WorldChatFeedProvider({
   }, [pushToast]);
 
   useEffect(() => {
+    if (lastSeenMessageId || !latestMessage) {
+      return;
+    }
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setLastSeenMessageId(latestMessage.id);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lastSeenMessageId, latestMessage]);
+
+  useEffect(() => {
+    if (!isWorldChatRoute || !latestMessage || lastSeenMessageId === latestMessage.id) {
+      return;
+    }
+
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setLastSeenMessageId(latestMessage.id);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isWorldChatRoute, lastSeenMessageId, latestMessage]);
+
+  useEffect(() => {
     const timer = setInterval(async () => {
       try {
         const res = await fetch(
@@ -189,25 +226,6 @@ export function WorldChatFeedProvider({
 
     return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    if (initializedSeenRef.current || !latestMessage) {
-      return;
-    }
-
-    initializedSeenRef.current = true;
-    setLastSeenMessageId(latestMessage.id);
-  }, [latestMessage]);
-
-  useEffect(() => {
-    if (!latestMessage) {
-      return;
-    }
-
-    if (isWorldChatRoute) {
-      setLastSeenMessageId(latestMessage.id);
-    }
-  }, [isWorldChatRoute, latestMessage]);
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore) {
@@ -294,7 +312,7 @@ export function WorldChatFeedProvider({
     () => ({
       messages,
       latestMessage,
-      newMessageCount: countNewWorldChatMessages(messages, lastSeenMessageId),
+      newMessageCount,
       loading,
       loadingMore,
       hasMore,
@@ -307,12 +325,12 @@ export function WorldChatFeedProvider({
     [
       hasMore,
       isWorldChatRoute,
-      lastSeenMessageId,
       latestMessage,
       loadMore,
       loading,
       loadingMore,
       messages,
+      newMessageCount,
       posting,
       sendShowcaseMessage,
       sendTextMessage,

@@ -24,9 +24,10 @@ function DockLink({
     >
       [{label}]
       {badge && badge > 0 ? (
-        <span className="bg-crimson text-bgpaper absolute -top-0.5 right-0 inline-flex min-w-4 items-center justify-center rounded-full px-1 text-[0.62rem] leading-4">
-          {badge}
-        </span>
+        <span className="absolute -top-0.5 -right-1 flex h-3 w-3">
+        <span className="bg-crimson absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
+        <span className="bg-crimson relative inline-flex h-3 w-3 rounded-full" />
+      </span>
       ) : null}
     </Link>
   );
@@ -66,13 +67,13 @@ export function GameBottomDock({
             label="储物袋"
             active={sceneId === 'inventory'}
           />
+          <DockLink href="/game" label="洞府" active={sceneId === 'cave'} />
           <DockLink
             href="/game/mail"
-            label="传音"
+            label="传音玉简"
             active={sceneId === 'mail'}
             badge={unreadMailCount}
           />
-          <DockLink href="/game" label="洞府" active={sceneId === 'cave'} />
           <button
             type="button"
             onClick={onToggleExpanded}

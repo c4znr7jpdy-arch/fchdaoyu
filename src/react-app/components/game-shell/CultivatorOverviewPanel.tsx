@@ -187,7 +187,7 @@ export function CultivatorOverviewPanel() {
     setIsTitleModalOpen(true);
   };
 
-  const { unit, maxHp, maxMp } = getCultivatorDisplayAttributes(cultivator);
+  const { unit } = getCultivatorDisplayAttributes(cultivator);
   const orderedAttributes = [...PRIMARY_ATTR_ORDER, ...SECONDARY_ATTR_ORDER];
   const displayAttributes = orderedAttributes.map((attrType) => {
     const baseValue = unit.attributes.getBaseValue(attrType);

@@ -1,5 +1,4 @@
 import type { ComponentType } from 'react';
-import type { LazyRouteFunction } from 'react-router';
 
 type LazyRouteModule = Record<string, unknown> & {
   default: ComponentType;
@@ -7,7 +6,7 @@ type LazyRouteModule = Record<string, unknown> & {
 
 export function lazyRoute(
   importer: () => Promise<LazyRouteModule>,
-): LazyRouteFunction<any> {
+) {
   return async () => {
     const module = await importer();
     const { default: Component, ...rest } = module;

@@ -32,11 +32,6 @@ import {
   useNavigate,
 } from 'react-router';
 
-type SpecialBackOverride = {
-  label?: string;
-  onBack: () => void;
-};
-
 type SpecialBackAction =
   | {
       type: 'path';
