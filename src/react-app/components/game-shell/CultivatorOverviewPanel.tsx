@@ -1,28 +1,28 @@
+import { CultivatorStatusCard } from '@app/components/feature/cultivator/CultivatorStatusCard';
+import { LifespanStatusCard } from '@app/components/feature/cultivator/LifespanStatusCard';
 import { PersistentStatusesCard } from '@app/components/feature/cultivator/PersistentStatusesCard';
 import { TitleEditorModal } from '@app/components/feature/cultivator/TitleEditorModal';
-import { LingGen } from '@app/components/func';
-import { LifespanStatusCard } from '@app/components/feature/cultivator/LifespanStatusCard';
-import { CultivatorStatusCard } from '@app/components/feature/cultivator/CultivatorStatusCard';
 import { FateDetailModal } from '@app/components/feature/fates/FateDetailModal';
-import { FateEffectInlineList } from '@app/components/feature/fates/FateEffectInlineList';
 import { toFateDisplayModel } from '@app/components/feature/fates/FateDisplayAdapter';
+import { FateEffectInlineList } from '@app/components/feature/fates/FateEffectInlineList';
 import {
   AbilityMetaLine,
   AffixInlineList,
   toProductDisplayModel,
   type ProductRecordLike,
 } from '@app/components/feature/products';
+import { LingGen } from '@app/components/func';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
   InkBadge,
   InkButton,
   InkDialog,
-  type InkDialogState,
   InkList,
   InkListItem,
   InkNotice,
   InkStatusBar,
+  type InkDialogState,
 } from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
@@ -110,13 +110,8 @@ function chunkPairs<T>(items: T[]): T[][] {
 }
 
 export function CultivatorOverviewPanel() {
-  const {
-    cultivator,
-    inventory,
-    skills,
-    equipped,
-    refreshCultivator,
-  } = useCultivator();
+  const { cultivator, inventory, skills, equipped, refreshCultivator } =
+    useCultivator();
   const navigate = useNavigate();
   const { pushToast } = useInkUI();
   const [dialog, setDialog] = useState<InkDialogState | null>(null);
@@ -222,59 +217,61 @@ export function CultivatorOverviewPanel() {
 
   return (
     <div className="space-y-6">
-      <InkSection title="【道身】">
-        <InkList dense>
-          <InkListItem
-            title={
+      <InkList dense>
+        <InkListItem
+          title={
+            <div className="flex items-center gap-2">
+              <span>☯ 姓名：{cultivator.name}</span>
+              <InkBadge tier={cultivator.realm}>
+                {cultivator.realm_stage}
+              </InkBadge>
+            </div>
+          }
+          meta={
+            <div className="space-y-1 py-1 text-sm">
               <div className="flex items-center gap-2">
-                <span>☯ 姓名：{cultivator.name}</span>
-                <InkBadge tier={cultivator.realm}>{cultivator.realm_stage}</InkBadge>
+                <span>
+                  称号：
+                  {cultivator.title ? (
+                    <span className="text-crimson">「{cultivator.title}」</span>
+                  ) : (
+                    '暂无'
+                  )}
+                </span>
+                <InkButton onClick={openTitleEditor}>修改</InkButton>
               </div>
-            }
-            meta={
-              <div className="space-y-1 py-1 text-sm">
-                <div className="flex items-center gap-2">
-                  <span>
-                    称号：
-                    {cultivator.title ? (
-                      <span className="text-crimson">「{cultivator.title}」</span>
-                    ) : (
-                      '暂无'
-                    )}
-                  </span>
-                  <InkButton onClick={openTitleEditor}>修改</InkButton>
-                </div>
-                <p>身世：{cultivator.origin || '散修'}</p>
-                <p>性格：{cultivator.personality}</p>
-                <p>背景：{cultivator.background}</p>
-                {cultivator.balance_notes ? (
-                  <p>天道评语：{cultivator.balance_notes}</p>
-                ) : null}
-              </div>
-            }
-            description={
-              <InkStatusBar
-                className="mt-2 grid! grid-cols-2! gap-2 md:grid-cols-3!"
-                items={[
-                  { label: '年龄：', value: cultivator.age, icon: '⏳' },
-                  { label: '寿元：', value: cultivator.lifespan, icon: '🔮' },
-                  {
-                    label: '性别：',
-                    value: cultivator.gender,
-                    icon: cultivator.gender === '男' ? '♂' : '♀',
-                  },
-                  { label: '气血：', value: maxHp, icon: '❤️' },
-                  { label: '灵力：', value: maxMp, icon: '⚡️' },
-                  { label: '灵石：', value: cultivator.spirit_stones, icon: '💎' },
-                ]}
-              />
-            }
-          />
-          {cultivator.id ? (
-            <LifespanStatusCard cultivatorId={cultivator.id} />
-          ) : null}
-        </InkList>
-      </InkSection>
+              <p>身世：{cultivator.origin || '散修'}</p>
+              <p>性格：{cultivator.personality}</p>
+              <p>背景：{cultivator.background}</p>
+              {cultivator.balance_notes ? (
+                <p>天道评语：{cultivator.balance_notes}</p>
+              ) : null}
+            </div>
+          }
+          description={
+            <InkStatusBar
+              className="mt-2 grid! grid-cols-2! gap-2 md:grid-cols-3!"
+              items={[
+                { label: '年龄：', value: cultivator.age, icon: '⏳' },
+                { label: '寿元：', value: cultivator.lifespan, icon: '🔮' },
+                {
+                  label: '性别：',
+                  value: cultivator.gender,
+                  icon: cultivator.gender === '男' ? '♂' : '♀',
+                },
+                {
+                  label: '灵石：',
+                  value: cultivator.spirit_stones,
+                  icon: '💎',
+                },
+              ]}
+            />
+          }
+        />
+        {cultivator.id ? (
+          <LifespanStatusCard cultivatorId={cultivator.id} />
+        ) : null}
+      </InkList>
 
       <PersistentStatusesCard />
 
@@ -305,7 +302,9 @@ export function CultivatorOverviewPanel() {
                   key={fate.name + idx}
                   name={fate.name}
                   quality={fate.quality}
-                  meta={<FateEffectInlineList lines={fateDisplay.previewLines} />}
+                  meta={
+                    <FateEffectInlineList lines={fateDisplay.previewLines} />
+                  }
                   description={fate.description}
                   actions={
                     <InkButton
@@ -332,7 +331,7 @@ export function CultivatorOverviewPanel() {
                   key={item.type}
                   className="border-ink/10 border-b border-dashed last:border-b-0"
                 >
-                  <td className="text-crimson w-[40%] py-2 pl-3 pr-2 font-semibold">
+                  <td className="text-crimson w-[40%] py-2 pr-2 pl-3 font-semibold">
                     {item.label}
                   </td>
                   <td className="text-ink-secondary py-2 pr-3 text-right">
@@ -365,7 +364,7 @@ export function CultivatorOverviewPanel() {
                       key={item.type}
                       colSpan={pair.length === 1 ? 2 : 1}
                       className={cn(
-                        'w-1/2 min-w-0 py-2 pl-3 pr-2 align-top',
+                        'w-1/2 min-w-0 py-2 pr-2 pl-3 align-top',
                         colIdx === 0 &&
                           pair.length === 2 &&
                           'border-ink/10 border-r border-dashed',
@@ -496,14 +495,18 @@ export function CultivatorOverviewPanel() {
           <>
             <InkList>
               {skills.map((skill) => {
-                const product = toProductDisplayModel(skill as ProductRecordLike);
+                const product = toProductDisplayModel(
+                  skill as ProductRecordLike,
+                );
                 return (
                   <ItemCard
                     key={skill.id ?? skill.name}
                     icon="📜"
                     name={skill.name}
                     quality={skill.quality}
-                    badgeExtra={<InkBadge tone="default">{skill.element}</InkBadge>}
+                    badgeExtra={
+                      <InkBadge tone="default">{skill.element}</InkBadge>
+                    }
                     meta={
                       <div className="space-y-1">
                         <AffixInlineList affixes={product.affixes} />

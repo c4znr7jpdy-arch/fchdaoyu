@@ -14,7 +14,7 @@ export const gameDockGroups: GameNavGroup[] = [
     key: 'cultivation',
     title: '修行',
     actions: [
-      { label: '🧘 洞府修行', href: '/game/retreat' },
+      { label: '🧘 静室修行', href: '/game/retreat' },
       { label: '📚 藏经阁', href: '/game/enlightenment' },
       { label: '🪄 问法寻卷', href: '/game/enlightenment/manual-draw' },
       { label: '🔮 重塑命格', href: '/game/fate-reshape' },

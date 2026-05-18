@@ -2,7 +2,16 @@ import { GameSceneFrame } from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup, InkBadge, InkButton, InkDialog, InkDialogState, InkList, InkListItem, InkNotice, InkTabs, } from '@app/components/ui';
+  InkActionGroup,
+  InkBadge,
+  InkButton,
+  InkDialog,
+  InkDialogState,
+  InkList,
+  InkListItem,
+  InkNotice,
+  InkTabs,
+} from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { getMapNode } from '@shared/lib/game/mapSystem';
 import { Material } from '@shared/types/cultivator';
@@ -10,7 +19,6 @@ import { getMaterialTypeInfo } from '@shared/types/dictionaries';
 import { MarketLayer } from '@shared/types/market';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-
 
 type MarketListing = Material & {
   price: number;
@@ -42,9 +50,7 @@ export default function MarketPage() {
   const nodeId = searchParams.get('nodeId') || DEFAULT_NODE_ID;
   const layer = (searchParams.get('layer') as MarketLayer | null) || 'common';
   const activeLayer = (
-    ['common', 'treasure', 'heaven', 'black'].includes(layer)
-      ? layer
-      : 'common'
+    ['common', 'treasure', 'heaven', 'black'].includes(layer) ? layer : 'common'
   ) as MarketLayer;
 
   const [listings, setListings] = useState<MarketListing[]>([]);
@@ -320,16 +326,15 @@ export default function MarketPage() {
   }, [fetchMarket, nextRefresh]);
 
   const handleLayerChange = (nextLayer: string) => {
-      const target = nextLayer as MarketLayer;
-      const next = new URLSearchParams(searchParams.toString());
-      next.set('nodeId', nodeId);
-      next.set('layer', target);
-      navigate(`/game/market?${next.toString()}`, { replace: true });
+    const target = nextLayer as MarketLayer;
+    const next = new URLSearchParams(searchParams.toString());
+    next.set('nodeId', nodeId);
+    next.set('layer', target);
+    navigate(`/game/market?${next.toString()}`, { replace: true });
   };
 
   return (
     <GameSceneFrame
-      eyebrow="交易场景"
       title={`【${marketFlavor?.title || '云游坊市'}】`}
       description={
         marketFlavor?.description ||
@@ -344,7 +349,13 @@ export default function MarketPage() {
             <div className="space-y-2 text-sm leading-7">
               <p>灵石余额：{cultivator?.spirit_stones ?? 0}</p>
               <p>当前节点：{selectedNode?.name || nodeId}</p>
-              <p>当前层级：{LAYER_OPTIONS.find((item) => item.value === activeLayer)?.label}</p>
+              <p>
+                当前层级：
+                {
+                  LAYER_OPTIONS.find((item) => item.value === activeLayer)
+                    ?.label
+                }
+              </p>
               <p>刷新倒计时：{timeLeft}</p>
             </div>
           </section>

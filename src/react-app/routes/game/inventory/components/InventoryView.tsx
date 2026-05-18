@@ -15,7 +15,6 @@ import { ConsumablesTab } from './ConsumablesTab';
 import { ItemDetailModal } from './ItemDetailModal';
 import { MaterialsTab } from './MaterialsTab';
 
-
 /**
  * 储物袋主视图组件
  */
@@ -104,7 +103,6 @@ export function InventoryView() {
 
   return (
     <GameSceneFrame
-      eyebrow="行囊场景"
       title="【储物袋】"
       description="法宝、材料与消耗品都在此汇总。先点清手头资源，再决定是佩装、炼造，还是送去坊市流转。"
       headerMeta={

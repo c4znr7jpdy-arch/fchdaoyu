@@ -90,7 +90,7 @@ export function GameBottomDock({
         </div>
 
         {showExpanded ? (
-          <div className="battle-module mt-2 grid gap-3 border-t border-dashed pt-2.5 text-sm md:grid-cols-2 xl:grid-cols-5">
+          <div className="battle-module mt-2 grid gap-3 border-t border-ink/15 border-dashed pt-2.5 text-sm md:grid-cols-2 xl:grid-cols-5">
             {gameDockGroups.map((group) => (
               <div key={group.key}>
                 <div className="text-battle-muted mb-1 text-[0.68rem] tracking-[0.18em]">

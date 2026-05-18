@@ -103,7 +103,7 @@ export function WorldChatChannel({
   const listClass =
     variant === 'drawer'
       ? 'battle-scroll min-h-0 flex-1 overflow-y-auto pr-1'
-      : 'battle-scroll h-[min(56vh,34rem)] overflow-y-auto pr-1 md:h-[36rem]';
+      : 'battle-scroll h-[22rem] overflow-y-auto pr-1 md:h-[20rem]';
 
   useEffect(() => {
     if (!showcaseOpen || showcaseLoaded[showcaseTab] || showcaseLoadingRef.current) {

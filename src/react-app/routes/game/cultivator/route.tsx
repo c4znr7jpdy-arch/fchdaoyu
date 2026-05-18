@@ -1,4 +1,7 @@
-import { CultivatorOverviewPanel, GameSceneFrame } from '@app/components/game-shell';
+import {
+  CultivatorOverviewPanel,
+  GameSceneFrame,
+} from '@app/components/game-shell';
 import { InkButton, InkNotice } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 
@@ -28,7 +31,6 @@ export default function CultivatorPage() {
 
   return (
     <GameSceneFrame
-      eyebrow="HUD 深读"
       title="【道身总谱】"
       description="此页是顶部 HUD 的完整展开。所有即时状态、长期状态、根基属性与所修之物，都应先在 HUD 被感知，再在此处细读。"
       actionBar={

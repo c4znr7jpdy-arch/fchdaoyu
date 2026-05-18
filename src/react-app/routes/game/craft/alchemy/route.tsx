@@ -18,14 +18,11 @@ import {
 } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { CREATION_INPUT_CONSTRAINTS } from '@shared/engine/creation-v2/config/CreationBalance';
-import { isPillConsumable } from '@shared/lib/consumables';
 import { cn } from '@shared/lib/cn';
-import {
-  getMaterialAlchemyTagLabel,
-} from '@shared/lib/materialAlchemy';
+import { isPillConsumable } from '@shared/lib/consumables';
+import { getMaterialAlchemyTagLabel } from '@shared/lib/materialAlchemy';
 import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
 import type { MaterialType } from '@shared/types/constants';
-import type { Consumable, Material } from '@shared/types/cultivator';
 import type {
   AlchemyFormula,
   AlchemyFormulaDiscoveryCandidate,
@@ -33,6 +30,7 @@ import type {
   ConditionOperation,
   PillFamily,
 } from '@shared/types/consumable';
+import type { Consumable, Material } from '@shared/types/cultivator';
 import { useEffect, useMemo, useState } from 'react';
 
 const ALLOWED_MATERIAL_TYPES = [
@@ -210,9 +208,7 @@ function AlchemyResultModal({
         <div className="space-y-2">
           <div className="border-ink/10 border border-dashed p-3">
             <div className="text-ink-secondary mb-2 text-xs">炼制材料</div>
-            <div className="text-sm">
-              {meta.sourceMaterials.join('、')}
-            </div>
+            <div className="text-sm">{meta.sourceMaterials.join('、')}</div>
           </div>
           <div className="border-ink/10 border border-dashed p-3">
             <div className="text-ink-secondary mb-2 text-xs">药性结果</div>
@@ -230,11 +226,13 @@ function AlchemyResultModal({
               <div className="space-y-1 text-sm">
                 <div>本次熟练 +{formulaProgress.gainedExp}</div>
                 <div>
-                  当前等级 Lv.{formulaProgress.level}，进度 {formulaProgress.exp}
+                  当前等级 Lv.{formulaProgress.level}，进度{' '}
+                  {formulaProgress.exp}
                 </div>
                 {formulaProgress.leveledUp && (
                   <div className="text-emerald-700">
-                    丹方熟练提升：Lv.{formulaProgress.previousLevel} → Lv.{formulaProgress.level}
+                    丹方熟练提升：Lv.{formulaProgress.previousLevel} → Lv.
+                    {formulaProgress.level}
                   </div>
                 )}
               </div>
@@ -248,7 +246,8 @@ function AlchemyResultModal({
         formulaDiscovery ? (
           <div className="space-y-2 pt-2">
             <InkNotice tone="info">
-              你已摸到一缕成方脉络：{formulaDiscovery.name}。{formulaDiscovery.patternSummary}
+              你已摸到一缕成方脉络：{formulaDiscovery.name}。
+              {formulaDiscovery.patternSummary}
             </InkNotice>
             <InkActionGroup align="right">
               <InkButton
@@ -273,14 +272,11 @@ function AlchemyResultModal({
 }
 
 export default function AlchemyPage() {
-  const {
-    cultivator,
-    note,
-    isLoading,
-    refreshCultivator,
-  } = useCultivator();
+  const { cultivator, note, isLoading, refreshCultivator } = useCultivator();
   const [activeMode, setActiveMode] = useState<AlchemyMode>('improvised');
-  const [selectedFormulaId, setSelectedFormulaId] = useState<string | null>(null);
+  const [selectedFormulaId, setSelectedFormulaId] = useState<string | null>(
+    null,
+  );
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
   const [selectedMaterialMap, setSelectedMaterialMap] = useState<
     Record<string, Material>
@@ -289,15 +285,20 @@ export default function AlchemyPage() {
   const [userPrompt, setUserPrompt] = useState('');
   const [status, setStatus] = useState('');
   const [isSubmitting, setSubmitting] = useState(false);
-  const [createdConsumable, setCreatedConsumable] = useState<Consumable | null>(null);
+  const [createdConsumable, setCreatedConsumable] = useState<Consumable | null>(
+    null,
+  );
   const [formulaDiscovery, setFormulaDiscovery] =
     useState<AlchemyFormulaDiscoveryCandidate | null>(null);
-  const [formulaProgress, setFormulaProgress] = useState<FormulaProgress | null>(null);
+  const [formulaProgress, setFormulaProgress] =
+    useState<FormulaProgress | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [isHandlingDiscovery, setIsHandlingDiscovery] = useState(false);
   const [celebrationTick, setCelebrationTick] = useState(0);
   const [materialsRefreshKey, setMaterialsRefreshKey] = useState(0);
-  const [estimatedSpiritStones, setEstimatedSpiritStones] = useState<number | null>(null);
+  const [estimatedSpiritStones, setEstimatedSpiritStones] = useState<
+    number | null
+  >(null);
   const [validation, setValidation] = useState<PreviewValidation | null>(null);
   const [canAfford, setCanAfford] = useState(true);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -332,11 +333,13 @@ export default function AlchemyPage() {
         (formula) => formula.id === preferredId,
       )
         ? preferredId
-        : result.data.formulas[0]?.id ?? null;
+        : (result.data.formulas[0]?.id ?? null);
       setSelectedFormulaId(nextSelected);
     } catch (error) {
       setFormulasError(
-        error instanceof Error ? error.message : '丹方列表读取失败，请稍后再试。',
+        error instanceof Error
+          ? error.message
+          : '丹方列表读取失败，请稍后再试。',
       );
     } finally {
       setIsLoadingFormulas(false);
@@ -617,9 +620,7 @@ export default function AlchemyPage() {
     } catch (error) {
       pushToast({
         message:
-          error instanceof Error
-            ? error.message
-            : '丹方确认失败，请稍后再试。',
+          error instanceof Error ? error.message : '丹方确认失败，请稍后再试。',
         tone: 'danger',
       });
     } finally {
@@ -637,7 +638,6 @@ export default function AlchemyPage() {
 
   return (
     <GameSceneFrame
-      eyebrow="造化场景"
       title="【炼丹房】"
       description="丹意引炉，药性成形。左侧专心排布材料与炉法，右侧始终盯着丹方、灵石消耗与当前炉况。"
       headerMeta={
@@ -654,7 +654,9 @@ export default function AlchemyPage() {
               炉况摘要
             </div>
             <div className="space-y-2 text-sm leading-7">
-              <p>当前炉法：{activeMode === 'formula' ? '丹方炼制' : '即兴炼丹'}</p>
+              <p>
+                当前炉法：{activeMode === 'formula' ? '丹方炼制' : '即兴炼丹'}
+              </p>
               <p>
                 已投入灵材：{selectedMaterialIds.length}/{MAX_MATERIALS}
               </p>
@@ -680,7 +682,9 @@ export default function AlchemyPage() {
             ) : (
               <p>请投入灵材并注入丹意，系统会按材料药性与意图共振出丹。</p>
             )}
-            {previewError ? <p className="text-crimson mt-2">{previewError}</p> : null}
+            {previewError ? (
+              <p className="text-crimson mt-2">{previewError}</p>
+            ) : null}
             {displayValidation?.blockingReason ? (
               <p className="text-crimson mt-2">
                 {displayValidation.blockingReason}
@@ -717,7 +721,9 @@ export default function AlchemyPage() {
 
       {activeMode === 'formula' && (
         <InkSection title="丹方总览">
-          {formulasError && <InkNotice tone="warning">{formulasError}</InkNotice>}
+          {formulasError && (
+            <InkNotice tone="warning">{formulasError}</InkNotice>
+          )}
           {isLoadingFormulas && <InkNotice>正在整理你的丹方笔录……</InkNotice>}
           {!isLoadingFormulas && formulas.length === 0 && (
             <InkNotice tone="info">
@@ -854,7 +860,9 @@ export default function AlchemyPage() {
               </div>
             </InkCard>
           ) : (
-            <InkNotice tone="info">先从上方选定一份丹方，再安排炉材。</InkNotice>
+            <InkNotice tone="info">
+              先从上方选定一份丹方，再安排炉材。
+            </InkNotice>
           )}
         </InkSection>
       )}
@@ -885,7 +893,9 @@ export default function AlchemyPage() {
 
         {previewError && <InkNotice tone="warning">{previewError}</InkNotice>}
         {displayValidation?.blockingReason && (
-          <InkNotice tone="warning">{displayValidation.blockingReason}</InkNotice>
+          <InkNotice tone="warning">
+            {displayValidation.blockingReason}
+          </InkNotice>
         )}
         {displayValidation?.warnings.map((warning) => (
           <InkNotice key={warning} tone="info">

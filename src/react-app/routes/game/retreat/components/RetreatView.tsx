@@ -1,17 +1,59 @@
-import { CultivatorStatusCard } from '@app/components/feature/cultivator/CultivatorStatusCard';
-import { GameSceneFrame } from '@app/components/game-shell';
-import { InkSection } from '@app/components/layout';
+import { useLifespanStatus } from '@app/components/feature/cultivator/LifespanStatusCard';
 import {
-  InkActionGroup, InkBadge, InkButton, InkInput, InkNotice, } from '@app/components/ui';
+  GameSceneAsideSection,
+  GameSceneFrame,
+} from '@app/components/game-shell';
+import { InkSection } from '@app/components/layout';
+import { InkBadge, InkButton, InkInput, InkNotice } from '@app/components/ui';
 
 import { useRetreatViewModel } from '../hooks/useRetreatViewModel';
 import { BreakthroughConfirmModal } from './BreakthroughConfirmModal';
 import { RetreatResultSection } from './RetreatResultSection';
 
+function formatChance(value: number | undefined) {
+  if (typeof value !== 'number') return '未明';
+  return `${Math.round(value * 1000) / 10}%`;
+}
 
-/**
- * 洞府主视图组件
- */
+function BreakthroughLabel({
+  type,
+}: {
+  type: 'forced' | 'normal' | 'perfect' | null;
+}) {
+  if (!type) return null;
+
+  const tone =
+    type === 'perfect' ? '金丹' : type === 'normal' ? '筑基' : '炼气';
+  const text =
+    type === 'perfect'
+      ? '圆满突破'
+      : type === 'normal'
+        ? '常规突破'
+        : '强行突破';
+
+  return <InkBadge tier={tone}>{text}</InkBadge>;
+}
+
+function QuietRoomMetric({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="border-ink/15 bg-bgpaper border border-dashed px-3 py-3">
+      <div className="text-battle-muted text-[0.68rem] tracking-[0.18em]">
+        {label}
+      </div>
+      <div className="text-ink mt-2 text-lg">{value}</div>
+      <div className="text-ink-secondary mt-1 text-xs leading-5">{hint}</div>
+    </div>
+  );
+}
+
 export function RetreatView() {
   const {
     cultivator,
@@ -31,8 +73,12 @@ export function RetreatView() {
     closeBreakthroughConfirm,
     handleGoReincarnate,
   } = useRetreatViewModel();
+  const { status: lifespanStatus } = useLifespanStatus({
+    cultivatorId: cultivator?.id ?? '',
+    autoRefresh: true,
+    refreshInterval: 60_000,
+  });
 
-  // 加载状态
   if (isLoading && !cultivator) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -41,7 +87,6 @@ export function RetreatView() {
     );
   }
 
-  // 未创建角色
   if (!cultivator) {
     return (
       <div className="flex h-full items-center justify-center px-4">
@@ -57,9 +102,7 @@ export function RetreatView() {
 
   return (
     <GameSceneFrame
-      eyebrow="修炼焦点"
-      title="【洞府修行】"
-      description="收束外务，静室观息。闭关、悟道与冲关都在此完成，最该关注的是寿元余量、瓶颈状态与这一次要押上的年数。"
+      title="静室修行"
       headerMeta={
         note ? (
           <div className="battle-note">
@@ -69,95 +112,128 @@ export function RetreatView() {
       }
       aside={
         <>
-          <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4">
-            <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-              修行摘要
-            </div>
+          <GameSceneAsideSection title="静室案头">
             <div className="space-y-2 text-sm leading-7">
               <p>当前境界：{cultivator.realm_stage}</p>
               <p>剩余寿元：{remainingLifespan} 年</p>
               <p>累计闭关：{cultivator.closed_door_years_total ?? 0} 年</p>
               <p>本次闭关：{retreatYears || '未定'} 年</p>
             </div>
-          </section>
-          <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4 text-sm leading-7">
-            <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-              关窍提醒
+          </GameSceneAsideSection>
+
+          <GameSceneAsideSection title="寿元账">
+            <div className="space-y-2 text-sm leading-7">
+              {lifespanStatus ? (
+                <>
+                  <p>
+                    今日已用：{lifespanStatus.consumed}/
+                    {lifespanStatus.dailyLimit} 年
+                  </p>
+                  <p>今日尚余：{lifespanStatus.remaining} 年</p>
+                </>
+              ) : (
+                <p>寿元账册尚在整理。</p>
+              )}
+              <p className="text-ink-secondary">
+                闭关愈久，修为增长愈多，但寿元也会一并消耗。
+              </p>
             </div>
-            <p>修为达 60% 可尝试突破，达 100% 且感悟足够时更稳。</p>
-            <p className="mt-2">若见瓶颈久驻，宜转去历练、斗法或参悟求感悟。</p>
-          </section>
+          </GameSceneAsideSection>
+
+          <GameSceneAsideSection title="冲关火候">
+            <div className="space-y-2 text-sm leading-7">
+              <p>修为约：{cultivationProgress?.percent ?? 0}%</p>
+              <p>
+                道心感悟：{cultivationProgress?.comprehension_insight ?? 0}/100
+              </p>
+              <p>成功把握：{formatChance(breakthroughPreview?.finalChance)}</p>
+              {breakthroughPreview?.recommendation ? (
+                <p className="text-ink-secondary">
+                  {breakthroughPreview.recommendation}
+                </p>
+              ) : (
+                <p className="text-ink-secondary">
+                  修为达 60% 可试冲关，圆满火候更宜稳破。
+                </p>
+              )}
+            </div>
+          </GameSceneAsideSection>
         </>
       }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game">返回</InkButton>
-        </InkActionGroup>
-      }
+      actionBar={<InkButton href="/game">返回洞府</InkButton>}
     >
-      <InkSection title="【悟道修行】">
-        <div className="space-y-3 text-sm leading-6">
-          {/* 当前状态概览 */}
-          <div className="border-ink/30 bg-bgpaper border p-3 border-dashed">
-            <p className="text-ink-secondary mb-2">
-              当前境界：
-              <InkBadge tier={cultivator.realm}>
-                {cultivator.realm_stage}
-              </InkBadge>
-            </p>
-            <p className="text-ink-secondary">
-              剩余寿元：
-              <span className="text-ink font-bold">{remainingLifespan}</span> 年
-              <span className="ml-4 opacity-60">
-                累计闭关 {cultivator.closed_door_years_total ?? 0} 年
-              </span>
-            </p>
-          </div>
+      <InkSection title="【当前火候】">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <QuietRoomMetric
+            label="境界"
+            value={cultivator.realm_stage}
+            hint="静室中一切筹算都以当前境界为基。"
+          />
+          <QuietRoomMetric
+            label="修为"
+            value={`${cultivationProgress?.percent ?? 0}%`}
+            hint="修为达到 60% 后，才有资格尝试突破。"
+          />
+          <QuietRoomMetric
+            label="感悟"
+            value={`${cultivationProgress?.comprehension_insight ?? 0}/100`}
+            hint="感悟越高，冲关时越稳。"
+          />
+          <QuietRoomMetric
+            label="突破"
+            value={formatChance(breakthroughPreview?.finalChance)}
+            hint="结合修为、感悟与当前状态得出的估计。"
+          />
+        </div>
 
-          {/* 修为状态卡片 */}
-          {cultivator.cultivation_progress && (
-            <CultivatorStatusCard cultivator={cultivator} showDetails={true} />
-          )}
+        <div className="border-battle-rule-strong mt-3 flex flex-wrap items-center gap-2 border-t border-dashed pt-3 text-sm">
+          <span className="text-ink-secondary">当前判断：</span>
+          <BreakthroughLabel
+            type={cultivationProgress?.breakthroughType ?? null}
+          />
+          {!cultivationProgress?.canBreakthrough ? (
+            <span className="text-battle-muted">
+              修为未到 60%，仍应以闭关积累为先。
+            </span>
+          ) : null}
+        </div>
+      </InkSection>
 
-          {/* 闭关年限输入 */}
+      <InkSection title="【本次闭关】">
+        <div className="space-y-4 text-sm leading-7">
+          <p>
+            静室只看与这一次决断直接相关的事：要押几年寿元、此刻该不该冲关，以及冲关失败后还能否承受代价。
+          </p>
+
           <InkInput
             label="闭关年限"
             value={retreatYears}
             placeholder="输入 1~200 之间的整数"
             onChange={handleRetreatYearsChange}
-            hint="闭关越久修为增长越多，但会消耗相应寿元"
+            hint="闭关越久修为增长越多，也会消耗相应寿元。"
           />
 
-          {/* 操作按钮 */}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <InkButton
               onClick={handleRetreat}
               disabled={retreatLoading}
-              className="flex-1"
+              variant="primary"
             >
-              {retreatLoading ? '修炼中……' : '🧘 闭关修炼'}
+              {retreatLoading ? '修炼中……' : '闭关修炼'}
             </InkButton>
 
-            {cultivationProgress?.canBreakthrough && (
+            {cultivationProgress?.canBreakthrough ? (
               <InkButton
                 onClick={handleBreakthroughClick}
                 disabled={retreatLoading}
-                variant="primary"
-                className="flex-1"
               >
-                {retreatLoading ? '冲关中……' : '⚡️ 尝试突破'}
+                {retreatLoading ? '冲关中……' : '尝试突破'}
               </InkButton>
-            )}
+            ) : null}
           </div>
-
-          {/* 提示 */}
-          {!cultivationProgress?.canBreakthrough && (
-            <p className="text-sm opacity-70">提示：修为达到60%时可尝试突破</p>
-          )}
         </div>
       </InkSection>
 
-      {/* 突破确认弹窗 */}
       <BreakthroughConfirmModal
         isOpen={showBreakthroughConfirm}
         onClose={closeBreakthroughConfirm}
@@ -165,13 +241,12 @@ export function RetreatView() {
         chancePreview={breakthroughPreview}
       />
 
-      {/* 修炼/突破结果 */}
-      {retreatResult && (
+      {retreatResult ? (
         <RetreatResultSection
           retreatResult={retreatResult}
           onGoReincarnate={handleGoReincarnate}
         />
-      )}
+      ) : null}
     </GameSceneFrame>
   );
 }

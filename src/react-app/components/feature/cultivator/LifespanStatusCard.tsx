@@ -10,6 +10,13 @@ interface LifespanStatus {
   isInRetreat: boolean;
 }
 
+interface UseLifespanStatusOptions {
+  cultivatorId: string;
+  autoRefresh?: boolean;
+  refreshInterval?: number;
+  onStatusLoaded?: (status: LifespanStatus) => void;
+}
+
 interface LifespanStatusCardProps {
   cultivatorId: string;
   /**
@@ -55,62 +62,12 @@ export function LifespanStatusCard({
   onStatusLoaded,
   className = '',
 }: LifespanStatusCardProps) {
-  const [status, setStatus] = useState<LifespanStatus | null>(null);
-  const [loading, setLoading] = useState(Boolean(cultivatorId));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!cultivatorId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchStatus = async () => {
-      try {
-        const result = await fetchJsonCached<{
-          success: boolean;
-          data?: LifespanStatus;
-          error?: string;
-        }>(`/api/cultivator/lifespan-status`, {
-          key: `home:lifespan-status:${cultivatorId}`,
-          ttlMs: autoRefresh ? Math.min(refreshInterval, 5000) : 30 * 1000,
-        });
-
-        if (cancelled) return;
-
-        if (result.success && result.data) {
-          setStatus(result.data);
-          setError(null);
-          onStatusLoaded?.(result.data);
-        } else {
-          throw new Error(result.error || '获取寿元状态失败');
-        }
-      } catch (err) {
-        if (cancelled) return;
-        console.error('获取寿元状态失败:', err);
-        setError(err instanceof Error ? err.message : '获取失败');
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void fetchStatus();
-
-    if (autoRefresh && refreshInterval > 0) {
-      const timer = setInterval(fetchStatus, refreshInterval);
-      return () => {
-        cancelled = true;
-        clearInterval(timer);
-      };
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [autoRefresh, cultivatorId, onStatusLoaded, refreshInterval]);
+  const { status, loading, error } = useLifespanStatus({
+    cultivatorId,
+    autoRefresh,
+    refreshInterval,
+    onStatusLoaded,
+  });
 
   // 计算寿元使用百分比
   const percentage = status
@@ -181,7 +138,7 @@ export function LifespanStatusCard({
           </div>
 
           {/* 进度条 */}
-          <div className="bg-white/70 border-ink/15 h-2 w-full overflow-hidden border">
+          <div className="border-ink/15 h-2 w-full overflow-hidden border bg-white/70">
             <div
               className={`h-full transition-all duration-300 ${progressColor}`}
               style={{
@@ -200,6 +157,76 @@ export function LifespanStatusCard({
   );
 
   return className ? <div className={className}>{content}</div> : content;
+}
+
+export function useLifespanStatus({
+  cultivatorId,
+  autoRefresh = false,
+  refreshInterval = 60000,
+  onStatusLoaded,
+}: UseLifespanStatusOptions) {
+  const [status, setStatus] = useState<LifespanStatus | null>(null);
+  const [loading, setLoading] = useState(Boolean(cultivatorId));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!cultivatorId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchStatus = async () => {
+      try {
+        const result = await fetchJsonCached<{
+          success: boolean;
+          data?: LifespanStatus;
+          error?: string;
+        }>(`/api/cultivator/lifespan-status`, {
+          key: `home:lifespan-status:${cultivatorId}`,
+          ttlMs: autoRefresh ? Math.min(refreshInterval, 5000) : 30 * 1000,
+        });
+
+        if (cancelled) return;
+
+        if (result.success && result.data) {
+          setStatus(result.data);
+          setError(null);
+          onStatusLoaded?.(result.data);
+        } else {
+          throw new Error(result.error || '获取寿元状态失败');
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.error('获取寿元状态失败:', err);
+        setError(err instanceof Error ? err.message : '获取失败');
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void fetchStatus();
+
+    if (autoRefresh && refreshInterval > 0) {
+      const timer = setInterval(fetchStatus, refreshInterval);
+      return () => {
+        cancelled = true;
+        clearInterval(timer);
+      };
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [autoRefresh, cultivatorId, onStatusLoaded, refreshInterval]);
+
+  return {
+    status,
+    loading,
+    error,
+  };
 }
 
 /**

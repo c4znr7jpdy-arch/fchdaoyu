@@ -13,12 +13,21 @@ export type GameSceneChrome = 'standard' | 'immersive';
 
 export type GameSceneDockMode = 'core' | 'expanded' | 'hidden';
 
+export type GameScenePresentation =
+  | 'hub'
+  | 'workflow'
+  | 'archive'
+  | 'service'
+  | 'immersive';
+
 export interface GameSceneHandle {
   id: string;
   label: string;
   group: GameSceneGroup;
   chrome: GameSceneChrome;
   dock: GameSceneDockMode;
+  presentation: GameScenePresentation;
+  summary?: string | null;
 }
 
 export interface RouteTitleContext {

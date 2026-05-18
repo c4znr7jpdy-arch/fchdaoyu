@@ -1,8 +1,8 @@
 import { GameSceneFrame } from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
-import { useInkUI } from '@app/components/providers/InkUIProvider';
 import { MailDetailModal } from '@app/components/mail/MailDetailModal';
 import { Mail, MailList } from '@app/components/mail/MailList';
+import { useInkUI } from '@app/components/providers/InkUIProvider';
 import { InkButton } from '@app/components/ui/InkButton';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { useCallback, useEffect, useState } from 'react';
@@ -21,33 +21,36 @@ export default function MailPage() {
   const { refreshInventory, refreshUnreadMailCount } = useCultivator();
   const { pushToast } = useInkUI();
 
-  const fetchMails = useCallback(async (targetPage: number, append: boolean) => {
-    try {
-      if (append) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
+  const fetchMails = useCallback(
+    async (targetPage: number, append: boolean) => {
+      try {
+        if (append) {
+          setLoadingMore(true);
+        } else {
+          setLoading(true);
+        }
+        const res = await fetch(
+          `/api/cultivator/mail?page=${targetPage}&pageSize=${PAGE_SIZE}`,
+        );
+        const data = await res.json();
+        if (res.ok) {
+          const nextMails = (data.mails || []) as Mail[];
+          setMails((prev) => (append ? [...prev, ...nextMails] : nextMails));
+          setHasMore(Boolean(data.pagination?.hasMore));
+          setPage(targetPage);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (append) {
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
       }
-      const res = await fetch(
-        `/api/cultivator/mail?page=${targetPage}&pageSize=${PAGE_SIZE}`,
-      );
-      const data = await res.json();
-      if (res.ok) {
-        const nextMails = (data.mails || []) as Mail[];
-        setMails((prev) => (append ? [...prev, ...nextMails] : nextMails));
-        setHasMore(Boolean(data.pagination?.hasMore));
-        setPage(targetPage);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      if (append) {
-        setLoadingMore(false);
-      } else {
-        setLoading(false);
-      }
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -119,7 +122,9 @@ export default function MailPage() {
       ),
     );
     setSelectedMail((prev) =>
-      prev && prev.id === mailId ? { ...prev, isClaimed: true, isRead: true } : prev,
+      prev && prev.id === mailId
+        ? { ...prev, isClaimed: true, isRead: true }
+        : prev,
     );
     refreshInventory();
     refreshUnreadMailCount();
@@ -187,7 +192,8 @@ export default function MailPage() {
       refreshUnreadMailCount();
 
       pushToast({
-        message: updatedCount > 0 ? `已标记 ${updatedCount} 封为已读` : '没有未读邮件',
+        message:
+          updatedCount > 0 ? `已标记 ${updatedCount} 封为已读` : '没有未读邮件',
         tone: 'success',
       });
     } catch (error) {
@@ -205,7 +211,6 @@ export default function MailPage() {
 
   return (
     <GameSceneFrame
-      eyebrow="消息场景"
       title="【传音玉简】"
       description="宗门告示、奖励来函与四方灵讯都在此归卷。先清掉要紧的未读与附件，再决定今日是否继续外出。"
       aside={

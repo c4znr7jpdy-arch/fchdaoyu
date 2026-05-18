@@ -2,6 +2,7 @@ import { InkModal } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import { InkBadge } from '@app/components/ui/InkBadge';
 import { InkButton } from '@app/components/ui/InkButton';
+import { InkListItem } from '@app/components/ui/InkList';
 import { GeneratedMaterial } from '@shared/engine/material/creation/types';
 import type { Cultivator } from '@shared/types/cultivator';
 import { useEffect, useState } from 'react';
@@ -9,9 +10,14 @@ import { useEffect, useState } from 'react';
 interface YieldCardProps {
   cultivator: Cultivator;
   onOk?: () => void;
+  variant?: 'card' | 'compact';
 }
 
-export function YieldCard({ cultivator, onOk }: YieldCardProps) {
+export function YieldCard({
+  cultivator,
+  onOk,
+  variant = 'card',
+}: YieldCardProps) {
   const { pushToast } = useInkUI();
   const [timeSinceYield, setTimeSinceYield] = useState(0);
   const [yieldResult, setYieldResult] = useState<{
@@ -125,32 +131,66 @@ export function YieldCard({ cultivator, onOk }: YieldCardProps) {
     }
   }, [cultivator?.last_yield_at]);
 
+  const actionButton = (
+    <InkButton
+      variant={timeSinceYield >= 1 ? 'primary' : 'secondary'}
+      disabled={timeSinceYield < 1 || claiming}
+      onClick={handleClaimYield}
+      className={variant === 'card' ? 'min-w-20' : undefined}
+    >
+      {claiming ? '结算中' : timeSinceYield < 1 ? '历练中' : '领取'}
+    </InkButton>
+  );
+
+  const compactSummary =
+    timeSinceYield >= 24
+      ? '行囊已满，宜速将所得收入洞府。'
+      : timeSinceYield >= 20
+        ? '此行所得将近上限，宜先结算再作远行。'
+        : timeSinceYield >= 1
+          ? '已有可领取所得，可先收归囊中。'
+          : '道身仍在外历练，暂待回讯。';
+
   return (
-    <div className="border-ink/20 bg-white/70 relative mb-6 overflow-hidden border p-4">
-      <div className="relative z-10 flex items-center justify-between">
-        <div>
-          <div className="text-ink-primary flex items-center gap-2 text-lg font-bold">
-            <span>🗺️ 历练收益</span>
-            {timeSinceYield >= 24 && <InkBadge tone="danger">已满</InkBadge>}
-          </div>
-          <div className="text-ink-secondary mt-1 text-sm">
-            已历练{' '}
-            <span className="text-ink-primary font-bold">{timeSinceYield}</span>{' '}
-            小时
-            <span className="opacity-60"> (上限24h)</span>
+    <>
+      {variant === 'compact' ? (
+        <InkListItem
+          title={
+            <div className="flex items-center gap-2">
+              <span>🗺️ 历练归讯</span>
+              {timeSinceYield >= 24 ? (
+                <InkBadge tone="danger">已满</InkBadge>
+              ) : null}
+            </div>
+          }
+          meta={`已历练 ${timeSinceYield} 小时（上限24h）`}
+          description={compactSummary}
+          actions={actionButton}
+        />
+      ) : (
+        <div className="border-ink/20 relative mb-6 overflow-hidden border bg-white/70 p-4">
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <div className="text-ink-primary flex items-center gap-2 text-lg font-bold">
+                <span>🗺️ 历练收益</span>
+                {timeSinceYield >= 24 && (
+                  <InkBadge tone="danger">已满</InkBadge>
+                )}
+              </div>
+              <div className="text-ink-secondary mt-1 text-sm">
+                已历练{' '}
+                <span className="text-ink-primary font-bold">
+                  {timeSinceYield}
+                </span>{' '}
+                小时
+                <span className="opacity-60"> (上限24h)</span>
+              </div>
+            </div>
+            {actionButton}
           </div>
         </div>
-        <InkButton
-          variant={timeSinceYield >= 1 ? 'primary' : 'secondary'}
-          disabled={timeSinceYield < 1 || claiming}
-          onClick={handleClaimYield}
-          className="min-w-20"
-        >
-          {claiming ? '结算中' : timeSinceYield < 1 ? '历练中' : '领取'}
-        </InkButton>
-      </div>
+      )}
 
-      {/* 历练结果弹窗 */}
       <InkModal
         isOpen={!!yieldResult}
         onClose={handleCloseYieldModal}
@@ -209,7 +249,6 @@ export function YieldCard({ cultivator, onOk }: YieldCardProps) {
           </div>
         )}
 
-        {/* 材料异步生成提示 */}
         {yieldResult?.materialCount &&
           yieldResult.materialCount > 0 &&
           (!yieldResult.materials || yieldResult.materials.length === 0) && (
@@ -219,11 +258,11 @@ export function YieldCard({ cultivator, onOk }: YieldCardProps) {
                 <span className="text-crimson font-bold">
                   {yieldResult.materialCount}
                 </span>{' '}
-                份天材地宝正在运送中， 稍后将通过传音玉简（邮件）送达。
+                份天材地宝正在运送中，稍后将通过传音玉简（邮件）送达。
               </p>
             </div>
           )}
       </InkModal>
-    </div>
+    </>
   );
 }
