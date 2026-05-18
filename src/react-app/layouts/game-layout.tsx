@@ -236,8 +236,8 @@ function CombatSceneChrome() {
   const detail = routeTitle === descriptor.sceneLabel ? null : routeTitle;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-3 pt-[calc(env(safe-area-inset-top)+0.65rem)] md:px-5">
-      <div className="border-battle-rule-strong bg-[rgba(248,243,230,0.9)] pointer-events-auto inline-flex max-w-md items-start gap-3 border border-dashed px-3 py-2 shadow-[0_10px_30px_rgba(44,24,16,0.08)] backdrop-blur-sm">
+    <div className="pointer-events-none absolute inset-x-0 top-0 text-right z-30 px-3 pt-[calc(env(safe-area-inset-top)+0.65rem)] md:px-5">
+      <div className="border-battle-rule-strong bg-bgpaper pointer-events-auto inline-flex max-w-md items-center gap-3 border border-dashed px-3 py-2 shadow backdrop-blur-sm">
         <button
           type="button"
           onClick={onBack}

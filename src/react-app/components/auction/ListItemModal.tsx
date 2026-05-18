@@ -622,7 +622,7 @@ export function ListItemModal({
             </div>
           )}
 
-          <div className="bg-ink/5 border-ink/10 mt-4 border p-2">
+          <div className="px-2 py-1 mt-4 bg-ink/5">
             <div className="flex items-center justify-between">
               <span className="text-ink-secondary text-sm leading-6">
                 筛选与排序

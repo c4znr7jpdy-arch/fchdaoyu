@@ -55,7 +55,9 @@ export function MaterialSelector({
 }: MaterialSelectorProps) {
   const [rankFilter, setRankFilter] = useState<Quality | 'all'>('all');
   const [typeFilter, setTypeFilter] = useState<MaterialType | 'all'>('all');
-  const [elementFilter, setElementFilter] = useState<ElementType | 'all'>('all');
+  const [elementFilter, setElementFilter] = useState<ElementType | 'all'>(
+    'all',
+  );
   const [sortBy, setSortBy] = useState<
     'createdAt' | 'rank' | 'type' | 'element' | 'quantity' | 'name'
   >('createdAt');
@@ -133,7 +135,7 @@ export function MaterialSelector({
       </div>
 
       {enableFilterSort && (
-        <div className="bg-ink/5 border-ink/10 mb-2 border p-2">
+        <div className="px-2 py-1 bg-ink/5">
           <div className="flex items-center justify-between">
             <span className="text-ink-secondary text-sm leading-6">
               筛选与排序
@@ -214,7 +216,8 @@ export function MaterialSelector({
                     className={compactSelectClassName}
                     value={`${sortBy}:${sortOrder}`}
                     onChange={(e) => {
-                      const [nextSortBy, nextSortOrder] = e.target.value.split(':');
+                      const [nextSortBy, nextSortOrder] =
+                        e.target.value.split(':');
                       setSortBy(
                         nextSortBy as
                           | 'createdAt'
@@ -282,7 +285,7 @@ export function MaterialSelector({
             const isSelected = materialId
               ? selectedMaterialIds.includes(materialId)
               : false;
-
+            const typeInfo = getMaterialTypeInfo(material.type);
             return (
               <button
                 key={materialId ?? `${material.name}-${index}`}
@@ -300,17 +303,12 @@ export function MaterialSelector({
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{material.name}</span>
+                    <span className="font-medium">{`${typeInfo?.icon} ${material.name}`}</span>
                     {material.rank ? (
-                      <InkBadge tier={material.rank as Quality}>
-                        {material.rank}
+                      <InkBadge tier={material.rank as Quality} compact>
+                        {typeInfo?.label}
                       </InkBadge>
                     ) : null}
-                    <span className="text-ink-secondary text-xs">
-                      {material.type
-                        ? getMaterialTypeInfo(material.type).label
-                        : '未分类'}
-                    </span>
                     {material.element ? (
                       <span className="text-ink-secondary text-xs">
                         {material.element}

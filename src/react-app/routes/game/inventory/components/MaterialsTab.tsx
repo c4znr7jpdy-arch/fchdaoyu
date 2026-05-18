@@ -62,7 +62,7 @@ export function MaterialsTab({
 
   return (
     <div className="space-y-3">
-      <GameSceneInset className="px-3 py-2.5">
+      <GameSceneInset className="px-2 py-1">
         <div className="flex items-center justify-between">
           <span className="text-ink-secondary text-sm leading-6">
             筛选与排序

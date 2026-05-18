@@ -93,13 +93,6 @@ body {
   background: rgba(20, 10, 5, 0.6);
 }
 
-.ink-emphasis {
-  text-decoration-line: underline;
-  text-decoration-style: dashed;
-  text-decoration-color: rgba(193, 18, 31, 0.58);
-  text-underline-offset: 0.2em;
-}
-
 .battle-divider {
   border-top: 1px dashed var(--color-battle-rule-strong);
 }

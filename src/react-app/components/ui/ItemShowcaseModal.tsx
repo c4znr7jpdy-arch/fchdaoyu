@@ -58,7 +58,7 @@ export function ItemShowcaseModal({
 
           {description && (
             <div className="pt-2">
-              <span className="ink-emphasis text-ink mb-1 block font-semibold">
+              <span className=" text-ink mb-1 block font-semibold">
                 {descriptionTitle}
               </span>
               <p className="text-ink-secondary">{description}</p>

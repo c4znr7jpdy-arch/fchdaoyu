@@ -8,7 +8,7 @@ const inkTagVariants = cva(
     variants: {
       variant: {
         default: '',
-        outline: 'ink-emphasis',
+        outline: '',
         ghost: 'opacity-80',
       },
       tone: {

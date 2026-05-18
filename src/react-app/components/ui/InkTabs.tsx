@@ -108,7 +108,7 @@ export function InkTabs({
               className={cn(
                 'shrink-0 px-2 py-2 text-base transition-colors',
                 isActive
-                  ? 'ink-emphasis text-crimson font-semibold'
+                  ? ' text-crimson font-semibold'
                   : 'text-ink-secondary hover:text-ink',
               )}
             >
