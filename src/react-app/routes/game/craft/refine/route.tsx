@@ -5,11 +5,19 @@ import {
   SelectedMaterialsWithDose,
   type CreationProductResultRecord,
 } from '@app/components/feature/creation';
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+} from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup, InkButton, InkIdentifyCelebration, InkNotice, } from '@app/components/ui';
+  InkActionGroup,
+  InkButton,
+  InkIdentifyCelebration,
+  InkNotice,
+} from '@app/components/ui';
 import { CREATION_INPUT_CONSTRAINTS } from '@shared/engine/creation-v2/config/CreationBalance';
 import { getAllowedMaterialTypesForCraftType } from '@shared/engine/creation-v2/config/CreationCraftPolicy';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
@@ -240,9 +248,9 @@ export default function RefinePage() {
       description="千锤百炼，法宝天成。保留原有炼器业务流，只把当前投入、资源判断与去向压缩进统一工作流壳。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -259,15 +267,6 @@ export default function RefinePage() {
             <p className="mt-2">若资源不足或规则冲突，先在主区修正后再起炉。</p>
           </GameSceneAsideSection>
         </>
-      }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game/craft">返回造物仙炉</InkButton>
-          <InkButton href="/game/artifacts">查看法宝</InkButton>
-          <InkButton href="/game/inventory" variant="secondary">
-            查看储物袋
-          </InkButton>
-        </InkActionGroup>
       }
     >
       <InkSection title="1. 甄选灵材">

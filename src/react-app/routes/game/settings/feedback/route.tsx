@@ -81,12 +81,6 @@ export default function FeedbackPage() {
           </GameSceneAsideSection>
         </>
       }
-      actionBar={
-        <div className="flex flex-wrap gap-2">
-          <InkButton href="/game/community">玩家交流群</InkButton>
-          <InkButton href="/game/world-chat">世界传音</InkButton>
-        </div>
-      }
     >
       <InkSection title="【提交反馈】">
         <div className="space-y-6">

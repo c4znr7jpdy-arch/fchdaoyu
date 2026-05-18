@@ -18,15 +18,6 @@ export default function CommunityPage() {
           <p className="mt-2">若无法下载，可打开原图后长按保存。</p>
         </GameSceneAsideSection>
       }
-      actionBar={
-        <div className="flex flex-wrap gap-2">
-          <InkButton href={QR_CODE_DOWNLOAD_PATH} variant="primary">
-            保存二维码
-          </InkButton>
-          <InkButton href="/game/world-chat">查看世界传音</InkButton>
-          <InkButton href="/game/mail">返回玉简</InkButton>
-        </div>
-      }
     >
       <InkSection title="【群二维码】">
         <div className="border-ink/20 bg-paper mx-auto max-w-sm border border-dashed p-4">

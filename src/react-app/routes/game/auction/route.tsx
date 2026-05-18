@@ -4,11 +4,18 @@ import {
 import {
   TEMP_DISABLED_MESSAGES, temporaryRestrictions, } from '@shared/config/temporaryRestrictions';
 import { ListItemModal } from '@app/components/auction/ListItemModal';
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
-import { InkSection } from '@app/components/layout';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneTabs,
+} from '@app/components/game-shell';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup, InkBadge, InkButton, InkList, InkNotice, InkTabs, } from '@app/components/ui';
+  InkBadge,
+  InkButton,
+  InkList,
+  InkNotice,
+} from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import type { Artifact, Consumable, Material } from '@shared/types/cultivator';
@@ -445,27 +452,25 @@ export default function AuctionPage() {
           </GameSceneAsideSection>
         </>
       }
-      actionBar={
-        <InkActionGroup>
-          <InkButton href="/game/inventory">查看储物袋</InkButton>
-          {cultivator && activeTab === 'my' && (
-            <InkButton onClick={() => setShowListModal(true)} variant="primary">
-              上架物品
-            </InkButton>
-          )}
-          <InkButton href="/game/market/recycle" variant="secondary">
-            前往坊市鉴宝
-          </InkButton>
-        </InkActionGroup>
-      }
     >
-      <InkTabs items={tabs} activeValue={activeTab} onChange={setActiveTab} />
+      <GameSceneTabs
+        items={tabs}
+        activeValue={activeTab}
+        onChange={setActiveTab}
+      />
+      {cultivator && activeTab === 'my' ? (
+        <div className="flex justify-end">
+          <InkButton onClick={() => setShowListModal(true)} variant="primary">
+            上架物品
+          </InkButton>
+        </div>
+      ) : null}
       {temporaryRestrictions.disableConsumableAuctionListing && (
         <InkNotice>{TEMP_DISABLED_MESSAGES.consumableAuctionListing}</InkNotice>
       )}
 
       {activeTab === 'browse' ? (
-        <InkSection title="">
+        <div>
           {isLoadingBrowse ? (
             <div className="py-10 text-center">正在获取拍卖列表...</div>
           ) : browseListings.length > 0 ? (
@@ -478,9 +483,9 @@ export default function AuctionPage() {
           ) : (
             <InkNotice>当前没有道友寄售的物品</InkNotice>
           )}
-        </InkSection>
+        </div>
       ) : (
-        <InkSection title="">
+        <div>
           {isLoadingMy ? (
             <div className="py-10 text-center">正在获取寄售记录...</div>
           ) : myListings.length > 0 ? (
@@ -494,10 +499,10 @@ export default function AuctionPage() {
             <InkNotice>
               你还没有寄售任何物品
               <br />
-              点击下方「上架物品」开始寄售
+              点击上方「上架物品」开始寄售
             </InkNotice>
           )}
-        </InkSection>
+        </div>
       )}
 
       {showListModal && (

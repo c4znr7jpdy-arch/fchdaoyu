@@ -2,6 +2,7 @@ import { resolveGameScene } from '@app/lib/router/routeTitle';
 import { cn } from '@shared/lib/cn';
 import type { ReactNode } from 'react';
 import { useMatches } from 'react-router';
+import { resolveGameSceneFrameHeader } from './gameSceneFrameHeader';
 
 const sceneGroupLabel: Record<string, string> = {
   cultivation: '静修',
@@ -15,17 +16,114 @@ export interface GameSceneFrameProps {
   title?: ReactNode;
   description?: ReactNode;
   headerMeta?: ReactNode;
-  actionBar?: ReactNode;
   aside?: ReactNode;
   children: ReactNode;
   variant?: 'default' | 'lite' | 'workflow';
   contentClassName?: string;
 }
 
+const sceneSurfaceClassName = [
+  'animate-fade-in',
+  'bg-[linear-gradient(180deg,rgba(255,252,245,0.42),rgba(248,243,230,0))]',
+  'bg-[rgba(248,243,230,0.82)]',
+  'shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_10px_30px_rgba(44,24,16,0.06)]',
+  'backdrop-blur-[2px]',
+].join(' ');
+
+const sceneBodyClassName = [
+  'min-w-0',
+  '[&>*+*]:mt-4',
+  '[&_.ink-section]:mb-0',
+  '[&_.ink-section+.ink-section]:mt-5',
+  '[&_.ink-section+.ink-section]:border-t',
+  '[&_.ink-section+.ink-section]:border-dashed',
+  '[&_.ink-section+.ink-section]:border-ink/15',
+  '[&_.ink-section+.ink-section]:pt-4',
+  '[&_.ink-section-title]:font-sans',
+  '[&_.ink-section-title]:text-[clamp(1rem,0.95rem+0.35vw,1.125rem)]',
+  '[&_.ink-section-title]:font-semibold',
+  '[&_.ink-section-title]:leading-7',
+  '[&_.ink-section-title]:tracking-[0.04em]',
+  '[&_.ink-section-hint]:leading-7',
+  '[&_h1]:font-sans',
+  '[&_h2]:font-sans',
+  '[&_h3]:font-sans',
+  '[&_h4]:font-sans',
+  '[&_h5]:font-sans',
+  '[&_h6]:font-sans',
+  '[&_h1]:text-[clamp(1rem,0.95rem+0.35vw,1.125rem)]',
+  '[&_h2]:text-[clamp(1rem,0.95rem+0.35vw,1.125rem)]',
+  '[&_h3]:text-[clamp(1rem,0.95rem+0.35vw,1.125rem)]',
+  '[&_h4]:text-[clamp(1rem,0.95rem+0.35vw,1.125rem)]',
+  '[&_h5]:text-[clamp(1rem,0.95rem+0.35vw,1.125rem)]',
+  '[&_h6]:text-[clamp(1rem,0.95rem+0.35vw,1.125rem)]',
+  '[&_h1]:font-semibold',
+  '[&_h2]:font-semibold',
+  '[&_h3]:font-semibold',
+  '[&_h4]:font-semibold',
+  '[&_h5]:font-semibold',
+  '[&_h6]:font-semibold',
+  '[&_h1]:leading-7',
+  '[&_h2]:leading-7',
+  '[&_h3]:leading-7',
+  '[&_h4]:leading-7',
+  '[&_h5]:leading-7',
+  '[&_h6]:leading-7',
+  '[&_h1]:tracking-[0.04em]',
+  '[&_h2]:tracking-[0.04em]',
+  '[&_h3]:tracking-[0.04em]',
+  '[&_h4]:tracking-[0.04em]',
+  '[&_h5]:tracking-[0.04em]',
+  '[&_h6]:tracking-[0.04em]',
+].join(' ');
+
 export function GameSceneLoading({ message }: { message: string }) {
   return (
     <div className="flex h-full items-center justify-center px-4">
       <p className="loading-tip">{message}</p>
+    </div>
+  );
+}
+
+export function GameSceneInset({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        'bg-ink/[0.04] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]',
+        className,
+      )}
+    >
+      {children}
+    </section>
+  );
+}
+
+export function GameSceneNote({
+  children,
+  tone = 'default',
+  className,
+}: {
+  children: ReactNode;
+  tone?: 'default' | 'danger';
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'border-l-2 px-4 py-3 text-sm leading-7',
+        tone === 'danger'
+          ? 'border-crimson bg-crimson/6 text-crimson'
+          : 'border-crimson bg-[rgba(248,243,230,0.88)] text-ink',
+        className,
+      )}
+    >
+      {children}
     </div>
   );
 }
@@ -40,13 +138,8 @@ export function GameSceneAsideSection({
   className?: string;
 }) {
   return (
-    <section
-      className={cn(
-        'border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4',
-        className,
-      )}
-    >
-      <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
+    <section className={cn('min-w-0', className)}>
+      <div className="text-battle-muted mb-2 text-[0.75rem] tracking-[0.2em]">
         {title}
       </div>
       {children}
@@ -54,21 +147,15 @@ export function GameSceneAsideSection({
   );
 }
 
-function normalizeSceneText(value: ReactNode): string | null {
-  if (typeof value === 'string' || typeof value === 'number') {
-    return `${value}`.replace(/[【】[\]\s]/g, '').trim();
-  }
-
-  return null;
-}
-
 function SceneStrip({
   group,
   label,
+  contextLabel,
   summary,
 }: {
   group: string | null;
   label: string;
+  contextLabel: string | null;
   summary: string | null;
 }) {
   return (
@@ -87,6 +174,11 @@ function SceneStrip({
             </>
           ) : null}
         </div>
+        {contextLabel ? (
+          <div className="text-battle-muted mt-2 min-w-0 text-[0.82rem] leading-6 tracking-[0.12em]">
+            {contextLabel}
+          </div>
+        ) : null}
         <div className="text-ink-secondary mt-2 min-w-0 text-sm leading-6">
           {summary ?? '此处事务已收束，按眼前所需行事即可。'}
         </div>
@@ -99,7 +191,6 @@ export function GameSceneFrame({
   title,
   description,
   headerMeta,
-  actionBar,
   aside,
   children,
   variant = 'default',
@@ -108,18 +199,14 @@ export function GameSceneFrame({
   const matches = useMatches();
   const scene = resolveGameScene(matches);
   const sceneGroup = scene?.group ? sceneGroupLabel[scene.group] : null;
-  const normalizedTitle = normalizeSceneText(title);
-  const contentTitle =
-    normalizedTitle && normalizedTitle !== normalizeSceneText(scene?.label)
-      ? title
-      : null;
-  const sceneSummary =
-    scene?.summary?.trim() ||
-    (typeof description === 'string' ? description.trim() : null) ||
-    null;
+  const header = resolveGameSceneFrameHeader({
+    sceneLabel: scene?.label,
+    sceneSummary: scene?.summary,
+    title,
+    description,
+  });
   const frameWidthClass = variant === 'lite' ? 'max-w-4xl' : 'max-w-5xl';
-  const contentSpacingClass =
-    variant === 'default' ? 'mt-4 space-y-5' : 'mt-4 space-y-4';
+  const contentSpacingClass = variant === 'default' ? 'mt-5' : 'mt-4';
   const asideWidthClass =
     variant === 'workflow'
       ? 'lg:grid-cols-[minmax(0,1fr)_280px]'
@@ -134,35 +221,43 @@ export function GameSceneFrame({
         )}
       >
         <div className={cn('grid gap-4', aside ? asideWidthClass : '')}>
-          <section className="border-battle-rule-strong animate-fade-in border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4 md:px-5 md:py-5">
+          <section
+            className={cn(
+              sceneSurfaceClassName,
+              'px-4 py-4 md:px-5 md:py-5',
+            )}
+          >
             <SceneStrip
               group={sceneGroup}
-              label={scene?.label ?? normalizeSceneText(title) ?? '道途'}
-              summary={sceneSummary}
+              label={header.label}
+              contextLabel={header.contextLabel}
+              summary={header.summary}
             />
-
-            {contentTitle ? (
-              <div className="border-battle-rule-strong mt-4 border-b border-dashed pb-3">
-                <h1 className="font-heading text-ink text-xl md:text-2xl">
-                  {contentTitle}
-                </h1>
-              </div>
-            ) : null}
 
             {headerMeta ? <div className="mt-4">{headerMeta}</div> : null}
 
-            <div className={cn(contentSpacingClass, contentClassName)}>
+            <div
+              className={cn(
+                contentSpacingClass,
+                sceneBodyClassName,
+                contentClassName,
+              )}
+            >
               {children}
             </div>
-
-            {actionBar ? (
-              <div className="border-battle-rule-strong mt-5 border-t border-dashed pt-4">
-                {actionBar}
-              </div>
-            ) : null}
           </section>
 
-          {aside ? <aside className="space-y-4">{aside}</aside> : null}
+          {aside ? (
+            <aside
+              className={cn(
+                sceneSurfaceClassName,
+                'px-4 py-4 md:px-5 md:py-5',
+                '[&>*+*]:mt-4 [&>*+*]:border-t [&>*+*]:border-dashed [&>*+*]:border-ink/20 [&>*+*]:pt-4',
+              )}
+            >
+              {aside}
+            </aside>
+          ) : null}
         </div>
       </div>
     </div>

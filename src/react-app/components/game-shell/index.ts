@@ -3,6 +3,7 @@ export * from './CultivatorOverviewPanel';
 export * from './GameBottomDock';
 export * from './GameImmersiveLoading';
 export * from './GameSceneFrame';
+export * from './GameSceneTabs';
 export * from './GameTopHud';
 export * from './gameNavigation';
 export * from './useGameHudModel';

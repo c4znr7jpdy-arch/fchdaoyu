@@ -2,7 +2,12 @@ import {
   MaterialSelector,
   SelectedMaterialsWithDose,
 } from '@app/components/feature/creation';
-import { GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+  GameSceneTabs,
+} from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
@@ -13,7 +18,6 @@ import {
   InkIdentifyCelebration,
   InkInput,
   InkNotice,
-  InkTabs,
   ItemShowcaseModal,
 } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
@@ -636,23 +640,32 @@ export default function AlchemyPage() {
     );
   }
 
+  const headerStatus =
+    activeMode === 'formula' && selectedFormula
+      ? `已选丹方：${selectedFormula.name}`
+      : selectedMaterialIds.length > 0
+        ? `已投入 ${selectedMaterialIds.length} 种灵材`
+        : activeMode === 'formula'
+          ? '请先选定丹方，再投入灵材。'
+          : '请投入灵材并注入丹意。';
+
   return (
     <GameSceneFrame
       title="【炼丹房】"
       description="丹意引炉，药性成形。左侧专心排布材料与炉法，右侧始终盯着丹方、灵石消耗与当前炉况。"
       headerMeta={
-        note ? (
-          <div className="battle-note">
-            <p className="text-sm leading-7">{note}</p>
-          </div>
-        ) : undefined
+        <div className="space-y-2">
+          {note ? (
+            <GameSceneNote>
+              <p className="text-sm leading-7">{note}</p>
+            </GameSceneNote>
+          ) : null}
+          <p className="text-battle-muted text-sm leading-6">{headerStatus}</p>
+        </div>
       }
       aside={
         <>
-          <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4">
-            <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-              炉况摘要
-            </div>
+          <GameSceneAsideSection title="炉况摘要">
             <div className="space-y-2 text-sm leading-7">
               <p>
                 当前炉法：{activeMode === 'formula' ? '丹方炼制' : '即兴炼丹'}
@@ -665,12 +678,9 @@ export default function AlchemyPage() {
                 <p>预计耗费：{estimatedSpiritStones} 灵石</p>
               ) : null}
             </div>
-          </section>
+          </GameSceneAsideSection>
 
-          <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4 text-sm leading-7">
-            <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-              丹方与提示
-            </div>
+          <GameSceneAsideSection title="丹方与提示" className="text-sm leading-7">
             {activeMode === 'formula' && selectedFormula ? (
               <div className="space-y-2">
                 <p>已选丹方：{selectedFormula.name}</p>
@@ -690,34 +700,18 @@ export default function AlchemyPage() {
                 {displayValidation.blockingReason}
               </p>
             ) : null}
-          </section>
+          </GameSceneAsideSection>
         </>
       }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game/craft">返回</InkButton>
-          <span className="text-ink-secondary text-xs">
-            {activeMode === 'formula' && selectedFormula
-              ? `已选丹方：${selectedFormula.name}`
-              : selectedMaterialIds.length > 0
-                ? `已投入 ${selectedMaterialIds.length} 种灵材`
-                : activeMode === 'formula'
-                  ? '请先选定丹方，再投入灵材'
-                  : '请投入灵材并注入丹意'}
-          </span>
-        </InkActionGroup>
-      }
     >
-      <InkSection title="炉法切换">
-        <InkTabs
-          items={[
-            { label: '即兴炼丹', value: 'improvised' },
-            { label: '丹方炼制', value: 'formula' },
-          ]}
-          activeValue={activeMode}
-          onChange={(value) => setActiveMode(value as AlchemyMode)}
-        />
-      </InkSection>
+      <GameSceneTabs
+        items={[
+          { label: '即兴炼丹', value: 'improvised' },
+          { label: '丹方炼制', value: 'formula' },
+        ]}
+        activeValue={activeMode}
+        onChange={(value) => setActiveMode(value as AlchemyMode)}
+      />
 
       {activeMode === 'formula' && (
         <InkSection title="丹方总览">

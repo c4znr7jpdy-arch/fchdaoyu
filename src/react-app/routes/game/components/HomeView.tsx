@@ -5,6 +5,7 @@ import { RecentBattles } from '@app/components/feature/ranking/RecentBattles';
 import {
   GameSceneAsideSection,
   GameSceneFrame,
+  GameSceneInset,
 } from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { InkButton, InkList, InkListItem, InkNotice } from '@app/components/ui';
@@ -109,8 +110,10 @@ function CaveAside() {
 
 function CaveAreaCard({ area }: { area: CaveArea }) {
   return (
-    <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.84)] px-4 py-4">
-      <div className="text-ink font-heading text-lg">{area.title}</div>
+    <GameSceneInset className="px-4 py-4">
+      <div className="text-ink text-base font-semibold tracking-[0.04em]">
+        {area.title}
+      </div>
       <p className="text-ink-secondary mt-2 text-sm leading-7">{area.copy}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         {area.actions.map((action) => (
@@ -123,7 +126,7 @@ function CaveAreaCard({ area }: { area: CaveArea }) {
           </InkButton>
         ))}
       </div>
-    </section>
+    </GameSceneInset>
   );
 }
 

@@ -1,5 +1,7 @@
-import { GameSceneFrame } from '@app/components/game-shell';
-import { InkSection } from '@app/components/layout';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+} from '@app/components/game-shell';
 import { MailDetailModal } from '@app/components/mail/MailDetailModal';
 import { Mail, MailList } from '@app/components/mail/MailList';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
@@ -215,26 +217,21 @@ export default function MailPage() {
       description="宗门告示、奖励来函与四方灵讯都在此归卷。先清掉要紧的未读与附件，再决定今日是否继续外出。"
       aside={
         <>
-          <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4">
-            <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-              收件摘要
-            </div>
+          <GameSceneAsideSection title="收件摘要">
             <div className="space-y-2 text-sm leading-7">
               <p>当前已载：{mails.length} 封</p>
               <p>未读：{unreadCount} 封</p>
               <p>待领附件：{pendingAttachments} 封</p>
             </div>
-          </section>
-          <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4 text-sm leading-7">
-            <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-              操作说明
-            </div>
+          </GameSceneAsideSection>
+          <GameSceneAsideSection title="操作说明" className="text-sm leading-7">
             <p>点击玉简可展开全文，未读会即时回写。</p>
             <p className="mt-2">奖励类来函支持就地领取，不必离开当前场景。</p>
-          </section>
+          </GameSceneAsideSection>
         </>
       }
-      actionBar={
+    >
+      <div className="space-y-4">
         <div className="flex flex-wrap justify-end gap-2">
           <InkButton
             onClick={handleClaimAll}
@@ -249,9 +246,6 @@ export default function MailPage() {
             {batchReading ? '处理中...' : '全部已读'}
           </InkButton>
         </div>
-      }
-    >
-      <InkSection title="【收件箱】">
         {loading ? (
           <div className="py-8 text-center text-sm opacity-50">
             正在接收灵讯...
@@ -268,7 +262,7 @@ export default function MailPage() {
             ) : null}
           </div>
         )}
-      </InkSection>
+      </div>
 
       <MailDetailModal
         mail={selectedMail}

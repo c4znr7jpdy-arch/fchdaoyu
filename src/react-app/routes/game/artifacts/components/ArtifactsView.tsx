@@ -1,8 +1,17 @@
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
 import {
-  AffixInlineList, formatNumber, } from '@app/components/feature/products';
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+} from '@app/components/game-shell';
 import {
-  InkActionGroup, InkBadge, InkButton, InkNotice, } from '@app/components/ui';
+  AffixInlineList,
+  formatNumber,
+} from '@app/components/feature/products';
+import {
+  InkBadge,
+  InkButton,
+  InkNotice,
+} from '@app/components/ui';
 
 import {
   useArtifactsViewModel,
@@ -102,9 +111,9 @@ export function ArtifactsView() {
       description="佩装、收藏与待销毁的法宝都归在此处。主区只看器物，侧栏只保留装备占比与下一步流转方向。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -119,14 +128,6 @@ export function ArtifactsView() {
             <p>需补装备可回炼器室；多余器物则可送去坊市鉴评或拍卖行。</p>
           </GameSceneAsideSection>
         </>
-      }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game">返回</InkButton>
-          <InkButton href="/game/craft/refine" variant="primary">
-            炼器台 →
-          </InkButton>
-        </InkActionGroup>
       }
     >
       {!cultivator ? (

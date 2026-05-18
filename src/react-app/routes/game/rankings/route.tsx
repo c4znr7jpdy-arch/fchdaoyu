@@ -2,11 +2,22 @@ import { ItemDetailModal } from '@app/routes/game/inventory/components/ItemDetai
 import type { ItemDetailPayload } from '@app/routes/game/inventory/components/itemDetailPayload';
 import { RankingListItem } from '@app/components/feature/ranking/RankingListItem';
 import { formatProbeResultContent } from '@app/components/func/ProbeResult';
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+  GameSceneTabs,
+} from '@app/components/game-shell';
 import { InkModal } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup, InkButton, InkDialog, type InkDialogState, InkList, InkListItem, InkNotice, InkTabs, } from '@app/components/ui';
+  InkButton,
+  InkDialog,
+  type InkDialogState,
+  InkList,
+  InkListItem,
+  InkNotice,
+} from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { RANKING_REWARDS } from '@shared/types/constants';
 import { ItemRankingEntry, RankingsDisplayItem } from '@shared/types/rankings';
@@ -327,17 +338,17 @@ export default function RankingsPage() {
         headerMeta={
           <div className="space-y-2">
             {activeTab === 'battle' && myRankInfo ? (
-              <div className="battle-note">
+              <GameSceneNote>
                 <p className="text-sm leading-7">
                   我的排名：{myRank ? `第${myRank}名` : '未上榜'} ｜ 今日剩余挑战：
                   {isLoadingChallenges ? '推演中…' : `${remainingChallenges}/10`}
                 </p>
-              </div>
+              </GameSceneNote>
             ) : null}
             {note || error ? (
-              <div className="battle-note">
+              <GameSceneNote tone={error ? 'danger' : 'default'}>
                 <p className="text-sm leading-7">{note || error}</p>
-              </div>
+              </GameSceneNote>
             ) : null}
           </div>
         }
@@ -366,27 +377,23 @@ export default function RankingsPage() {
             </GameSceneAsideSection>
           </>
         }
-        actionBar={
-          <InkActionGroup align="between">
-            <InkButton
-              onClick={() => loadRankings(activeTab)}
-              disabled={loadingRankings}
-            >
-              {loadingRankings ? '推演中…' : '刷新榜单'}
-            </InkButton>
-            <InkButton onClick={() => setShowRules(true)} variant="secondary">
-              奖励说明
-            </InkButton>
-            <InkButton href="/game">返回</InkButton>
-          </InkActionGroup>
-        }
       >
-        <InkTabs
-          className="mb-6"
+        <GameSceneTabs
           activeValue={activeTab}
           onChange={handleTabChange}
           items={rankingTabs}
         />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <InkButton
+            onClick={() => loadRankings(activeTab)}
+            disabled={loadingRankings}
+          >
+            {loadingRankings ? '推演中…' : '刷新榜单'}
+          </InkButton>
+          <InkButton onClick={() => setShowRules(true)} variant="secondary">
+            奖励说明
+          </InkButton>
+        </div>
 
         {!cultivator ? (
           <InkNotice>请先觉醒角色再来挑战万界金榜。</InkNotice>

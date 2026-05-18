@@ -1,11 +1,22 @@
 import { FateDetailModal } from '@app/components/feature/fates/FateDetailModal';
 import { FateEffectInlineList } from '@app/components/feature/fates/FateEffectInlineList';
 import { toFateDisplayModel } from '@app/components/feature/fates/FateDisplayAdapter';
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+} from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup, InkButton, InkCard, InkList, InkNotice, InkTag, ItemCard, } from '@app/components/ui';
+  InkActionGroup,
+  InkButton,
+  InkCard,
+  InkList,
+  InkNotice,
+  InkTag,
+  ItemCard,
+} from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import type { PreHeavenFate } from '@shared/types/cultivator';
 import type { FateReshapeSessionDTO } from '@shared/types/fateReshape';
@@ -280,7 +291,6 @@ export default function FateReshapePage() {
         variant="lite"
         title="【命格重塑】"
         description="需先踏入仙途，方能拨动天机。"
-        actionBar={<InkButton href="/game">返回洞府</InkButton>}
       >
         <InkNotice>当前没有活跃角色，暂无法进行命格重塑。</InkNotice>
       </GameSceneFrame>
@@ -294,9 +304,9 @@ export default function FateReshapePage() {
       description="遮蔽天机，逆转先天之数。命格会话、候选池与确认替换流程都被统一安放到常规工作流场景里。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -328,17 +338,6 @@ export default function FateReshapePage() {
             </GameSceneAsideSection>
           </>
         )
-      }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game/cultivator">返回道我真形</InkButton>
-          <InkButton href="/game/inventory" variant="secondary">
-            返回储物袋
-          </InkButton>
-          <InkButton href="/game" variant="secondary">
-            返回主界
-          </InkButton>
-        </InkActionGroup>
       }
     >
       <InkSection title="【当前命格】">

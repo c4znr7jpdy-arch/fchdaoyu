@@ -1,7 +1,14 @@
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+} from '@app/components/game-shell';
 import { AffixInlineList } from '@app/components/feature/products';
 import {
-  InkActionGroup, InkBadge, InkButton, InkNotice, } from '@app/components/ui';
+  InkBadge,
+  InkButton,
+  InkNotice,
+} from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
 
 import {
@@ -81,9 +88,9 @@ export function TechniquesView() {
       description="根基所系的功法都在此归档。这里强调数量、取舍与回藏经阁继续参悟，而不再沿用旧文书页壳。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -98,14 +105,6 @@ export function TechniquesView() {
             <p>若功法稀缺，可先去问法寻卷；若想再造新法，则回藏经阁继续参悟。</p>
           </GameSceneAsideSection>
         </>
-      }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game">返回</InkButton>
-          <InkButton href="/game/enlightenment" variant="primary">
-            藏经阁 →
-          </InkButton>
-        </InkActionGroup>
       }
     >
       {!cultivator ? (

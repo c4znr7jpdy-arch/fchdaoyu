@@ -59,14 +59,6 @@ export default function RedeemCodePage() {
           <p className="mt-2">码值会自动转为大写，避免手误失配。</p>
         </GameSceneAsideSection>
       }
-      actionBar={
-        <div className="flex flex-wrap gap-2">
-          <InkButton href="/game/mail" variant="primary">
-            前往传音玉简
-          </InkButton>
-          <InkButton href="/game/world-chat">查看世界传音</InkButton>
-        </div>
-      }
     >
       <InkSection title="【兑换】">
         <div className="space-y-4">

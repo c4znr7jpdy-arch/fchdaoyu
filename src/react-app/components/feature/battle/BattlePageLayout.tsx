@@ -36,9 +36,6 @@ interface BattlePageLayoutProps {
 export function BattlePageLayout({
   title,
   subtitle,
-  backHref: _backHref,
-  backLabel: _backLabel = '返回',
-  onBack: _onBack,
   error,
   loading,
   battleResult,
@@ -63,7 +60,7 @@ export function BattlePageLayout({
         </header>
 
         {error && (
-          <div className="battle-note mb-6">
+          <div className="border-crimson bg-crimson/6 mb-6 border-l-2 px-4 py-3">
             <p className="text-crimson text-sm leading-7">{error}</p>
           </div>
         )}

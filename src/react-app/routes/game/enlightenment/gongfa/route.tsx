@@ -5,11 +5,19 @@ import {
   SelectedMaterialsWithDose,
   type CreationProductResultRecord,
 } from '@app/components/feature/creation';
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+} from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup, InkButton, InkIdentifyCelebration, InkNotice, } from '@app/components/ui';
+  InkActionGroup,
+  InkButton,
+  InkIdentifyCelebration,
+  InkNotice,
+} from '@app/components/ui';
 import { CREATION_INPUT_CONSTRAINTS } from '@shared/engine/creation-v2/config/CreationBalance';
 import { getAllowedMaterialTypesForCraftType } from '@shared/engine/creation-v2/config/CreationCraftPolicy';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
@@ -281,9 +289,9 @@ export default function GongfaCreationPage() {
       description="功法参悟保留原有表单与待替换机制，只把当前投入、悟性消耗与待处理状态集中到统一场景摘要。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -300,15 +308,6 @@ export default function GongfaCreationPage() {
             <p className="mt-2">缺底稿时可去问法寻卷补齐。</p>
           </GameSceneAsideSection>
         </>
-      }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game/enlightenment">返回藏经阁</InkButton>
-          <InkButton href="/game/techniques">查看所修功法</InkButton>
-          <InkButton href="/game/enlightenment/manual-draw" variant="secondary">
-            问法寻卷
-          </InkButton>
-        </InkActionGroup>
       }
     >
       <InkSection title="1. 甄选材料">

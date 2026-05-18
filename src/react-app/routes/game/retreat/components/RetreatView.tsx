@@ -2,6 +2,7 @@ import { useLifespanStatus } from '@app/components/feature/cultivator/LifespanSt
 import {
   GameSceneAsideSection,
   GameSceneFrame,
+  GameSceneNote,
 } from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { InkBadge, InkButton, InkInput, InkNotice } from '@app/components/ui';
@@ -105,9 +106,9 @@ export function RetreatView() {
       title="静室修行"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -160,7 +161,6 @@ export function RetreatView() {
           </GameSceneAsideSection>
         </>
       }
-      actionBar={<InkButton href="/game">返回洞府</InkButton>}
     >
       <InkSection title="【当前火候】">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

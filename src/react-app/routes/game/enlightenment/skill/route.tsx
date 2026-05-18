@@ -5,11 +5,20 @@ import {
   SelectedMaterialsWithDose,
   type CreationProductResultRecord,
 } from '@app/components/feature/creation';
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+} from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup, InkButton, InkChoiceButton, InkIdentifyCelebration, InkNotice, } from '@app/components/ui';
+  InkActionGroup,
+  InkButton,
+  InkChoiceButton,
+  InkIdentifyCelebration,
+  InkNotice,
+} from '@app/components/ui';
 import { CREATION_INPUT_CONSTRAINTS } from '@shared/engine/creation-v2/config/CreationBalance';
 import { getAllowedMaterialTypesForCraftType } from '@shared/engine/creation-v2/config/CreationCraftPolicy';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
@@ -319,9 +328,9 @@ export default function SkillCreationPage() {
       description="神通推演属于典型工作流页，保留原有推演逻辑，把材料、目标策略与道心消耗统一收束到同一壳内。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -338,15 +347,6 @@ export default function SkillCreationPage() {
             <p className="mt-2">若已有待纳入的新神通，请先处理旧术取舍。</p>
           </GameSceneAsideSection>
         </>
-      }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game/enlightenment">返回藏经阁</InkButton>
-          <InkButton href="/game/skills">查看所修神通</InkButton>
-          <InkButton href="/game/enlightenment/manual-draw" variant="secondary">
-            问法寻卷
-          </InkButton>
-        </InkActionGroup>
       }
     >
       <InkSection title="1. 甄选材料">

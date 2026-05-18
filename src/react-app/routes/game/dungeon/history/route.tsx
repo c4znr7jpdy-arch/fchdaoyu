@@ -180,14 +180,6 @@ export default function DungeonHistoryPage() {
         variant="lite"
         title="探险札记"
         description="副本骨架仍保持沉浸式，这页则作为常规卷宗页，专门整理已经发生过的探险过程与收获。"
-        actionBar={
-          <div className="flex flex-wrap gap-2">
-            <InkButton href="/game/dungeon" variant="primary">
-              开始探险
-            </InkButton>
-            <InkButton href="/game">返回洞府</InkButton>
-          </div>
-        }
       >
         <InkCard className="p-6 text-center">
           <p className="text-ink-secondary">尚无探险记录</p>
@@ -213,14 +205,6 @@ export default function DungeonHistoryPage() {
             <p className="mt-2">展开单条札记可继续查看逐回合路线。</p>
           </GameSceneAsideSection>
         </>
-      }
-      actionBar={
-        <div className="flex flex-wrap gap-2">
-          <InkButton href="/game/dungeon" variant="primary">
-            返回云游探秘
-          </InkButton>
-          <InkButton href="/game">返回洞府</InkButton>
-        </div>
       }
     >
       <InkSection title={`共 ${pagination.total} 次探险`}>

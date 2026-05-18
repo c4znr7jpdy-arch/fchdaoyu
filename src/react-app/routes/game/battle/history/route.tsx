@@ -1,7 +1,10 @@
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneTabs,
+} from '@app/components/game-shell';
 import Zhanji from '@app/components/func/Zhanji';
-import { InkButton, InkNotice, InkTabs } from '@app/components/ui';
-import { InkSection } from '@app/components/layout';
+import { InkNotice } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import type { BattleRecord } from '@shared/types/battle';
 import { useEffect, useState } from 'react';
@@ -86,42 +89,31 @@ export default function BattleHistoryPage() {
           </GameSceneAsideSection>
         </>
       }
-      actionBar={
-        <div className="flex flex-wrap gap-2">
-          <InkButton href="/game/rankings" variant="primary">
-            返回天骄榜
-          </InkButton>
-          <InkButton href="/game">返回洞府</InkButton>
-        </div>
-      }
     >
-      <InkSection title="战绩筛选">
-        <InkTabs
-          className="mb-4"
-          activeValue={activeTab}
-          onChange={(val) => setActiveTab(val as TabType)}
-          items={[
-            { label: '全部', value: 'all' },
-            { label: '我的挑战', value: 'challenge' },
-            { label: '我被挑战', value: 'challenged' },
-          ]}
-        />
-        {loading ? (
-          <InkNotice>战绩加载中……</InkNotice>
-        ) : !records.length ? (
-          <InkNotice>暂无战斗记录。</InkNotice>
-        ) : (
-          <div className="space-y-3">
-            {records.map((r) => (
-              <Zhanji
-                key={r.id}
-                record={r}
-                currentCultivatorId={cultivator?.id}
-              />
-            ))}
-          </div>
-        )}
-      </InkSection>
+      <GameSceneTabs
+        activeValue={activeTab}
+        onChange={(val) => setActiveTab(val as TabType)}
+        items={[
+          { label: '全部', value: 'all' },
+          { label: '我的挑战', value: 'challenge' },
+          { label: '我被挑战', value: 'challenged' },
+        ]}
+      />
+      {loading ? (
+        <InkNotice>战绩加载中……</InkNotice>
+      ) : !records.length ? (
+        <InkNotice>暂无战斗记录。</InkNotice>
+      ) : (
+        <div className="space-y-3">
+          {records.map((r) => (
+            <Zhanji
+              key={r.id}
+              record={r}
+              currentCultivatorId={cultivator?.id}
+            />
+          ))}
+        </div>
+      )}
     </GameSceneFrame>
   );
 }

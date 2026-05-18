@@ -1,7 +1,17 @@
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneTabs,
+} from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import {
-  InkActionGroup, InkBadge, InkButton, InkDialog, InkList, InkListItem, InkNotice, InkTabs, } from '@app/components/ui';
+  InkBadge,
+  InkButton,
+  InkDialog,
+  InkList,
+  InkListItem,
+  InkNotice,
+} from '@app/components/ui';
 import { TypewriterText } from '@app/components/ui/TypewriterText';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { usePaginatedInventoryArtifacts } from '@app/lib/hooks/usePaginatedInventoryArtifacts';
@@ -512,18 +522,8 @@ export default function MarketRecyclePage() {
           </GameSceneAsideSection>
         </>
       }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game">返回主界</InkButton>
-          <InkButton href="/game/map?intent=market">前往坊市</InkButton>
-          <InkButton href="/game/inventory" variant="secondary">
-            查看储物袋
-          </InkButton>
-        </InkActionGroup>
-      }
     >
-      <InkTabs
-        className="mb-4"
+      <GameSceneTabs
         activeValue={activeTab}
         onChange={(value) => setActiveTab(value as RecycleTab)}
         items={[

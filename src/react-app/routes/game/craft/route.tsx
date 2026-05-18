@@ -1,6 +1,9 @@
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+} from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
-import { InkActionGroup } from '@app/components/ui/InkActionGroup';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
@@ -15,9 +18,9 @@ export default function CraftPage() {
       description="天地为炉，造化为工。先分清此刻是要炼器成兵，还是炼丹调息，再携合适灵材入室。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -33,15 +36,6 @@ export default function CraftPage() {
             <p className="mt-2">神念描述会直接影响成品的方向与气质。</p>
           </GameSceneAsideSection>
         </>
-      }
-      actionBar={
-        <InkActionGroup>
-          <InkButton href="/game/inventory">查看储物袋</InkButton>
-          <InkButton href="/game/craft/refine" variant="primary">
-            前往炼器室
-          </InkButton>
-          <InkButton href="/game/craft/alchemy">前往炼丹房</InkButton>
-        </InkActionGroup>
       }
     >
       <InkSection title="选择造物之道">

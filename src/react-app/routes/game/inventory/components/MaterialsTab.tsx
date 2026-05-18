@@ -1,3 +1,4 @@
+import { GameSceneInset } from '@app/components/game-shell';
 import {
   InkBadge,
   InkButton,
@@ -61,7 +62,7 @@ export function MaterialsTab({
 
   return (
     <div className="space-y-3">
-      <div className="bg-ink/5 border-ink/10 border p-2">
+      <GameSceneInset className="px-3 py-2.5">
         <div className="flex items-center justify-between">
           <span className="text-ink-secondary text-sm leading-6">
             筛选与排序
@@ -167,7 +168,7 @@ export function MaterialsTab({
             </div>
           </div>
         )}
-      </div>
+      </GameSceneInset>
 
       {isLoading ? (
         <InkNotice>正在检索材料记录，请稍候……</InkNotice>
@@ -241,14 +242,11 @@ export function MaterialsTab({
           })}
         </InkList>
       )}
-      <div className="bg-ink/5 border-ink/10 flex items-center justify-between border p-2">
-        <span className="text-ink-secondary text-sm">
-          材料收购功能已迁至坊市鉴宝司，需由鉴定师主持交易。
-        </span>
-        <InkButton href="/game/market/recycle" variant="primary">
-          前往鉴宝司
-        </InkButton>
-      </div>
+      <GameSceneInset className="px-3 py-2.5">
+        <p className="text-ink-secondary text-sm leading-7">
+          材料收购功能已迁至坊市鉴宝司。若要继续流转，可从下方 dock 进入交易分流。
+        </p>
+      </GameSceneInset>
     </div>
   );
 }

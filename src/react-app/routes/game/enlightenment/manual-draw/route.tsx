@@ -1,7 +1,17 @@
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+  GameSceneTabs,
+} from '@app/components/game-shell';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup, InkBadge, InkButton, InkCard, InkNotice, InkTabs, InkTag, } from '@app/components/ui';
+  InkBadge,
+  InkButton,
+  InkCard,
+  InkNotice,
+  InkTag,
+} from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { QUALITY_ORDER, type Quality } from '@shared/types/constants';
 import type { Material } from '@shared/types/cultivator';
@@ -366,7 +376,6 @@ export default function ManualDrawPage() {
         variant="lite"
         title="【问法寻卷】"
         description="需先踏入仙途，方可求取经卷。"
-        actionBar={<InkButton href="/game">返回洞府</InkButton>}
       >
         <InkNotice>当前没有活跃角色，暂时无法求卷。</InkNotice>
       </GameSceneFrame>
@@ -380,9 +389,9 @@ export default function ManualDrawPage() {
       description="请符求卷，得功法与神通秘籍。卷池切换、抽取结果与存量信息统一回收到同一场景骨架中。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -400,20 +409,9 @@ export default function ManualDrawPage() {
           </GameSceneAsideSection>
         </>
       }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game/inventory">查看储物袋</InkButton>
-          <InkButton href="/game/enlightenment" variant="primary">
-            返回藏经阁
-          </InkButton>
-          <InkButton href="/game/skills" variant="secondary">
-            查看已修法门
-          </InkButton>
-        </InkActionGroup>
-      }
     >
       <div className="space-y-6">
-        <InkTabs
+        <GameSceneTabs
           items={tabs}
           activeValue={activeTab}
           onChange={handleTabChange}

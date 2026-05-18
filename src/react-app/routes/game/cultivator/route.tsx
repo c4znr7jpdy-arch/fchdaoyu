@@ -33,15 +33,6 @@ export default function CultivatorPage() {
     <GameSceneFrame
       title="【道身总谱】"
       description="此页是顶部 HUD 的完整展开。所有即时状态、长期状态、根基属性与所修之物，都应先在 HUD 被感知，再在此处细读。"
-      actionBar={
-        <div className="flex flex-wrap gap-2">
-          <InkButton href="/game">返回洞府</InkButton>
-          <InkButton href="/game/inventory">查看储物袋</InkButton>
-          <InkButton href="/game/retreat" variant="primary">
-            返回修行
-          </InkButton>
-        </div>
-      }
     >
       <CultivatorOverviewPanel />
     </GameSceneFrame>

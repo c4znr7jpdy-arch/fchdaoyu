@@ -1,10 +1,12 @@
-import { GameSceneFrame } from '@app/components/game-shell';
-import { InkSection } from '@app/components/layout';
-import { InkActionGroup } from '@app/components/ui/InkActionGroup';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+  GameSceneTabs,
+} from '@app/components/game-shell';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkDialog } from '@app/components/ui/InkDialog';
 import { InkIdentifyCelebration } from '@app/components/ui/InkIdentifyCelebration';
-import { InkTabs } from '@app/components/ui/InkTabs';
 
 import {
   useInventoryViewModel,
@@ -63,10 +65,7 @@ export function InventoryView() {
 
   const aside = (
     <>
-      <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4">
-        <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-          行囊摘要
-        </div>
+      <GameSceneAsideSection title="行囊摘要">
         <div className="space-y-2 text-sm leading-7">
           <p>灵石：{cultivator?.spirit_stones ?? 0}</p>
           <p>
@@ -81,13 +80,10 @@ export function InventoryView() {
                 : '消耗品'}
           </p>
         </div>
-      </section>
+      </GameSceneAsideSection>
 
       {activeTab === 'materials' ? (
-        <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4">
-          <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-            材料筛选
-          </div>
+        <GameSceneAsideSection title="材料筛选">
           <div className="space-y-2 text-sm leading-7">
             <p>品阶：{materialFilters.rank || '全部'}</p>
             <p>类别：{materialFilters.type || '全部'}</p>
@@ -96,7 +92,7 @@ export function InventoryView() {
               排序：{materialFilters.sortBy} / {materialFilters.sortOrder}
             </p>
           </div>
-        </section>
+        </GameSceneAsideSection>
       ) : null}
     </>
   );
@@ -107,27 +103,15 @@ export function InventoryView() {
       description="法宝、材料与消耗品都在此汇总。先点清手头资源，再决定是佩装、炼造，还是送去坊市流转。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={aside}
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game">返回主界</InkButton>
-          <InkButton href="/game/map?intent=market" variant="primary">
-            前往坊市
-          </InkButton>
-          <InkButton href="/game/craft" variant="secondary">
-            开炉炼造
-          </InkButton>
-        </InkActionGroup>
-      }
     >
-      <InkSection title="行囊分栏">
-        <InkTabs
-          className="mb-4"
+      <div className="space-y-4">
+        <GameSceneTabs
           activeValue={activeTab}
           onChange={(val) => setActiveTab(val as InventoryTab)}
           items={[
@@ -178,7 +162,7 @@ export function InventoryView() {
         )}
 
         {pagination.totalPages > 1 ? (
-          <div className="mt-4 flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4">
             <InkButton
               disabled={pagination.page <= 1 || isTabLoading}
               onClick={goPrevPage}
@@ -198,7 +182,7 @@ export function InventoryView() {
             </InkButton>
           </div>
         ) : null}
-      </InkSection>
+      </div>
 
       {/* 物品详情弹窗 */}
       <ItemDetailModal

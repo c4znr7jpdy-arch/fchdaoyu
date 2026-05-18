@@ -1,8 +1,11 @@
-import { GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneTabs,
+} from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup,
   InkBadge,
   InkButton,
   InkDialog,
@@ -10,7 +13,6 @@ import {
   InkList,
   InkListItem,
   InkNotice,
-  InkTabs,
 } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { getMapNode } from '@shared/lib/game/mapSystem';
@@ -342,10 +344,7 @@ export default function MarketPage() {
       }
       aside={
         <>
-          <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4">
-            <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-              坊市摘要
-            </div>
+          <GameSceneAsideSection title="坊市摘要">
             <div className="space-y-2 text-sm leading-7">
               <p>灵石余额：{cultivator?.spirit_stones ?? 0}</p>
               <p>当前节点：{selectedNode?.name || nodeId}</p>
@@ -358,11 +357,8 @@ export default function MarketPage() {
               </p>
               <p>刷新倒计时：{timeLeft}</p>
             </div>
-          </section>
-          <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4 text-sm leading-7">
-            <div className="text-battle-muted mb-2 text-xs tracking-[0.2em]">
-              入场条件
-            </div>
+          </GameSceneAsideSection>
+          <GameSceneAsideSection title="入场条件" className="text-sm leading-7">
             {access.allowed ? (
               <p>当前层可自由进入，宜趁刷新前比价出手。</p>
             ) : (
@@ -371,19 +367,12 @@ export default function MarketPage() {
             {typeof access.entryFee === 'number' ? (
               <p className="mt-2">入场耗费：{access.entryFee} 灵石</p>
             ) : null}
-          </section>
+          </GameSceneAsideSection>
         </>
       }
-      actionBar={
-        <InkActionGroup>
-          <InkButton href="/game/map?intent=market">地图择城</InkButton>
-          <InkButton href="/game/inventory">查看储物袋</InkButton>
-        </InkActionGroup>
-      }
     >
-      <InkSection title="【坊市分层】">
-        <InkTabs
-          className="mb-4"
+      <div className="space-y-4">
+        <GameSceneTabs
           activeValue={activeLayer}
           onChange={handleLayerChange}
           items={LAYER_OPTIONS}
@@ -415,9 +404,12 @@ export default function MarketPage() {
         {!access.allowed && (
           <InkNotice>{access.reason || '当前层不可进入'}</InkNotice>
         )}
-      </InkSection>
+      </div>
 
-      <InkSection title={`【货架】 下批好货刷新倒计时：${timeLeft}`}>
+      <InkSection title="【货架】">
+        <p className="text-ink-secondary mb-4 text-sm leading-6">
+          下批好货刷新倒计时：{timeLeft}
+        </p>
         {isLoadingMarket ? (
           <div className="py-10 text-center">坊市掌柜正在盘货...</div>
         ) : listings.length > 0 ? (

@@ -1,6 +1,9 @@
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
+import {
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+} from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
-import { InkActionGroup } from '@app/components/ui/InkActionGroup';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
@@ -15,9 +18,9 @@ export default function EnlightenmentPage() {
       description="万法归宗，神念通玄。这里不再只是门户，而是决定你此刻要推演神通、参悟功法，还是先去求卷补足底稿。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -33,15 +36,6 @@ export default function EnlightenmentPage() {
             <p className="mt-2">若已有待纳入的新法门，处理取舍优先级最高。</p>
           </GameSceneAsideSection>
         </>
-      }
-      actionBar={
-        <InkActionGroup>
-          <InkButton href="/game/skills">查看神通</InkButton>
-          <InkButton href="/game/techniques">查看功法</InkButton>
-          <InkButton href="/game/enlightenment/manual-draw" variant="primary">
-            问法寻卷
-          </InkButton>
-        </InkActionGroup>
       }
     >
       <InkSection title="感悟之道">

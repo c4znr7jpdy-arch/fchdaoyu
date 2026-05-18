@@ -150,12 +150,6 @@ h6,
   background: var(--color-battle-rule-strong);
 }
 
-.battle-note {
-  background: rgba(248, 243, 230, 0.88);
-  border-left: 2px solid var(--color-crimson);
-  padding: 0.9rem 1rem;
-}
-
 .battle-modal-panel {
   border-color: var(--color-battle-rule-strong);
   border-radius: 0;

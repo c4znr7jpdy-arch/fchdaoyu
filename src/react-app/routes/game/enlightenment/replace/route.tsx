@@ -205,11 +205,15 @@ function ReplaceContent() {
           </GameSceneAsideSection>
         </>
       }
-      actionBar={
-        <InkActionGroup>
-          <InkButton href={isSkill ? '/game/skills' : '/game/techniques'}>
-            查看现有法门
-          </InkButton>
+    >
+      <div className="space-y-6 pb-12">
+        <InkNotice>
+          请选择需要<b>舍弃的旧法门</b>，以承接新领悟。
+          <br />
+          一旦确认，被舍弃的法门将从道身消散。
+        </InkNotice>
+
+        <div className="flex flex-wrap justify-end gap-2">
           <InkButton
             variant="outline"
             onClick={() => {
@@ -238,15 +242,7 @@ function ReplaceContent() {
           >
             {loading ? '演化中...' : '确认替换'}
           </InkButton>
-        </InkActionGroup>
-      }
-    >
-      <div className="space-y-6 pb-12">
-        <InkNotice>
-          请选择需要<b>舍弃的旧法门</b>，以承接新领悟。
-          <br />
-          一旦确认，被舍弃的法门将从道身消散。
-        </InkNotice>
+        </div>
 
         <InkSection title={`【新领悟】`}>
           <div className="border-wood/35 bg-bgpaper border border-dashed p-3 space-y-2">

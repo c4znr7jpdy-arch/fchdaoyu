@@ -19,14 +19,14 @@ export function InkSection({
   subdued = false,
 }: InkSectionProps) {
   return (
-    <section className="mb-6">
+    <section className="ink-section mb-6">
       {title && (
-        <h2 className="text-ink font-heading mb-3 text-lg font-semibold">
+        <h2 className="ink-section-title text-ink font-heading mb-3 text-lg font-semibold">
           {title}
         </h2>
       )}
       <div className={cn(subdued && 'opacity-75')}>{children}</div>
-      {hint && <p className="text-ink-secondary mt-2 text-sm">{hint}</p>}
+      {hint && <p className="ink-section-hint text-ink-secondary mt-2 text-sm">{hint}</p>}
     </section>
   );
 }

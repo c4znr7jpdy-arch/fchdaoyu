@@ -1,8 +1,18 @@
-import { GameSceneAsideSection, GameSceneFrame } from '@app/components/game-shell';
 import {
-  AbilityMetaLine, AffixInlineList, } from '@app/components/feature/products';
+  GameSceneAsideSection,
+  GameSceneFrame,
+  GameSceneNote,
+} from '@app/components/game-shell';
 import {
-  InkActionGroup, InkBadge, InkButton, InkDialog, InkNotice, } from '@app/components/ui';
+  AbilityMetaLine,
+  AffixInlineList,
+} from '@app/components/feature/products';
+import {
+  InkBadge,
+  InkButton,
+  InkDialog,
+  InkNotice,
+} from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
 
 import { useSkillsViewModel, type V2Skill } from '../hooks/useSkillsViewModel';
@@ -83,9 +93,9 @@ export function SkillsView() {
       description="攻伐、辅助与身法诸术都在这里归卷。主区只保留术册本体，旁栏集中显示容量与下一步修行去向。"
       headerMeta={
         note ? (
-          <div className="battle-note">
+          <GameSceneNote>
             <p className="text-sm leading-7">{note}</p>
-          </div>
+          </GameSceneNote>
         ) : undefined
       }
       aside={
@@ -101,14 +111,6 @@ export function SkillsView() {
             <p>想补底稿可去问法寻卷，想创造新术可直入藏经阁。</p>
           </GameSceneAsideSection>
         </>
-      }
-      actionBar={
-        <InkActionGroup align="between">
-          <InkButton href="/game">返回</InkButton>
-          <InkButton href="/game/enlightenment" variant="primary">
-            藏经阁 →
-          </InkButton>
-        </InkActionGroup>
       }
     >
       {!cultivator ? (
