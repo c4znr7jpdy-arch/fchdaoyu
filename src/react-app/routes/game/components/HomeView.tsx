@@ -327,20 +327,6 @@ export function HomeView() {
 
   return (
     <GameSceneFrame title="洞府" aside={<CaveAside />}>
-      <GameSceneSection title="洞府一瞥">
-        <div className="space-y-2 text-sm leading-7">
-          <p>
-            石门半掩，纸窗透白。丹火、经卷、器架与玉简都安放在各自的位置，今日该做什么，一眼便可分明。
-          </p>
-          {note ? <p className="text-ink-secondary">{note}</p> : null}
-          {caveStatus?.trackSummary ? (
-            <p className="text-battle-muted">
-              外炼余功：{caveStatus.trackSummary}
-            </p>
-          ) : null}
-        </div>
-      </GameSceneSection>
-
       <GameSceneSection title="当下要事">
         {urgentItems.length > 0 ? (
           <InkList>{urgentItems.slice(0, 4)}</InkList>

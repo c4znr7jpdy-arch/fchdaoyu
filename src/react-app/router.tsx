@@ -147,7 +147,7 @@ export const router = createBrowserRouter(
                   label: '洞府',
                   group: 'cultivation',
                   presentation: 'hub',
-                  summary: '纸窗半启，诸般内务皆归此间。',
+                  summary: '石门半掩，纸窗透白。丹火、经卷、器架与玉简都安放在各自的位置',
                 },
                 '洞府',
               )}
@@ -163,7 +163,7 @@ export const router = createBrowserRouter(
                   label: '道身',
                   group: 'cultivation',
                   presentation: 'archive',
-                  summary: 'HUD 所示诸象，皆可在此细查。',
+                  summary: '身世、修为、状态皆可在此细查。',
                 },
                 '道身',
               )}
