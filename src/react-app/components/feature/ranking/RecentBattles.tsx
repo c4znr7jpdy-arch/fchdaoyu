@@ -61,12 +61,14 @@ export function RecentBattles() {
   }
 
   return (
-    <InkList dense>
+    <InkList dense className="gap-1">
       {records.map((r) => (
         <Zhanji key={r.id} record={r} currentCultivatorId={cultivator?.id} />
       ))}
 
-      <InkButton href="/game/battle/history">查看全部战绩 →</InkButton>
+      <InkButton href="/game/battle/history" className="pt-2">
+        查看全部战绩
+      </InkButton>
     </InkList>
   );
 }

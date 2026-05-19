@@ -14,64 +14,60 @@ interface ZhanjiProps {
   currentCultivatorId?: string;
 }
 
+function formatBattleTime(createdAt: string | null) {
+  if (!createdAt) return '--';
+
+  const timestamp = new Date(createdAt).getTime();
+  if (!Number.isFinite(timestamp)) return '--';
+
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (diffSeconds < 60) return '刚刚';
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}分前`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}小时前`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}天前`;
+}
+
 export default function Zhanji({ record, currentCultivatorId }: ZhanjiProps) {
-  const getChallengeTypeLabel = (type?: string) => {
-    switch (type) {
-      case 'challenge':
-        return '← 挑战';
-      case 'challenged':
-        return '← 被挑战';
-      default:
-        return '';
-    }
-  };
-
-  const getChallengeTypeColor = (type?: string) => {
-    switch (type) {
-      case 'challenge':
-        return 'text-wood';
-      case 'challenged':
-        return 'text-ink-secondary';
-      default:
-        return 'text-ink/80';
-    }
-  };
-
   const winnerName = record.winner?.name ?? '未知';
   const loserName = record.loser?.name ?? '未知';
   const isWin = currentCultivatorId === record.winner?.id;
+  const isLoss = currentCultivatorId === record.loser?.id;
   const turns = record.turns ?? 0;
-  const type = record.battleType ?? record.challengeType;
-  const typeLabel = getChallengeTypeLabel(type);
-  const typeColor = getChallengeTypeColor(type);
+  const outcomeLabel = isWin ? '【胜】' : isLoss ? '【败】' : '【战】';
+  const outcomeColor = isWin
+    ? 'text-teal'
+    : isLoss
+      ? 'text-crimson'
+      : 'text-ink-secondary';
+  const opponentName =
+    currentCultivatorId && (isWin || isLoss)
+      ? isWin
+        ? loserName
+        : winnerName
+      : `${winnerName} vs ${loserName}`;
+  const battleTime = formatBattleTime(record.createdAt);
 
   return (
     <Link
       href={`/game/battle/${record.id}`}
-      className="border-ink/10 text-ink/80 hover:border-crimson hover:text-ink block border bg-white/70 px-3 py-2 text-sm transition"
+      className="border-ink/10 text-ink hover:border-crimson/40 hover:bg-white/85 block border bg-white/70 px-3 py-2 transition"
     >
-      <div className="flex justify-between">
-        <div>
-          <span className={`${isWin ? 'text-teal' : 'text-crimson'}`}>
-            {isWin ? '【胜】' : '【败】'}
-          </span>
-          <span className="ml-1">
-            {winnerName} vs {loserName}
-          </span>
-          <span className={`ml-1 ${typeColor}`}>{typeLabel}</span>
-        </div>
-        {record.createdAt && (
-          <span className="text-ink/50 ml-2 min-w-20 text-right text-xs">
-            {/* Added simple styling for date alignment if needed, but keeping generally close to original */}
-            {new Date(record.createdAt).toLocaleString()}
-          </span>
-        )}
+      <div className="flex items-center gap-2 text-sm leading-6 whitespace-nowrap">
+        <span className={`${outcomeColor} shrink-0 font-semibold`}>
+          {outcomeLabel}
+        </span>
+        <span className="min-w-0 flex-1 truncate">{opponentName}</span>
+        <span className="text-ink-secondary shrink-0">{turns}回</span>
+        <span className="text-ink-secondary shrink-0 text-xs">
+          {battleTime}
+        </span>
       </div>
-      {turns > 0 && (
-        <div className="text-ink/60 mt-1 text-xs">
-          共 {turns} 回合 · 点击查看战报回放
-        </div>
-      )}
     </Link>
   );
 }

@@ -269,20 +269,6 @@ export const router = createBrowserRouter(
               )}
             />
             <Route
-              path="artifacts"
-              lazy={lazyRoute(() => import('@app/routes/game/artifacts/route'))}
-              handle={scene(
-                {
-                  id: 'artifacts',
-                  label: '所炼法宝',
-                  group: 'craft',
-                  presentation: 'archive',
-                  summary: '佩装、收藏与待处置法宝尽收此卷。',
-                },
-                '【所炼法宝】',
-              )}
-            />
-            <Route
               path="craft"
               lazy={lazyRoute(() => import('@app/routes/game/craft/route'))}
               handle={scene(

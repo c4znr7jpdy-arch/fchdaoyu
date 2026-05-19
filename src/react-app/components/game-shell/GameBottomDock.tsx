@@ -79,7 +79,7 @@ export function GameBottomDock({
             onClick={onToggleExpanded}
             className="hover:text-crimson px-2 py-1.5 text-center tracking-[0.08em] whitespace-nowrap transition"
           >
-            [{isExpanded ? '收卷' : '展开'}]
+            [{isExpanded ? '收起' : '展开'}]
           </button>
         </div>
 

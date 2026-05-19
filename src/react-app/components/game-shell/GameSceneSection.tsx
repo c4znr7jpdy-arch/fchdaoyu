@@ -17,7 +17,7 @@ export function GameSceneSection({
   return (
     <section
       className={cn(
-        'min-w-0 [&+&]:mt-5! [&+&]:border-t [&+&]:border-dashed [&+&]:border-ink/15 [&+&]:pt-4',
+        '[&+&]:border-ink/15 min-w-0 [&+&]:mt-5! [&+&]:border-t [&+&]:border-dashed [&+&]:pt-4',
         className,
       )}
     >
@@ -25,9 +25,9 @@ export function GameSceneSection({
         <div
           role="heading"
           aria-level={2}
-          className="text-ink mb-3 font-sans text-[clamp(1rem,0.95rem+0.35vw,1.125rem)] font-semibold leading-7 tracking-[0.04em]"
+          className="text-ink mb-3 font-sans text-[clamp(1rem,0.95rem+0.35vw,1.125rem)] leading-7 font-semibold tracking-[0.04em]"
         >
-          {title}
+        「{title}」
         </div>
       ) : null}
       <div className={cn(contentClassName)}>{children}</div>

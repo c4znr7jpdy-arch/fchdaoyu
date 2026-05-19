@@ -1,8 +1,8 @@
 import { InkModal } from '@app/components/layout';
+import { HomeUrgentRow } from '@app/components/feature/home/HomeUrgentRow';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import { InkBadge } from '@app/components/ui/InkBadge';
 import { InkButton } from '@app/components/ui/InkButton';
-import { InkListItem } from '@app/components/ui/InkList';
 import { GeneratedMaterial } from '@shared/engine/material/creation/types';
 import type { Cultivator } from '@shared/types/cultivator';
 import { useEffect, useState } from 'react';
@@ -144,28 +144,29 @@ export function YieldCard({
 
   const compactSummary =
     timeSinceYield >= 24
-      ? '行囊已满，宜速将所得收入洞府。'
+      ? `已历练 ${timeSinceYield}h，行囊已满`
       : timeSinceYield >= 20
-        ? '此行所得将近上限，宜先结算再作远行。'
+        ? `已历练 ${timeSinceYield}h，宜先结算`
         : timeSinceYield >= 1
-          ? '已有可领取所得，可先收归囊中。'
-          : '道身仍在外历练，暂待回讯。';
+          ? `已历练 ${timeSinceYield}h，可收入囊中`
+          : '道身仍在外历练';
 
   return (
     <>
       {variant === 'compact' ? (
-        <InkListItem
+        <HomeUrgentRow
           title={
-            <div className="flex items-center gap-2">
+            <>
               <span>🗺️ 历练归讯</span>
               {timeSinceYield >= 24 ? (
-                <InkBadge tone="danger">已满</InkBadge>
+                <InkBadge tone="danger" compact>
+                  已满
+                </InkBadge>
               ) : null}
-            </div>
+            </>
           }
-          meta={`已历练 ${timeSinceYield} 小时（上限24h）`}
-          description={compactSummary}
-          actions={actionButton}
+          summary={compactSummary}
+          action={actionButton}
         />
       ) : (
         <div className="border-ink/20 relative mb-6 overflow-hidden border bg-white/70 p-4">

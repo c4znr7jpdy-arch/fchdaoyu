@@ -4,7 +4,7 @@ import {
   GameSceneTabs,
 } from '@app/components/game-shell';
 import Zhanji from '@app/components/func/Zhanji';
-import { InkNotice } from '@app/components/ui';
+import { InkList, InkNotice } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import type { BattleRecord } from '@shared/types/battle';
 import { useEffect, useState } from 'react';
@@ -104,7 +104,7 @@ export default function BattleHistoryPage() {
       ) : !records.length ? (
         <InkNotice>暂无战斗记录。</InkNotice>
       ) : (
-        <div className="space-y-3">
+        <InkList dense className="gap-1">
           {records.map((r) => (
             <Zhanji
               key={r.id}
@@ -112,7 +112,7 @@ export default function BattleHistoryPage() {
               currentCultivatorId={cultivator?.id}
             />
           ))}
-        </div>
+        </InkList>
       )}
     </GameSceneFrame>
   );
