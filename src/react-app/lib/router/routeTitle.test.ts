@@ -85,7 +85,7 @@ describe('route title helpers', () => {
         handle: {
           gameScene: {
             id: 'retreat',
-            label: '静室修行',
+            label: '修炼室',
             group: 'cultivation',
             chrome: 'standard',
             dock: 'core',
@@ -96,7 +96,7 @@ describe('route title helpers', () => {
     ] as never);
 
     expect(scene?.id).toBe('retreat');
-    expect(scene?.label).toBe('静室修行');
+    expect(scene?.label).toBe('修炼室');
   });
 
   it('preserves representative standard scene metadata for migrated routes', () => {
@@ -120,7 +120,7 @@ describe('route title helpers', () => {
           gameScene: {
             id: 'rankings',
             label: '天骄榜',
-            group: 'travel',
+            group: 'combat',
             chrome: 'standard',
             dock: 'core',
             presentation: 'service',
@@ -131,7 +131,7 @@ describe('route title helpers', () => {
 
     expect(scene).toMatchObject({
       id: 'rankings',
-      group: 'travel',
+      group: 'combat',
       chrome: 'standard',
       dock: 'core',
       presentation: 'service',
@@ -146,7 +146,7 @@ describe('route title helpers', () => {
           gameScene: {
             id: 'dungeon',
             label: '云游探秘',
-            group: 'travel',
+            group: 'craft',
             chrome: 'immersive',
             dock: 'hidden',
             presentation: 'immersive',
@@ -171,7 +171,7 @@ describe('route title helpers', () => {
           gameScene: {
             id: 'battle-challenge',
             label: '挑战天骄',
-            group: 'travel',
+            group: 'combat',
             chrome: 'immersive',
             dock: 'hidden',
             presentation: 'immersive',
@@ -187,7 +187,7 @@ describe('route title helpers', () => {
           gameScene: {
             id: 'battle-replay',
             label: '战斗回放',
-            group: 'travel',
+            group: 'combat',
             chrome: 'immersive',
             dock: 'hidden',
             presentation: 'immersive',
@@ -218,7 +218,7 @@ describe('route title helpers', () => {
           gameScene: {
             id: 'map',
             label: '修仙界地图',
-            group: 'travel',
+            group: 'craft',
             chrome: 'immersive',
             dock: 'hidden',
             presentation: 'immersive',
@@ -234,7 +234,7 @@ describe('route title helpers', () => {
           gameScene: {
             id: 'bet-battle',
             label: '赌战台',
-            group: 'travel',
+            group: 'combat',
             chrome: 'standard',
             dock: 'core',
             presentation: 'workflow',

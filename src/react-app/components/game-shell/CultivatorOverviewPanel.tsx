@@ -28,7 +28,6 @@ import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapter
 import { AttributeType } from '@shared/engine/battle-v5/core/types';
 import { attrLabel } from '@shared/engine/battle-v5/effects/affixText/attributes';
 import { cn } from '@shared/lib/cn';
-import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
 import type { Cultivator } from '@shared/types/cultivator';
 import { getEquipmentSlotInfo } from '@shared/types/dictionaries';
 import { useState, type ReactNode } from 'react';
@@ -109,37 +108,36 @@ function chunkPairs<T>(items: T[]): T[][] {
   return rows;
 }
 
-function OverviewCard({
+function OverviewDetailItem({
+  icon,
   label,
   value,
+  action,
   className,
 }: {
+  icon: string;
   label: string;
   value: ReactNode;
+  action?: ReactNode;
   className?: string;
 }) {
   return (
     <div
       className={cn(
-        'border-ink/10 bg-ink/4 border border-dashed px-3 py-2',
+        'flex items-start justify-between gap-3 text-sm leading-7',
         className,
       )}
     >
-      <div className="text-battle-muted text-[0.68rem] tracking-[0.16em]">
-        {label}
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <span className="shrink-0 text-base leading-7" aria-hidden="true">
+          {icon}
+        </span>
+        <div className="flex min-w-0 flex-1 flex-wrap gap-x-2 gap-y-0.5">
+          <span className="text-battle-muted shrink-0">{label}</span>
+          <span className="text-ink min-w-0 flex-1">{value}</span>
+        </div>
       </div>
-      <div className="text-ink mt-1 text-sm leading-6">{value}</div>
-    </div>
-  );
-}
-
-function OverviewLine({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="border-ink/10 bg-ink/4 border border-dashed px-3 py-2">
-      <div className="flex gap-3 text-sm leading-6">
-        <span className="text-battle-muted shrink-0">{label}</span>
-        <span className="text-ink min-w-0">{value}</span>
-      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }
@@ -270,83 +268,62 @@ export function CultivatorOverviewPanel() {
         equipped.armor === item.id ||
         equipped.accessory === item.id),
   );
-  const marrowWashLevel = cultivator.condition?.tracks.marrowWash?.level ?? 0;
-  const marrowWashProgress =
-    cultivator.condition?.tracks.marrowWash?.progress ?? 0;
-  const marrowWashThreshold =
-    getTrackConfig('marrow_wash').thresholdByLevel(marrowWashLevel);
-  const marrowWashPercent = Math.max(
-    0,
-    Math.min(
-      100,
-      marrowWashThreshold > 0
-        ? (marrowWashProgress / marrowWashThreshold) * 100
-        : 0,
-    ),
-  );
 
   return (
     <div className="space-y-5">
       <GameSceneSection title="道身概览" contentClassName="space-y-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-ink text-lg leading-7 font-semibold">
-                {cultivator.name}
-              </span>
-              <InkBadge tier={cultivator.realm}>
-                {cultivator.realm_stage}
-              </InkBadge>
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-6">
-              <span className="text-battle-muted">称号</span>
-              <span className="text-ink min-w-0">
-                {cultivator.title ? (
-                  <span className="text-crimson">「{cultivator.title}」</span>
-                ) : (
-                  '暂无'
-                )}
-              </span>
-            </div>
-          </div>
-          <InkButton onClick={openTitleEditor} className="shrink-0 text-sm">
-            修改
-          </InkButton>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <OverviewCard label="年龄" value={`${cultivator.age} 岁`} />
-          <OverviewCard label="寿元" value={`${cultivator.lifespan} 年`} />
-          <OverviewCard label="性别" value={cultivator.gender} />
-          <OverviewCard label="出身" value={cultivator.origin || '散修'} />
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-1 bg-ink/3 px-2 py-3">
+          <span className="text-ink text-xl leading-7 font-semibold">
+            {cultivator.name}
+          </span>
+          <span className="text-battle-muted text-sm leading-6">
+            {cultivator.realm} · {cultivator.realm_stage}
+          </span>
         </div>
 
         <div className="space-y-2">
-          <OverviewLine label="性情" value={cultivator.personality || '未明'} />
-          <OverviewLine
-            label="洗髓"
+          <OverviewDetailItem
+            icon="🏮"
+            label="名号"
             value={
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-ink-secondary text-xs">
-                    Lv.{marrowWashLevel}
-                  </span>
-                  <span className="font-mono text-xs">
-                    {marrowWashProgress} / {marrowWashThreshold}
-                  </span>
-                </div>
-                <div className="border-ink/15 h-1.5 w-full overflow-hidden border bg-white/70">
-                  <div
-                    className="bg-crimson h-full transition-all duration-300"
-                    style={{ width: `${marrowWashPercent}%` }}
-                  />
-                </div>
-              </div>
+              cultivator.title ? (
+                <span className="text-crimson">「{cultivator.title}」</span>
+              ) : (
+                '暂无'
+              )
+            }
+            action={
+              <InkButton onClick={openTitleEditor} className="text-sm">
+                修改
+              </InkButton>
             }
           />
-          <OverviewLine label="背景" value={cultivator.background || '未录'} />
+          <OverviewDetailItem
+            icon="👤"
+            label="身份"
+            value={`${cultivator.gender} · ${cultivator.age} 岁 · ${cultivator.origin || '散修'}`}
+          />
+          <OverviewDetailItem
+            icon="⏳"
+            label="寿元"
+            value={`${cultivator.lifespan} 年`}
+          />
+          <OverviewDetailItem
+            icon="🫧"
+            label="性情"
+            value={cultivator.personality || '未明'}
+          />
+          <OverviewDetailItem
+            icon="📜"
+            label="背景"
+            value={cultivator.background || '未录'}
+          />
           {cultivator.balance_notes ? (
-            <OverviewLine label="天道评语" value={cultivator.balance_notes} />
+            <OverviewDetailItem
+              icon="🪶"
+              label="天道评语"
+              value={cultivator.balance_notes}
+            />
           ) : null}
         </div>
       </GameSceneSection>
@@ -578,16 +555,14 @@ export function CultivatorOverviewPanel() {
         )}
       </GameSceneSection>
 
-      <GameSceneSection title="转世重修" contentClassName="space-y-3">
+      <div className='bg-ink/5 p-2 rounded-sm text-right'>
         <p className="text-ink-secondary text-sm leading-7">
-          若此身道途已尽，可舍去当前修为与状态，再携前世姓名与故事重入轮回。
+          若此身道途已尽，可舍去此生，重入轮回。
         </p>
-        <div>
-          <InkButton variant="secondary" onClick={openReincarnateDialog}>
-            转世重修
-          </InkButton>
-        </div>
-      </GameSceneSection>
+        <InkButton className='text-sm' onClick={openReincarnateDialog}>
+          转世重修
+        </InkButton>
+      </div>
       <InkDialog dialog={dialog} onClose={() => setDialog(null)} />
       <FateDetailModal
         isOpen={detailFate !== null}

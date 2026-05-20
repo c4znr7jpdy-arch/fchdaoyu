@@ -1,7 +1,6 @@
 import Link from '@app/components/router/AppLink';
 import { cn } from '@shared/lib/cn';
-import { useLocation } from 'react-router';
-import { gameDockGroups } from './gameNavigation';
+import { getCoreDockItems, getExpandedDockGroups } from './gameNavigation';
 
 function DockLink({
   href,
@@ -25,9 +24,9 @@ function DockLink({
       [{label}]
       {badge && badge > 0 ? (
         <span className="absolute -top-0.5 -right-1 flex h-3 w-3">
-        <span className="bg-crimson absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
-        <span className="bg-crimson relative inline-flex h-3 w-3 rounded-full" />
-      </span>
+          <span className="bg-crimson absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
+          <span className="bg-crimson relative inline-flex h-3 w-3 rounded-full" />
+        </span>
       ) : null}
     </Link>
   );
@@ -46,8 +45,9 @@ export function GameBottomDock({
   onToggleExpanded: () => void;
   dockMode?: 'core' | 'expanded' | 'hidden';
 }) {
-  const location = useLocation();
   const showExpanded = dockMode === 'expanded' || isExpanded;
+  const coreDockItems = getCoreDockItems();
+  const expandedDockGroups = getExpandedDockGroups();
 
   if (dockMode === 'hidden') {
     return null;
@@ -57,23 +57,15 @@ export function GameBottomDock({
     <footer className="battle-dock border-battle-rule-strong border-t border-dashed">
       <div className="mx-auto max-w-5xl px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.8rem)] md:px-6">
         <div className="grid grid-cols-[repeat(4,minmax(0,1fr))_4rem] items-center gap-1.5 text-sm">
-          <DockLink
-            href="/game/cultivator"
-            label="角色"
-            active={sceneId === 'cultivator'}
-          />
-          <DockLink
-            href="/game/inventory"
-            label="储物袋"
-            active={sceneId === 'inventory'}
-          />
-          <DockLink href="/game" label="洞府" active={sceneId === 'cave'} />
-          <DockLink
-            href="/game/mail"
-            label="传音玉简"
-            active={sceneId === 'mail'}
-            badge={unreadMailCount}
-          />
+          {coreDockItems.map((item) => (
+            <DockLink
+              key={item.id}
+              href={item.href}
+              label={item.label}
+              active={sceneId === item.id}
+              badge={item.id === 'mail' ? unreadMailCount : undefined}
+            />
+          ))}
           <button
             type="button"
             onClick={onToggleExpanded}
@@ -84,8 +76,8 @@ export function GameBottomDock({
         </div>
 
         {showExpanded ? (
-          <div className="battle-module mt-2 grid gap-3 border-t border-ink/15 border-dashed pt-2.5 text-sm md:grid-cols-2 xl:grid-cols-5">
-            {gameDockGroups.map((group) => (
+          <div className="battle-module border-ink/15 mt-2 grid gap-3 border-t border-dashed pt-2.5 text-sm md:grid-cols-2 xl:grid-cols-5">
+            {expandedDockGroups.map((group) => (
               <div key={group.key}>
                 <div className="text-battle-muted mb-1 text-[0.68rem] tracking-[0.18em]">
                   {group.title}
@@ -93,13 +85,11 @@ export function GameBottomDock({
                 <div className="flex flex-wrap gap-x-3 gap-y-1 leading-6">
                   {group.actions.map((action) => (
                     <Link
-                      key={action.href}
+                      key={action.id}
                       href={action.href}
                       className={cn(
                         'hover:text-crimson transition',
-                        location.pathname === action.href.split('?')[0]
-                          ? 'text-crimson'
-                          : '',
+                        sceneId === action.id ? 'text-crimson' : '',
                       )}
                     >
                       [{action.label}]

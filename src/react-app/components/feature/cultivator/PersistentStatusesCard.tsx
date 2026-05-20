@@ -3,7 +3,18 @@ import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { getPillToxicityStage, isConditionStatusActive } from '@shared/lib/condition';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { getAllTrackConfigs } from '@shared/lib/trackConfigRegistry';
+import { cn } from '@shared/lib/cn';
+import type { ConditionTrackPath } from '@shared/types/condition';
 import { useState } from 'react';
+
+const TRACK_ORDER: ConditionTrackPath[] = [
+  'marrow_wash',
+  'tempering.vitality',
+  'tempering.spirit',
+  'tempering.wisdom',
+  'tempering.speed',
+  'tempering.willpower',
+];
 
 function formatRemainingTime(expiresAt: string | undefined, now: number): string {
   if (!expiresAt) return '永久';
@@ -45,7 +56,10 @@ function usePersistentStatusState() {
     Math.floor(cultivator.condition?.gauges.pillToxicity ?? 0),
   );
   const pillToxicityStage = getPillToxicityStage(cultivator.condition);
-  const trackConfigs = getAllTrackConfigs();
+  const trackConfigs = getAllTrackConfigs().sort(
+    (left, right) =>
+      TRACK_ORDER.indexOf(left.key) - TRACK_ORDER.indexOf(right.key),
+  );
   const trackEntries = trackConfigs
     .map((config) => {
       const state =
@@ -65,17 +79,6 @@ function usePersistentStatusState() {
         progress,
         threshold,
       };
-    })
-    .filter(
-      (entry) =>
-        entry.config.key === 'marrow_wash' ||
-        entry.level > 0 ||
-        entry.progress > 0,
-    )
-    .sort((left, right) => {
-      if (left.config.key === 'marrow_wash') return -1;
-      if (right.config.key === 'marrow_wash') return 1;
-      return 0;
     });
 
   return {
@@ -92,20 +95,55 @@ function usePersistentStatusState() {
   };
 }
 
-function StatusMetric({
+function CompactInfoRow({
+  icon,
   label,
-  value,
   note,
+  value,
+  trailing,
+  muted = false,
 }: {
+  icon: string;
   label: string;
-  value: string;
   note?: string;
+  value?: string;
+  trailing?: string;
+  muted?: boolean;
 }) {
+  const hasMeta = Boolean(value) || Boolean(trailing);
+
   return (
-    <div className="bg-ink/5 border-ink/10 border border-dashed px-3 py-2 text-sm">
-      <div className="opacity-60">{label}</div>
-      <div className="text-ink mt-1 font-semibold">{value}</div>
-      {note ? <div className="mt-1 text-xs opacity-60">{note}</div> : null}
+    <div
+      className={cn(
+        'border-ink/10 flex items-start justify-between gap-3 border-b border-dashed py-2.5 last:border-b-0',
+        muted && 'opacity-60',
+      )}
+    >
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <span className="shrink-0 text-base leading-6" aria-hidden="true">
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <div className="text-ink text-sm leading-6">{label}</div>
+          {note ? (
+            <div className="text-ink-secondary text-xs leading-5">{note}</div>
+          ) : null}
+        </div>
+      </div>
+      {hasMeta ? (
+        <div className="shrink-0 text-right">
+          {value ? (
+            <div className="text-ink text-sm font-semibold leading-6">
+              {value}
+            </div>
+          ) : null}
+          {trailing ? (
+            <div className="text-ink-secondary text-xs leading-5">
+              {trailing}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -128,54 +166,50 @@ export function CultivatorCurrentStatusSection() {
 
   return (
     <GameSceneSection title="当前状态" contentClassName="space-y-2">
-      <div className="grid grid-cols-3 gap-2">
-        <StatusMetric
-          label="气血"
-          value={`${state.currentHp} / ${state.maxHp}`}
-        />
-        <StatusMetric
-          label="真元"
-          value={`${state.currentMp} / ${state.maxMp}`}
-        />
-        <StatusMetric
-          label="丹毒"
-          value={`${state.pillToxicity}`}
-          note={state.pillToxicityStage.label}
-        />
-      </div>
+      {showResourceState ? (
+        <div>
+          <CompactInfoRow
+            icon="❤️"
+            label="气血"
+            note="当前 / 上限"
+            value={`${state.currentHp} / ${state.maxHp}`}
+          />
+          <CompactInfoRow
+            icon="💧"
+            label="真元"
+            note="当前 / 上限"
+            value={`${state.currentMp} / ${state.maxMp}`}
+          />
+          <CompactInfoRow
+            icon="🫙"
+            label="丹毒"
+            note={state.pillToxicityStage.label}
+            value={`${state.pillToxicity}`}
+          />
+        </div>
+      ) : null}
 
       {state.statuses.map((status, index) => {
         const template = getConditionStatusTemplate(status.key);
         return (
-          <div
+          <CompactInfoRow
             key={`${status.key}:${index}`}
-            className="bg-ink/5 border-ink/10 flex items-center justify-between gap-3 border border-dashed px-3 py-2"
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="shrink-0 text-lg">
-                {template?.display.icon ?? '💫'}
-              </span>
-              <div className="min-w-0">
-                <div className="text-ink text-sm font-medium">
-                  {template?.name ?? status.key}
-                </div>
-                <div className="text-xs opacity-60">
-                  {template?.display.shortDesc ?? template?.description ?? '长期状态影响'}
-                </div>
-              </div>
-            </div>
-            <div className="shrink-0 text-right text-xs">
-              {status.duration.kind === 'time' ? (
-                <div className="font-semibold">
-                  {formatRemainingTime(status.duration.expiresAt, state.now)}
-                </div>
-              ) : null}
-              {typeof status.usesRemaining === 'number' &&
-              status.usesRemaining > 0 ? (
-                <div className="opacity-60">{status.usesRemaining}次</div>
-              ) : null}
-            </div>
-          </div>
+            icon={template?.display.icon ?? '💫'}
+            label={template?.name ?? status.key}
+            note={
+              template?.display.shortDesc ?? template?.description ?? '长期状态影响'
+            }
+            value={
+              status.duration.kind === 'time'
+                ? formatRemainingTime(status.duration.expiresAt, state.now)
+                : undefined
+            }
+            trailing={
+              typeof status.usesRemaining === 'number' && status.usesRemaining > 0
+                ? `${status.usesRemaining}次`
+                : undefined
+            }
+          />
         );
       })}
     </GameSceneSection>
@@ -191,20 +225,17 @@ export function CultivatorTrackSection() {
 
   return (
     <GameSceneSection title="洗髓与炼体">
-      <div className="border-ink/15 overflow-hidden border border-dashed">
+      <div>
         {state.trackEntries.map(({ config, level, progress, threshold }) => (
-          <div
+          <CompactInfoRow
             key={config.key}
-            className="border-ink/10 flex items-center justify-between gap-3 border-b border-dashed px-3 py-2 text-sm last:border-b-0"
-          >
-            <span className="text-ink min-w-0">{config.name}</span>
-            <div className="flex shrink-0 items-center gap-3">
-              <span className="font-semibold">Lv.{level}</span>
-              <span className="font-mono text-xs">
-                {progress} / {threshold}
-              </span>
-            </div>
-          </div>
+            icon={config.key === 'marrow_wash' ? '🫧' : '🥋'}
+            label={config.name}
+            note={config.shortDesc}
+            value={`Lv.${level}`}
+            trailing={`${progress} / ${threshold}`}
+            muted={level === 0 && progress === 0}
+          />
         ))}
       </div>
     </GameSceneSection>

@@ -47,15 +47,39 @@ describe('PersistentStatusesCard sections', () => {
     });
     mockGetAllTrackConfigs.mockReturnValue([
       {
+        key: 'marrow_wash',
+        name: '洗髓',
+        shortDesc: '升级后所有灵根各提升 1 点',
+        thresholdByLevel: (level: number) => 100 * (level + 1),
+      },
+      {
         key: 'tempering.vitality',
         name: '炼体·体魄',
         shortDesc: '升级后永久提升体魄',
         thresholdByLevel: (level: number) => 100 * (level + 1),
       },
       {
-        key: 'marrow_wash',
-        name: '洗髓',
-        shortDesc: '升级后所有灵根各提升 1 点',
+        key: 'tempering.spirit',
+        name: '炼体·灵力',
+        shortDesc: '升级后永久提升灵力',
+        thresholdByLevel: (level: number) => 100 * (level + 1),
+      },
+      {
+        key: 'tempering.wisdom',
+        name: '炼体·悟性',
+        shortDesc: '升级后永久提升悟性',
+        thresholdByLevel: (level: number) => 100 * (level + 1),
+      },
+      {
+        key: 'tempering.speed',
+        name: '炼体·身法',
+        shortDesc: '升级后永久提升身法',
+        thresholdByLevel: (level: number) => 100 * (level + 1),
+      },
+      {
+        key: 'tempering.willpower',
+        name: '炼体·神识',
+        shortDesc: '升级后永久提升神识',
         thresholdByLevel: (level: number) => 100 * (level + 1),
       },
     ]);
@@ -146,16 +170,24 @@ describe('PersistentStatusesCard sections', () => {
     expect(html).toContain('洗髓');
     expect(html).toContain('Lv.2');
     expect(html).toContain('40 / 300');
+    expect(html).toContain('升级后所有灵根各提升 1 点');
     expect(html.indexOf('洗髓')).toBeLessThan(html.indexOf('炼体·体魄'));
     expect(html).toContain('炼体·体魄');
     expect(html).toContain('Lv.1');
     expect(html).toContain('20 / 200');
-
-    expect(html).not.toContain('升级后永久提升体魄');
-    expect(html).not.toContain('升级后所有灵根各提升 1 点');
+    expect(html).toContain('升级后永久提升体魄');
+    expect(html).toContain('炼体·灵力');
+    expect(html).toContain('炼体·悟性');
+    expect(html).toContain('炼体·身法');
+    expect(html).toContain('炼体·神识');
+    expect(html).toContain('0 / 100');
+    expect(html.indexOf('炼体·体魄')).toBeLessThan(html.indexOf('炼体·灵力'));
+    expect(html.indexOf('炼体·灵力')).toBeLessThan(html.indexOf('炼体·悟性'));
+    expect(html.indexOf('炼体·悟性')).toBeLessThan(html.indexOf('炼体·身法'));
+    expect(html.indexOf('炼体·身法')).toBeLessThan(html.indexOf('炼体·神识'));
   });
 
-  it('keeps marrow wash visible even before other tracks have progressed', () => {
+  it('keeps all six tracks visible even before any progress has been made', () => {
     mockUseCultivator.mockReturnValue({
       cultivator: {
         condition: {
@@ -209,6 +241,63 @@ describe('PersistentStatusesCard sections', () => {
     expect(html).toContain('洗髓');
     expect(html).toContain('Lv.0');
     expect(html).toContain('0 / 100');
-    expect(html).not.toContain('炼体·体魄');
+    expect(html).toContain('炼体·体魄');
+    expect(html).toContain('炼体·灵力');
+    expect(html).toContain('炼体·悟性');
+    expect(html).toContain('炼体·身法');
+    expect(html).toContain('炼体·神识');
+  });
+
+  it('hides the current-status section when resources are full and no status remains', () => {
+    mockUseCultivator.mockReturnValue({
+      cultivator: {
+        condition: {
+          resources: {
+            hp: { current: 120 },
+            mp: { current: 60 },
+          },
+          gauges: {
+            pillToxicity: 0,
+          },
+          statuses: [],
+          tracks: {
+            marrowWash: {
+              level: 0,
+              progress: 0,
+            },
+            tempering: {
+              vitality: {
+                level: 0,
+                progress: 0,
+              },
+              spirit: {
+                level: 0,
+                progress: 0,
+              },
+              wisdom: {
+                level: 0,
+                progress: 0,
+              },
+              speed: {
+                level: 0,
+                progress: 0,
+              },
+              willpower: {
+                level: 0,
+                progress: 0,
+              },
+            },
+          },
+        },
+      },
+      finalAttributes: {
+        maxHp: 120,
+        maxMp: 60,
+      },
+    });
+
+    const html = renderToStaticMarkup(<CultivatorCurrentStatusSection />);
+
+    expect(html).toBe('');
   });
 });

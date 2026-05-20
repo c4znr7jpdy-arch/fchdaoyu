@@ -1,4 +1,5 @@
 import App, { RootRouteErrorBoundary } from '@app/App';
+import { getGameSceneMeta } from '@app/components/game-shell/gameNavigation';
 import GameLayout, {
   GameCombatLayout,
   GameDungeonLayout,
@@ -28,24 +29,31 @@ import {
 
 const title = (value: RouteTitleResolver): AppRouteHandle => ({ title: value });
 const scene = (
-  sceneHandle: Omit<GameSceneHandle, 'chrome' | 'dock' | 'presentation'> &
+  sceneHandle: Pick<GameSceneHandle, 'id'> &
     Partial<
       Pick<GameSceneHandle, 'chrome' | 'dock' | 'presentation' | 'summary'>
     >,
   value: RouteTitleResolver,
 ): AppRouteHandle => {
   const chrome = sceneHandle.chrome ?? 'standard';
+  const meta = getGameSceneMeta(sceneHandle.id);
+
+  if (!meta) {
+    throw new Error(`Missing game scene metadata for "${sceneHandle.id}"`);
+  }
 
   return {
     title: value,
     gameScene: {
+      id: meta.id,
+      label: meta.label,
+      group: meta.group,
       chrome,
       dock: sceneHandle.dock ?? 'core',
       presentation:
         sceneHandle.presentation ??
         (chrome === 'immersive' ? 'immersive' : 'workflow'),
       summary: sceneHandle.summary ?? null,
-      ...sceneHandle,
     },
   };
 };
@@ -144,10 +152,9 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'cave',
-                  label: '洞府',
-                  group: 'cultivation',
                   presentation: 'hub',
-                  summary: '石门半掩，纸窗透白。丹火、经卷、器架与玉简都安放在各自的位置',
+                  summary:
+                    '石门半掩，纸窗透白。丹火、经卷、器架与玉简都安放在各自的位置',
                 },
                 '洞府',
               )}
@@ -160,8 +167,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'cultivator',
-                  label: '道身',
-                  group: 'cultivation',
                   presentation: 'archive',
                   summary: '名号、命格、根基与所修皆在此归卷。',
                 },
@@ -174,8 +179,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'inventory',
-                  label: '储物袋',
-                  group: 'trade',
                   presentation: 'service',
                   summary: '点清身边诸物，再决定去留流转。',
                 },
@@ -190,8 +193,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'alchemy',
-                  label: '炼丹房',
-                  group: 'craft',
                   summary: '看药材、控炉候、炼丹息身。',
                 },
                 '【炼丹房】',
@@ -203,8 +204,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'market',
-                  label: '坊市',
-                  group: 'trade',
                   presentation: 'hub',
                   summary: '买卖流转与鉴宝收材皆由此起。',
                 },
@@ -217,8 +216,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'mail',
-                  label: '传音玉简',
-                  group: 'service',
                   presentation: 'service',
                   summary: '宗门来函与诸界消息尽归玉简。',
                 },
@@ -231,8 +228,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'retreat',
-                  label: '静室修行',
-                  group: 'cultivation',
                   summary: '闭关、冲关与寿元筹算都在静室。',
                 },
                 '静室修行',
@@ -244,8 +239,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'skills',
-                  label: '所修神通',
-                  group: 'cultivation',
                   presentation: 'archive',
                   summary: '已成诸术归卷，便于查阅与取舍。',
                 },
@@ -260,8 +253,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'techniques',
-                  label: '所修功法',
-                  group: 'cultivation',
                   presentation: 'archive',
                   summary: '功法道基在此归档，便于比照深浅。',
                 },
@@ -274,8 +265,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'craft',
-                  label: '造物仙炉',
-                  group: 'craft',
                   presentation: 'hub',
                   summary: '分清炼器与炼丹，再携灵材入炉。',
                 },
@@ -290,8 +279,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'refine',
-                  label: '炼器室',
-                  group: 'craft',
                   summary: '铸器成兵，先校料再落锤火。',
                 },
                 '【炼器室】',
@@ -305,8 +292,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'enlightenment',
-                  label: '藏经阁',
-                  group: 'cultivation',
                   presentation: 'hub',
                   summary: '推演、求卷与取舍都归书案。',
                 },
@@ -321,8 +306,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'gongfa-enlightenment',
-                  label: '功法参悟',
-                  group: 'cultivation',
                   summary: '衡量悟性与投入，细推功法脉络。',
                 },
                 '【功法参悟】',
@@ -337,8 +320,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'manual-draw',
-                  label: '问法寻卷',
-                  group: 'cultivation',
                   summary: '请符求卷，补足今日所缺法门。',
                 },
                 '问法寻卷',
@@ -352,8 +333,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'enlightenment-replace',
-                  label: '参悟抉择',
-                  group: 'cultivation',
                   summary: '新旧法门只在此处做一次取舍。',
                 },
                 '参悟抉择',
@@ -367,8 +346,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'skill-enlightenment',
-                  label: '神通推演',
-                  group: 'cultivation',
                   summary: '排定材料与悟性，推演一门神通。',
                 },
                 '【神通推演】',
@@ -382,8 +359,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'fate-reshape',
-                  label: '重塑命格',
-                  group: 'cultivation',
                   summary: '拨动命数之前，先看当下格局。',
                 },
                 '重塑命格',
@@ -397,8 +372,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'market-recycle',
-                  label: '坊市鉴宝',
-                  group: 'trade',
                   summary: '识别去留，批量回收冗余之物。',
                 },
                 '坊市鉴宝',
@@ -410,8 +383,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'auction',
-                  label: '拍卖行',
-                  group: 'trade',
                   presentation: 'service',
                   summary: '观市、寄售与竞拍合为一案。',
                 },
@@ -426,8 +397,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'battle-history',
-                  label: '全部战绩',
-                  group: 'service',
                   presentation: 'archive',
                   summary: '斗法卷宗与旧战回放在此归档。',
                 },
@@ -440,8 +409,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'rankings',
-                  label: '天骄榜',
-                  group: 'travel',
                   presentation: 'service',
                   summary: '看榜、领赏、择敌挑战。',
                 },
@@ -456,8 +423,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'bet-battle',
-                  label: '赌战台',
-                  group: 'travel',
                   summary: '设注、应战与结算皆在赌战台。',
                 },
                 '赌战台',
@@ -471,8 +436,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'dungeon-history',
-                  label: '探险札记',
-                  group: 'service',
                   presentation: 'archive',
                   summary: '一路遭逢与所得在此翻卷。',
                 },
@@ -487,8 +450,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'world-chat',
-                  label: '世界传音',
-                  group: 'service',
                   presentation: 'service',
                   summary: '诸界闲谈与即时传音都在此处。',
                 },
@@ -501,8 +462,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'community',
-                  label: '玩家交流群',
-                  group: 'service',
                   presentation: 'service',
                   summary: '外部群聊入口与同道集散之处。',
                 },
@@ -515,8 +474,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'redeem',
-                  label: '兑换码',
-                  group: 'service',
                   presentation: 'service',
                   summary: '持契兑缘，所得会经玉简投递。',
                 },
@@ -531,8 +488,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'feedback',
-                  label: '意见反馈',
-                  group: 'service',
                   presentation: 'service',
                   summary: '把平衡与体验问题留在此处。',
                 },
@@ -548,8 +503,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'battle',
-                  label: '对战播报',
-                  group: 'travel',
                   chrome: 'immersive',
                   dock: 'hidden',
                 },
@@ -564,8 +517,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'battle-challenge',
-                  label: '挑战天骄',
-                  group: 'travel',
                   chrome: 'immersive',
                   dock: 'hidden',
                 },
@@ -580,8 +531,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'battle-replay',
-                  label: '战斗回放',
-                  group: 'travel',
                   chrome: 'immersive',
                   dock: 'hidden',
                 },
@@ -596,8 +545,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'bet-battle-challenge',
-                  label: '赌战挑战',
-                  group: 'travel',
                   chrome: 'immersive',
                   dock: 'hidden',
                 },
@@ -612,8 +559,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'training-room',
-                  label: '练功房',
-                  group: 'travel',
                   chrome: 'immersive',
                   dock: 'hidden',
                 },
@@ -629,8 +574,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'map',
-                  label: '修仙界地图',
-                  group: 'travel',
                   chrome: 'immersive',
                   dock: 'hidden',
                 },
@@ -646,8 +589,6 @@ export const router = createBrowserRouter(
               handle={scene(
                 {
                   id: 'dungeon',
-                  label: '云游探秘',
-                  group: 'travel',
                   chrome: 'immersive',
                   dock: 'hidden',
                 },

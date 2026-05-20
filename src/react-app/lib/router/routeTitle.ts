@@ -4,9 +4,10 @@ export const APP_TITLE = '万界道友';
 
 export type GameSceneGroup =
   | 'cultivation'
-  | 'travel'
   | 'craft'
   | 'trade'
+  | 'message'
+  | 'combat'
   | 'service';
 
 export type GameSceneChrome = 'standard' | 'immersive';

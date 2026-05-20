@@ -2,15 +2,8 @@ import { resolveGameScene } from '@app/lib/router/routeTitle';
 import { cn } from '@shared/lib/cn';
 import type { ReactNode } from 'react';
 import { useMatches } from 'react-router';
+import { getGameSceneGroupTitle } from './gameNavigation';
 import { resolveGameSceneFrameHeader } from './gameSceneFrameHeader';
-
-const sceneGroupLabel: Record<string, string> = {
-  cultivation: '静修',
-  travel: '行路',
-  craft: '造化',
-  trade: '交易',
-  service: '见闻',
-};
 
 export interface GameSceneFrameProps {
   title?: ReactNode;
@@ -75,15 +68,11 @@ function SceneBody({
   );
 }
 
-function SceneAsideRail({
-  children,
-}: {
-  children: ReactNode;
-}) {
+function SceneAsideRail({ children }: { children: ReactNode }) {
   return (
     <SceneSurface
       as="aside"
-      className="[&>*+*]:mt-4 [&>*+*]:border-t [&>*+*]:border-dashed [&>*+*]:border-ink/20 [&>*+*]:pt-4"
+      className="[&>*+*]:border-ink/20 [&>*+*]:mt-4 [&>*+*]:border-t [&>*+*]:border-dashed [&>*+*]:pt-4"
     >
       {children}
     </SceneSurface>
@@ -124,7 +113,7 @@ export function GameSceneNote({
         'border-l-2 px-4 py-3 text-sm leading-7',
         tone === 'danger'
           ? 'border-crimson bg-crimson/6 text-crimson'
-          : 'border-crimson bg-[rgba(248,243,230,0.88)] text-ink',
+          : 'border-crimson text-ink bg-[rgba(248,243,230,0.88)]',
         className,
       )}
     >
@@ -203,7 +192,7 @@ export function GameSceneFrame({
 }: GameSceneFrameProps) {
   const matches = useMatches();
   const scene = resolveGameScene(matches);
-  const sceneGroup = scene?.group ? sceneGroupLabel[scene.group] : null;
+  const sceneGroup = scene?.group ? getGameSceneGroupTitle(scene.group) : null;
   const header = resolveGameSceneFrameHeader({
     sceneLabel: scene?.label,
     sceneSummary: scene?.summary,
