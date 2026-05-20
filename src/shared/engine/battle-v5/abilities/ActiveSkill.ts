@@ -126,13 +126,13 @@ export abstract class ActiveSkill extends Ability {
     return [...this._resourceCosts];
   }
 
-  // 兼容旧 API - 获取 MP 消耗
+  // 兼容旧 API - 获取法力消耗
   get manaCost(): number {
     const mpCost = this._resourceCosts.find((c) => c.type === 'mp');
     return mpCost?.amount ?? 0;
   }
 
-  // 兼容旧 API - 设置 MP 消耗
+  // 兼容旧 API - 设置法力消耗
   setManaCost(value: number): void {
     const existingIndex = this._resourceCosts.findIndex((c) => c.type === 'mp');
     if (existingIndex >= 0) {

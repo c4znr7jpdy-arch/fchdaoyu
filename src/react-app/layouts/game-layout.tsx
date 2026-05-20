@@ -22,7 +22,13 @@ import {
   SpecialSceneProvider,
   useSpecialSceneBackOverride,
 } from './special-scene';
-import { useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import {
   Outlet,
   useLocation,
@@ -296,20 +302,61 @@ export function GameViewportLayout() {
   const scene = resolveGameScene(matches);
   const routeKey = `${location.pathname}${location.search}`;
   const [dockExpandedAt, setDockExpandedAt] = useState<string | null>(null);
+  const bottomChromeRef = useRef<HTMLDivElement | null>(null);
+  const [bottomChromeHeight, setBottomChromeHeight] = useState<number | null>(
+    null,
+  );
   const isDockExpanded = dockExpandedAt === routeKey;
 
   const toggleDockExpanded = () => {
     setDockExpandedAt((prev) => (prev === routeKey ? null : routeKey));
   };
 
+  useEffect(() => {
+    const node = bottomChromeRef.current;
+    if (!node) {
+      setBottomChromeHeight(0);
+      return;
+    }
+
+    const updateBottomChromeHeight = () => {
+      setBottomChromeHeight(Math.ceil(node.getBoundingClientRect().height));
+    };
+
+    updateBottomChromeHeight();
+
+    const observer = new ResizeObserver(updateBottomChromeHeight);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [routeKey, scene?.dock]);
+
+  const viewportStyle = useMemo(
+    () =>
+      ({
+        '--game-bottom-offset':
+          bottomChromeHeight !== null
+            ? `${bottomChromeHeight}px`
+            : 'calc(env(safe-area-inset-bottom) + 7rem)',
+      }) as CSSProperties,
+    [bottomChromeHeight],
+  );
+
   return (
-    <div className="bg-paper h-screen overflow-hidden">
+    <div className="bg-paper min-h-[100svh]" style={viewportStyle}>
       <WorldChatFeedProvider>
-        <div className="flex h-full flex-col">
+        <div className="flex min-h-[100svh] flex-col">
           <GameTopHud snapshot={hud} />
-          <main className="min-h-0 flex-1 overflow-hidden">
+          <main
+            className="min-h-0 flex-1"
+            style={{
+              paddingBottom: 'var(--game-bottom-offset)',
+              scrollPaddingBottom: 'var(--game-bottom-offset)',
+            }}
+          >
             <Outlet />
           </main>
+        </div>
+        <div ref={bottomChromeRef} className="fixed inset-x-0 bottom-0 z-40">
           <WorldChatPreviewBar />
           <GameBottomDock
             sceneId={scene?.id ?? null}

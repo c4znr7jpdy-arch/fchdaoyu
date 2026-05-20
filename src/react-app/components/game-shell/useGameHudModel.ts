@@ -1,5 +1,6 @@
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { getPillToxicityStage, isConditionStatusActive } from '@shared/lib/condition';
+import { getResourceLabel, getResourceText } from '@shared/lib/resourceText';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 
 export interface GameHudMetric {
@@ -98,21 +99,21 @@ export function buildGameHudSnapshot(input: {
     metrics: [
       {
         key: 'hp',
-        label: '气血',
+        label: getResourceLabel('hp'),
         display: `${currentHp}/${maxHp}`,
         percent: Math.round(clamp((currentHp / maxHp) * 100, 0, 100)),
         tone: 'hp',
       },
       {
         key: 'mp',
-        label: '法力',
+        label: getResourceLabel('mp'),
         display: `${currentMp}/${maxMp}`,
         percent: Math.round(clamp((currentMp / maxMp) * 100, 0, 100)),
         tone: 'mp',
       },
       {
         key: 'cultivation',
-        label: '修为',
+        label: getResourceText('cultivation_exp'),
         display: `${cultivationPercent}%`,
         percent: cultivationPercent,
         tone: 'progress',

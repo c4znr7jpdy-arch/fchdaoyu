@@ -7,7 +7,7 @@ import { EffectContext, GameplayEffect } from './Effect';
 
 /**
  * 焚元原子效果
- * 削减目标的 MP
+ * 削减目标的法力
  */
 export class ManaBurnEffect extends GameplayEffect {
   constructor(private params: ManaBurnParams) {
@@ -22,7 +22,7 @@ export class ManaBurnEffect extends GameplayEffect {
 
     if (burnAmount <= 0) return;
 
-    // 执行 MP 削减
+    // 执行法力削减
     const actualBurned = target.takeMp(burnAmount);
 
     // 发布焚元事件

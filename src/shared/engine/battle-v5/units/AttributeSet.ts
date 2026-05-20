@@ -126,11 +126,11 @@ class Attribute {
  * 5维属性系统 + 派生二级属性体系
  *
  * 主属性（5维，整数，默认 10）：
- * - SPIRIT    (灵力)    — 法系输出、MP、护盾
+ * - SPIRIT    (灵力)    — 法系输出、法力、护盾
  * - VITALITY  (体魄)    — 气血上限、物攻、物防
  * - SPEED     (身法)    — 出手顺序、暴击率基础、闪避率
  * - WILLPOWER (神识)    — 控制命中、控制抗性、法防
- * - WISDOM    (悟性)    — 暴击率加成、暴击伤害上限、MP上限
+ * - WISDOM    (悟性)    — 暴击率加成、暴击伤害上限、法力上限
  *
  * 派生型二级属性（浮点，base=公式，modifier 可叠加）：
  * - ATK                物理攻击   = VITALITY×4+SPEED×1
@@ -349,14 +349,14 @@ export class AttributeSet {
   }
 
   /**
-   * HP = 200 + VITALITY×16
+   * 气血 = 200 + VITALITY×16
    */
   getMaxHp(): number {
     return this.getValue(AttributeType.MAX_HP);
   }
 
   /**
-   * MP = 100 + SPIRIT×5 + WILLPOWER×3
+   * 法力 = 100 + SPIRIT×5 + WILLPOWER×3
    */
   getMaxMp(): number {
     return this.getValue(AttributeType.MAX_MP);

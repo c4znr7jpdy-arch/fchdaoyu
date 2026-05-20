@@ -54,7 +54,7 @@ export interface AttrsStateView {
   // 资源上限
   /** 最大气血 */
   maxHp: number;
-  /** 最大真元 */
+  /** 最大法力 */
   maxMp: number;
 }
 

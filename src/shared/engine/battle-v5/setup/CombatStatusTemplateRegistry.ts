@@ -144,11 +144,11 @@ combatStatusTemplateRegistry.register({
 
 combatStatusTemplateRegistry.register({
   id: 'mana_depleted',
-  name: '真元枯竭',
-  description: '真元暂未恢复，短时间内不宜再连番斗法。',
+  name: '法力枯竭',
+  description: '法力暂未恢复，短时间内不宜再连番斗法。',
   display: {
     icon: '💧',
-    shortDesc: '真元未复',
+    shortDesc: '法力未复',
     showUses: false,
     showExpiry: false,
   },

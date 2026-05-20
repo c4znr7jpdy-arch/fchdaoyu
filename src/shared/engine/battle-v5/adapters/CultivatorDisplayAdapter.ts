@@ -141,7 +141,7 @@ export interface CultivatorDisplayAttributes {
   attrs: AttrsStateView;
   /** 最大气血 */
   maxHp: number;
-  /** 最大真元/法力 */
+  /** 最大法力 */
   maxMp: number;
   /**
    * 展示层过渡期兼容字段（等价于旧 Attributes 扩展结构），

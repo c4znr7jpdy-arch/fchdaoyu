@@ -228,7 +228,7 @@ describe('战斗引擎 V5 原子效果全量回归验证 (最终回归版)', () 
     defender.abilities.addAbility(
       AbilityFactory.create({
         slug: 'shield',
-        name: '真元盾',
+        name: '法力盾',
         type: AbilityType.ACTIVE_SKILL,
         tags: [GameplayTags.ABILITY.KIND.SKILL],
         mpCost: 200,
@@ -327,15 +327,15 @@ describe('战斗引擎 V5 原子效果全量回归验证 (最终回归版)', () 
 
     console.log('--- 测试【伤害免疫优先于魔法盾】：实际战斗场景 ---');
     console.log(
-      '攻击者 HP:',
+      '攻击者气血:',
       attacker.getCurrentHp(),
-      'MP:',
+      '法力:',
       attacker.getCurrentMp(),
     );
     console.log(
-      '防御者 HP:',
+      '防御者气血:',
       defender.getCurrentHp(),
-      'MP:',
+      '法力:',
       defender.getCurrentMp(),
     );
 
@@ -409,19 +409,19 @@ describe('战斗引擎 V5 原子效果全量回归验证 (最终回归版)', () 
 
     console.log('战斗日志：', result.logs);
     console.log(
-      '攻击者 HP:',
+      '攻击者气血:',
       attacker.getCurrentHp(),
-      'MP:',
+      '法力:',
       attacker.getCurrentMp(),
     );
     console.log(
-      '防御者 HP:',
+      '防御者气血:',
       defender.getCurrentHp(),
-      'MP:',
+      '法力:',
       defender.getCurrentMp(),
     );
 
-    // 验证：伤害应该被免疫为 0，因此魔法盾不应消耗 MP
+    // 验证：伤害应该被免疫为 0，因此魔法盾不应消耗法力
     expect(result.logs.some((log) => log.includes('免疫了此次伤害'))).toBe(
       true,
     );

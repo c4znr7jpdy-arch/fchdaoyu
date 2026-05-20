@@ -144,7 +144,7 @@ export interface DamageEvent extends CombatEvent {
   critMultiplier?: number; // 暴击倍率
 }
 
-// ===== 真元护盾抵扣事件 =====
+// ===== 法力护盾抵扣事件 =====
 export interface ManaShieldAbsorbEvent extends CombatEvent {
   type: 'ManaShieldAbsorbEvent';
   caster?: Unit;

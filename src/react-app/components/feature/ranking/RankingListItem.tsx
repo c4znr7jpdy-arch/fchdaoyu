@@ -1,5 +1,13 @@
+import {
+  PillKeywordLine,
+  toPillDisplayModel,
+} from '@app/components/feature/consumables';
 import { InkBadge, type Tier } from '@app/components/ui/InkBadge';
 import { InkButton } from '@app/components/ui/InkButton';
+import { isPillSpec } from '@shared/lib/consumables';
+import type { RealmType } from '@shared/types/constants';
+import type { PillSpec } from '@shared/types/consumable';
+import type { Consumable } from '@shared/types/cultivator';
 import {
   CONSUMABLE_TYPE_DISPLAY_MAP,
   getEquipmentSlotInfo,
@@ -22,6 +30,7 @@ interface RankingListItemProps {
   customSubtitle?: string;
   customMeta?: string;
   isItem?: boolean;
+  viewerRealm?: RealmType;
   onViewDetails?: (item: ItemRankingEntry) => void;
 }
 
@@ -36,6 +45,7 @@ function RankingListItemComponent({
   customSubtitle,
   customMeta,
   isItem = false,
+  viewerRealm,
   onViewDetails,
 }: RankingListItemProps) {
   // Type guards/assertions for convenience
@@ -51,6 +61,19 @@ function RankingListItemComponent({
       : '';
 
   if (isItem && rankItem) {
+    const pillDisplay =
+      rankItem.itemType === 'elixir' &&
+      isPillSpec(rankItem.spec as PillSpec | undefined)
+        ? toPillDisplayModel({
+            id: rankItem.id,
+            name: rankItem.name,
+            type: (rankItem.type as Consumable['type']) || '丹药',
+            quality: rankItem.quality as Consumable['quality'],
+            quantity: rankItem.quantity || 1,
+            description: rankItem.description,
+            spec: rankItem.spec as PillSpec,
+          }, { realm: viewerRealm })
+        : null;
     const icon =
       rankItem.itemType === 'artifact'
         ? getEquipmentSlotInfo(
@@ -86,6 +109,14 @@ function RankingListItemComponent({
           )}
           {rankItem.element && <InkBadge tone="default">{rankItem.element}</InkBadge>}
           <span className="text-sm opacity-80">持有者: {rankItem.ownerName}</span>
+        </div>
+        <div className="ml-16 space-y-1 pb-2">
+          <p className="text-sm opacity-80">
+            {pillDisplay?.primaryEffect || rankItem.description || '暂无描述'}
+          </p>
+          {pillDisplay ? (
+            <PillKeywordLine labels={pillDisplay.keywordLabels} />
+          ) : null}
         </div>
         <div className="ml-16 flex justify-end">
           <InkButton

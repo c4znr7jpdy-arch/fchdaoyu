@@ -7,8 +7,9 @@
  * 例：
  *   reflect 34%            → "反弹 34% 伤害"
  *   shield {base=38, ...}  → "获得护盾 38 + 神识×29%"
- *   heal mp                → "回复真元 12 + 灵力×40%"
+ *   heal mp                → "回复法力 12 + 灵力×40%"
  */
+import { getResourceLabel } from '@shared/lib/resourceText';
 import type { EffectConfig } from '../../core/configs';
 import { formatAffixNumber, formatAffixPercent } from './format';
 import { formatScalableValue } from './values';
@@ -47,7 +48,7 @@ export function describeEffectCore(effect: EffectConfig): string {
       return `造成 ${formatScalableValue(effect.params.value)} 点伤害`;
 
     case 'heal': {
-      const resource = effect.params.target === 'mp' ? '真元' : '气血';
+      const resource = getResourceLabel(effect.params.target ?? 'hp');
       return `回复${resource} ${formatScalableValue(effect.params.value)}`;
     }
 
@@ -55,14 +56,15 @@ export function describeEffectCore(effect: EffectConfig): string {
       return `获得护盾 ${formatScalableValue(effect.params.value)}`;
 
     case 'mana_burn':
-      return `削减真元 ${formatScalableValue(effect.params.value)}`;
+      return `削减法力 ${formatScalableValue(effect.params.value)}`;
 
     case 'reflect':
       return `反弹 ${formatAffixPercent(effect.params.ratio)} 伤害`;
 
     case 'resource_drain': {
-      const source = effect.params.sourceType === 'hp' ? '伤害' : '真元消耗';
-      const target = effect.params.targetType === 'hp' ? '气血' : '真元';
+      const source =
+        effect.params.sourceType === 'hp' ? '伤害' : '法力消耗';
+      const target = getResourceLabel(effect.params.targetType);
       return `将 ${formatAffixPercent(effect.params.ratio)} ${source}转化为${target}`;
     }
 

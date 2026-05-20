@@ -41,7 +41,7 @@ describe('免疫效果集成测试', () => {
     );
   }
 
-  it('魔法盾应消耗 MP 并吸收 98% 伤害', () => {
+  it('魔法盾应消耗法力并吸收 98% 伤害', () => {
     const attacker = createUnit('attacker', '进攻者');
     const defender = createUnit('defender', '护盾者');
     addPassiveDamageListener(defender, [{ type: 'magic_shield', params: {} }]);
@@ -75,7 +75,7 @@ describe('免疫效果集成测试', () => {
     EventBus.instance.unsubscribe<ManaShieldAbsorbEvent>('ManaShieldAbsorbEvent', handler);
   });
 
-  it('魔法盾在 MP 不足时应部分吸收伤害', () => {
+  it('魔法盾在法力不足时应部分吸收伤害', () => {
     const attacker = createUnit('attacker', '进攻者');
     const defender = createUnit('defender', '护盾者');
     addPassiveDamageListener(defender, [{ type: 'magic_shield', params: {} }]);

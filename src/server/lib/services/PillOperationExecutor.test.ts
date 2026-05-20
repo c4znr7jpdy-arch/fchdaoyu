@@ -77,6 +77,44 @@ describe('PillOperationExecutor', () => {
     ]);
   });
 
+  it('restores resources by percent of current maxima', () => {
+    const cultivator = createCultivator();
+    cultivator.condition = {
+      ...ConditionService.normalizeCondition(cultivator),
+      resources: {
+        hp: { current: 100 },
+        mp: { current: 120 },
+      },
+    };
+
+    const pill = createPill('回春丹', {
+      kind: 'pill',
+      family: 'hybrid',
+      operations: [
+        { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.2 },
+        { type: 'restore_resource', resource: 'mp', mode: 'percent', value: 0.1 },
+      ],
+      consumeRules: {
+        scene: 'out_of_battle_only',
+        countsTowardLongTermQuota: false,
+      },
+      alchemyMeta: {
+        source: 'improvised',
+        sourceMaterials: ['青岚草'],
+        stability: 72,
+        toxicityRating: 4,
+        tags: ['healing', 'mana'],
+      },
+    });
+
+    const result = PillOperationExecutor.execute(cultivator, pill);
+
+    expect(result.cultivator.condition?.resources).toEqual({
+      hp: { current: 268 },
+      mp: { current: 157 },
+    });
+  });
+
   it('rejects pills that exceed the realm long-term quota', () => {
     const cultivator = createCultivator();
     const condition: CultivatorCondition = {
@@ -106,7 +144,7 @@ describe('PillOperationExecutor', () => {
       },
     });
 
-    expect(() => PillOperationExecutor.execute(cultivator, pill)).toThrow('长期丹药服用次数已达上限');
+    expect(() => PillOperationExecutor.execute(cultivator, pill)).toThrow('该丹药服用次数已达上限');
   });
 
   it('advances tracks, settles permanent rewards, and keeps overflow progress', () => {

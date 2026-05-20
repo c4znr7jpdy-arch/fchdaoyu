@@ -73,8 +73,8 @@ describe('synthesizeAlchemy', () => {
 
     expect(result.family).toBe('hybrid');
     expect(result.operations).toEqual([
-      { type: 'restore_resource', resource: 'hp', mode: 'flat', value: 132 },
-      { type: 'restore_resource', resource: 'mp', mode: 'flat', value: 99 },
+      { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.1328 },
+      { type: 'restore_resource', resource: 'mp', mode: 'percent', value: 0.0996 },
       { type: 'change_gauge', gauge: 'pillToxicity', delta: 6 },
     ]);
   });
@@ -150,7 +150,7 @@ describe('synthesizeAlchemy', () => {
     expect(result.family).toBe('healing');
     expect(result.stability).toBe(15);
     expect(result.operations).toEqual([
-      { type: 'restore_resource', resource: 'hp', mode: 'flat', value: 159 },
+      { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.1594 },
       { type: 'change_gauge', gauge: 'pillToxicity', delta: 8 },
       { type: 'remove_status', status: 'minor_wound' },
     ]);

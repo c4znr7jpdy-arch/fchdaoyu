@@ -3,6 +3,7 @@
  *
  * 所有面向玩家的文案（词缀渲染、战报、UI）都应从这里引用，避免在多处重复定义。
  */
+import { getResourceText } from '@shared/lib/resourceText';
 import { AttributeType } from '../../core/types';
 
 export const ATTR_LABELS: Record<AttributeType, string> = {
@@ -20,8 +21,8 @@ export const ATTR_LABELS: Record<AttributeType, string> = {
   [AttributeType.EVASION_RATE]: '闪避率',
   [AttributeType.CONTROL_HIT]: '控制命中',
   [AttributeType.CONTROL_RESISTANCE]: '控制抗性',
-  [AttributeType.MAX_HP]: '气血上限',
-  [AttributeType.MAX_MP]: '真元上限',
+  [AttributeType.MAX_HP]: getResourceText('maxHp'),
+  [AttributeType.MAX_MP]: getResourceText('maxMp'),
   [AttributeType.ARMOR_PENETRATION]: '破防',
   [AttributeType.MAGIC_PENETRATION]: '法穿',
   [AttributeType.CRIT_RESIST]: '暴击抗性',

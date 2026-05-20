@@ -92,6 +92,23 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function scaleRestoreOperationValue(
+  operation: Extract<ConditionOperation, { type: 'restore_resource' }>,
+  factor: number,
+): Extract<ConditionOperation, { type: 'restore_resource' }> {
+  if (operation.mode === 'percent') {
+    return {
+      ...operation,
+      value: Math.max(0.0001, Number((operation.value * factor).toFixed(4))),
+    };
+  }
+
+  return {
+    ...operation,
+    value: Math.max(1, Math.floor(operation.value * factor)),
+  };
+}
+
 function sortJsonValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(sortJsonValue);
@@ -516,10 +533,11 @@ function scaleFormulaOperations(
   fitMultiplier: number,
 ): ConditionOperation[] {
   return operations.map((operation) => {
-    if (
-      operation.type === 'restore_resource' ||
-      operation.type === 'advance_track'
-    ) {
+    if (operation.type === 'restore_resource') {
+      return scaleRestoreOperationValue(operation, fitMultiplier);
+    }
+
+    if (operation.type === 'advance_track') {
       return {
         ...operation,
         value: Math.max(1, Math.floor(operation.value * fitMultiplier)),

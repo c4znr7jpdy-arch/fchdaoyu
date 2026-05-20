@@ -77,7 +77,7 @@ describe('BattleInitApplier', () => {
     expect(opponentUnit.getCurrentHp()).toBe(10_000_000);
   });
 
-  test('状态模板与资源状态按统一顺序初始化，当前 HP 基于最终上限结算', () => {
+  test('状态模板与资源状态按统一顺序初始化，当前气血基于最终上限结算', () => {
     const player = createCultivator('player', '道友');
     const opponent = createCultivator('dummy', '木桩');
 

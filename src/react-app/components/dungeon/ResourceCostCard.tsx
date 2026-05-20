@@ -37,7 +37,7 @@ export function ResourceCostCard({
     <InkCard className={compact ? 'p-3' : 'p-4'}>
       {!compact && <h3 className="mb-3 font-bold">资源损耗</h3>}
       <div className="space-y-2 text-sm">
-        {/* HP/MP损失 */}
+        {/* 气血/法力损失 */}
         {(hpLossPercent > 0 || mpLossPercent > 0) && (
           <div className="space-y-1">
             {hpLossPercent > 0 && (

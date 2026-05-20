@@ -467,6 +467,7 @@ export default function RankingsPage() {
                         : undefined
                     }
                     isItem={!isBattle}
+                    viewerRealm={cultivator?.realm}
                     onViewDetails={
                       !isBattle
                         ? (selectedItem) =>
@@ -488,6 +489,7 @@ export default function RankingsPage() {
         item={selectedItemDetail}
         isOpen={Boolean(selectedItemDetail)}
         onClose={() => setSelectedItemDetail(null)}
+        viewerRealm={cultivator?.realm}
       />
 
       <InkModal

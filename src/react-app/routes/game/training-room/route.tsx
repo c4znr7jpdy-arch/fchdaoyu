@@ -12,6 +12,7 @@ import { ATTR_LABELS } from '@shared/engine/battle-v5/effects/affixText/attribut
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import type { BattleRecord } from '@shared/types/battle';
 import { simulateBattleV5 } from '@shared/lib/battle/simulateBattleV5';
+import { getResourceText } from '@shared/lib/resourceText';
 import {
   buildTrainingBattleInitConfig, createDefaultTrainingRoomDraft, parseTrainingRoomStorage, TRAINING_ROOM_STORAGE_KEY, TRAINING_ROOM_STORAGE_VERSION, type TrainingRoomDraft, type TrainingRoomPreset, } from '@shared/lib/training-room/config';
 import type { Cultivator } from '@shared/types/cultivator';
@@ -473,7 +474,7 @@ export default function TrainingRoomPage() {
                     <p className="mb-3 text-base font-semibold text-ink">木桩基础设置</p>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <NumberField
-                        label="木桩气血上限"
+                        label={`木桩${getResourceText('maxHp')}`}
                         value={draft.dummy.maxHp}
                         min={0}
                         onChange={(value) =>
@@ -487,7 +488,7 @@ export default function TrainingRoomPage() {
                         }
                       />
                       <NumberField
-                        label="木桩真元上限"
+                        label={`木桩${getResourceText('maxMp')}`}
                         value={draft.dummy.maxMp}
                         min={0}
                         onChange={(value) =>

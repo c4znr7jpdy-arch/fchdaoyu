@@ -6,7 +6,7 @@ import { EffectContext, GameplayEffect } from './Effect';
 
 /**
  * 魔法盾原子效果
- * 以 MP 换取伤害吸收，不占用实体护盾池。
+ * 以法力换取伤害吸收，不占用实体护盾池。
  */
 export class MagicShieldEffect extends GameplayEffect {
   constructor(private readonly params: MagicShieldParams = {}) {

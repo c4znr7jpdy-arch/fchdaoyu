@@ -4,6 +4,7 @@ import { getPillToxicityStage, isConditionStatusActive } from '@shared/lib/condi
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { getAllTrackConfigs } from '@shared/lib/trackConfigRegistry';
 import { cn } from '@shared/lib/cn';
+import { getResourceLabel } from '@shared/lib/resourceText';
 import type { ConditionTrackPath } from '@shared/types/condition';
 import { useState } from 'react';
 
@@ -170,13 +171,13 @@ export function CultivatorCurrentStatusSection() {
         <div>
           <CompactInfoRow
             icon="❤️"
-            label="气血"
+            label={getResourceLabel('hp')}
             note="当前 / 上限"
             value={`${state.currentHp} / ${state.maxHp}`}
           />
           <CompactInfoRow
             icon="💧"
-            label="真元"
+            label={getResourceLabel('mp')}
             note="当前 / 上限"
             value={`${state.currentMp} / ${state.maxMp}`}
           />

@@ -3,6 +3,10 @@ import {
   toInventoryItemDetail, type ItemDetailPayload, } from '@app/routes/game/inventory/components/itemDetailPayload';
 import {
   TEMP_DISABLED_MESSAGES, temporaryRestrictions, } from '@shared/config/temporaryRestrictions';
+import {
+  PillKeywordLine,
+  toPillDisplayModel,
+} from '@app/components/feature/consumables';
 import { formatProbeResultContent } from '@app/components/func/ProbeResult';
 import { InkSection } from '@app/components/layout';
 import { InkModal } from '@app/components/layout/InkModal';
@@ -13,6 +17,7 @@ import { ItemCard } from '@app/components/ui/ItemCard';
 import { tierColorMap, type Tier } from '@app/components/ui/InkBadge';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { cn } from '@shared/lib/cn';
+import { isPillConsumable } from '@shared/lib/consumables';
 import { REALM_VALUES, type RealmType } from '@shared/types/constants';
 import type { Artifact, Consumable, Material } from '@shared/types/cultivator';
 import { useNavigate } from 'react-router';
@@ -176,7 +181,7 @@ function normalizeStakeSnapshot(raw: unknown): BetStakeSnapshot {
   };
 }
 
-function getInventoryCardProps(item: InventoryItem) {
+function getInventoryCardProps(item: InventoryItem, realm?: RealmType) {
   if (item.itemType === 'material') {
     const typeInfo = getMaterialTypeInfo(item.type);
     return {
@@ -213,6 +218,9 @@ function getInventoryCardProps(item: InventoryItem) {
   }
 
   const typeInfo = CONSUMABLE_TYPE_DISPLAY_MAP[item.type];
+  const pillDisplay = isPillConsumable(item)
+    ? toPillDisplayModel(item, { realm })
+    : null;
   return {
     icon: typeInfo.icon,
     quality: item.quality,
@@ -222,8 +230,10 @@ function getInventoryCardProps(item: InventoryItem) {
         <span className="text-ink-secondary text-sm">x{item.quantity}</span>
       </>
     ),
-    meta: null,
-    description: item.description,
+    meta: pillDisplay ? (
+      <PillKeywordLine labels={pillDisplay.keywordLabels} />
+    ) : null,
+    description: pillDisplay?.primaryEffect ?? item.description,
   };
 }
 
@@ -716,8 +726,8 @@ export default function BetBattlePage() {
   };
 
   return (
-    <div className="battle-scroll h-full overflow-y-auto">
-      <div className="mx-auto flex min-h-full max-w-5xl flex-col px-3 pt-4 pb-[calc(env(safe-area-inset-bottom)+2rem)] md:px-6 md:pt-5 md:pb-[calc(env(safe-area-inset-bottom)+2.4rem)]">
+    <div>
+      <div className="mx-auto flex max-w-5xl flex-col px-3 pt-4 pb-8 md:px-6 md:pt-5 md:pb-10">
         <section className="border-battle-rule-strong bg-[rgba(248,243,230,0.88)] border border-dashed px-4 py-4 md:px-5 md:py-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0">
@@ -818,6 +828,7 @@ export default function BetBattlePage() {
           isOpen={!!selectedStakeDetail}
           onClose={() => setSelectedStakeDetail(null)}
           item={selectedStakeDetail}
+          viewerRealm={cultivator?.realm}
         />
       </div>
     </div>
@@ -832,6 +843,7 @@ function BetBattleCreateModal({
   onSuccess: () => Promise<void>;
 }) {
   const { pushToast } = useInkUI();
+  const { cultivator } = useCultivator();
   const [selectedStakeType, setSelectedStakeType] = useState<
     'spirit_stones' | 'material' | 'artifact'
   >('spirit_stones');
@@ -1024,7 +1036,7 @@ function BetBattleCreateModal({
                 <InkList>
                   {currentItems.map((item) => {
                     if (!item.id) return null;
-                    const card = getInventoryCardProps(item);
+                    const card = getInventoryCardProps(item, cultivator?.realm);
                     const checked = selectedItem?.itemId === item.id;
                     return (
                       <ItemCard
@@ -1174,6 +1186,7 @@ function BetBattleChallengeModal({
   onClose: () => void;
 }) {
   const { pushToast } = useInkUI();
+  const { cultivator } = useCultivator();
   const navigate = useNavigate();
   const creatorStake = battle.creatorStakeSnapshot;
   const [selectedItem, setSelectedItem] = useState<SelectedStake | null>(null);
@@ -1349,7 +1362,7 @@ function BetBattleChallengeModal({
                   availableCandidates.map((item) => {
                     if (!requiredItem || !item.id) return null;
                     const checked = selectedItem?.itemId === item.id;
-                    const card = getInventoryCardProps(item);
+                    const card = getInventoryCardProps(item, cultivator?.realm);
                     return (
                       <ItemCard
                         key={`${item.itemType}-${item.id}`}

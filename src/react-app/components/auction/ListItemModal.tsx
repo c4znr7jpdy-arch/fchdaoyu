@@ -1,5 +1,9 @@
 import { InkModal } from '@app/components/layout/InkModal';
 import {
+  PillKeywordLine,
+  toPillDisplayModel,
+} from '@app/components/feature/consumables';
+import {
   TEMP_DISABLED_MESSAGES,
   temporaryRestrictions,
 } from '@shared/config/temporaryRestrictions';
@@ -14,6 +18,7 @@ import {
 } from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
 import { cn } from '@shared/lib/cn';
+import { isPillConsumable } from '@shared/lib/consumables';
 import {
   CONSUMABLE_TYPE_VALUES,
   ELEMENT_VALUES,
@@ -428,6 +433,7 @@ export function ListItemModal({
     const baseInfo = {
       name: item.name,
       description: item.description,
+      pillKeywordLabels: undefined as string[] | undefined,
     };
 
     switch (item.itemType) {
@@ -466,10 +472,15 @@ export function ListItemModal({
       case 'consumable': {
         const consumable = item as Consumable;
         const typeInfo = CONSUMABLE_TYPE_DISPLAY_MAP[consumable.type];
+        const pillDisplay = isPillConsumable(consumable)
+          ? toPillDisplayModel(consumable, { realm: cultivator?.realm })
+          : null;
         return {
           ...baseInfo,
           icon: typeInfo.icon,
           quality: consumable.quality,
+          description: pillDisplay?.primaryEffect ?? consumable.description,
+          pillKeywordLabels: pillDisplay?.keywordLabels,
           badgeExtra: (
             <>
               <InkBadge tone="default">{consumable.type}</InkBadge>
@@ -920,8 +931,11 @@ export function ListItemModal({
                       layout="col"
                       {...displayProps}
                       meta={
-                        <div className="text-ink-secondary mt-1 text-xs">
-                          数量: x{isStackableItem(item) ? item.quantity : 1}
+                        <div className="text-ink-secondary mt-1 space-y-1 text-xs">
+                          {displayProps.pillKeywordLabels ? (
+                            <PillKeywordLine labels={displayProps.pillKeywordLabels} />
+                          ) : null}
+                          <div>数量: x{isStackableItem(item) ? item.quantity : 1}</div>
                         </div>
                       }
                       actions={
@@ -991,8 +1005,16 @@ export function ListItemModal({
                   return displayProps.badgeExtra;
                 })()}
               </div>
+              {(() => {
+                const displayProps = getItemDisplayProps(selectedItem);
+                return displayProps.pillKeywordLabels ? (
+                  <div className="mt-2">
+                    <PillKeywordLine labels={displayProps.pillKeywordLabels} />
+                  </div>
+                ) : null;
+              })()}
               <p className="text-ink-secondary mt-1 text-sm">
-                {selectedItem.description}
+                {getItemDisplayProps(selectedItem).description}
               </p>
               {selectedItem.itemType !== 'artifact' && (
                 <p className="text-ink-secondary mt-2 text-sm">

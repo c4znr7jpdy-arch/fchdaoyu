@@ -169,7 +169,7 @@ describe('craft router alchemy routes', () => {
           kind: 'pill',
           family: 'healing',
           operations: [
-            { type: 'restore_resource', resource: 'hp', mode: 'flat', value: 120 },
+            { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
           ],
           consumeRules: {
             scene: 'out_of_battle_only',
@@ -236,7 +236,7 @@ describe('craft router alchemy routes', () => {
           kind: 'pill',
           family: 'healing',
           operations: [
-            { type: 'restore_resource', resource: 'hp', mode: 'flat', value: 126 },
+            { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.126 },
           ],
           consumeRules: {
             scene: 'out_of_battle_only',

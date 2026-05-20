@@ -3,6 +3,7 @@ import type {
   AttrsStateView,
   UnitStateSnapshot,
 } from '@shared/engine/battle-v5/systems/state/types';
+import { getResourceText } from '@shared/lib/resourceText';
 import { InkModal } from '@app/components/layout/InkModal';
 import { format } from 'd3-format';
 
@@ -36,8 +37,8 @@ const ATTR_LABELS: Partial<Record<keyof AttrsStateView, string>> = {
   critDamageReduction: '暴击减伤',
   accuracy: '精准',
   healAmplify: '治疗增强',
-  maxHp: '气血上限',
-  maxMp: '真元上限',
+  maxHp: getResourceText('maxHp'),
+  maxMp: getResourceText('maxMp'),
 };
 
 function formatBuffLabel(buff: UnitStateSnapshot['buffs'][number]) {

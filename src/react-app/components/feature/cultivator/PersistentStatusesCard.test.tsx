@@ -157,7 +157,7 @@ describe('PersistentStatusesCard sections', () => {
     expect(html).toContain('当前状态');
     expect(html).toContain('气血');
     expect(html).toContain('80 / 120');
-    expect(html).toContain('真元');
+    expect(html).toContain('法力');
     expect(html).toContain('40 / 60');
     expect(html).toContain('丹毒');
     expect(html).toContain('12');

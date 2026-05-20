@@ -11,6 +11,7 @@ import {
   isConditionStatusActive,
 } from '@shared/lib/condition';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
+import { getResourceLabel } from '@shared/lib/resourceText';
 import { getAllTrackConfigs } from '@shared/lib/trackConfigRegistry';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
@@ -31,7 +32,6 @@ export function HomeView() {
   const {
     status: lifespanStatus,
     loading: lifespanLoading,
-    error: lifespanError,
   } = useLifespanStatus({
     cultivatorId: cultivator?.id ?? '',
     autoRefresh: true,
@@ -179,10 +179,10 @@ export function HomeView() {
       .join('、');
     const parts = [
       caveStatus && caveStatus.currentHp < caveStatus.maxHp
-        ? `气血 ${caveStatus.currentHp}/${caveStatus.maxHp}`
+        ? `${getResourceLabel('hp')} ${caveStatus.currentHp}/${caveStatus.maxHp}`
         : null,
       caveStatus && caveStatus.currentMp < caveStatus.maxMp
-        ? `真元 ${caveStatus.currentMp}/${caveStatus.maxMp}`
+        ? `${getResourceLabel('mp')} ${caveStatus.currentMp}/${caveStatus.maxMp}`
         : null,
       caveStatus?.pillToxicityStage.key !== 'none'
         ? caveStatus.pillToxicityStage.label

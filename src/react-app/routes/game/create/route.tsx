@@ -29,6 +29,7 @@ import { attrLabel } from '@shared/engine/battle-v5/effects/affixText/attributes
 import { AttributeType } from '@shared/engine/battle-v5/core/types';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { cn } from '@shared/lib/cn';
+import { getResourceLabel } from '@shared/lib/resourceText';
 import type { Cultivator } from '@shared/types/cultivator';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -579,12 +580,12 @@ export default function CreatePage() {
                               icon: player.gender === '男' ? '♂' : '♀',
                             },
                             {
-                              label: '气血：',
+                              label: `${getResourceLabel('hp')}：`,
                               value: `${previewStats?.maxHp}`,
                               icon: '❤️',
                             },
                             {
-                              label: '灵力：',
+                              label: `${getResourceLabel('mp')}：`,
                               value: `${previewStats?.maxMp}`,
                               icon: '⚡️',
                             },

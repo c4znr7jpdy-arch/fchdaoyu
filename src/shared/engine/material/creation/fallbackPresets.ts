@@ -235,7 +235,7 @@ export const FALLBACK_MATERIAL_LIBRARY: Record<MaterialType, QualityPresets> = {
       {
         name: '归元地髓',
         description:
-          '地髓沉凝如膏，外覆细密土纹，结丹修士多以其调和药力，能在闭关时持续补益真元并修复暗损经脉。',
+          '地髓沉凝如膏，外覆细密土纹，结丹修士多以其调和药力，能在闭关时持续补益法力并修复暗损经脉。',
         element: '土',
       },
     ],
@@ -367,7 +367,7 @@ export const FALLBACK_MATERIAL_LIBRARY: Record<MaterialType, QualityPresets> = {
       {
         name: '厚土养元录',
         description:
-          '此录重在沉气入脉与缓养真元，结丹修士依序运转可逐步补强根骨承载，适合作为长期闭关的基础功法。',
+          '此录重在沉气入脉与缓养法力，结丹修士依序运转可逐步补强根骨承载，适合作为长期闭关的基础功法。',
         element: '土',
       },
     ],
@@ -399,7 +399,7 @@ export const FALLBACK_MATERIAL_LIBRARY: Record<MaterialType, QualityPresets> = {
       {
         name: '太虚衍道真解',
         description:
-          '真解以观想配合内炼，强调悟道与根基同修，合体修士长期循行可持续纯化真元结构，并触及更高法则门槛。',
+          '真解以观想配合内炼，强调悟道与根基同修，合体修士长期循行可持续纯化灵力结构，并触及更高法则门槛。',
         element: '风',
       },
     ],

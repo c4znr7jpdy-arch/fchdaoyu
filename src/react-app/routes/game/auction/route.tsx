@@ -5,6 +5,10 @@ import {
   TEMP_DISABLED_MESSAGES, temporaryRestrictions, } from '@shared/config/temporaryRestrictions';
 import { ListItemModal } from '@app/components/auction/ListItemModal';
 import {
+  PillKeywordLine,
+  toPillDisplayModel,
+} from '@app/components/feature/consumables';
+import {
   GameSceneAsideSection,
   GameSceneFrame,
   GameSceneTabs,
@@ -18,6 +22,7 @@ import {
 } from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import { isPillConsumable } from '@shared/lib/consumables';
 import type { Artifact, Consumable, Material } from '@shared/types/cultivator';
 import {
   CONSUMABLE_TYPE_DISPLAY_MAP, getConsumableRankInfo, getEquipmentSlotInfo, getMaterialTypeInfo, } from '@shared/types/dictionaries';
@@ -271,6 +276,7 @@ export default function AuctionPage() {
     const baseProps = {
       name: item.name,
       description: item.description,
+      pillKeywordLabels: undefined as string[] | undefined,
     };
 
     switch (listing.itemType) {
@@ -310,10 +316,15 @@ export default function AuctionPage() {
         const consumable = item as Consumable;
         const typeInfo = CONSUMABLE_TYPE_DISPLAY_MAP[consumable.type];
         const rankInfo = getConsumableRankInfo(consumable.quality || '凡品');
+        const pillDisplay = isPillConsumable(consumable)
+          ? toPillDisplayModel(consumable, { realm: cultivator?.realm })
+          : null;
         return {
           ...baseProps,
           icon: typeInfo.icon,
           quality: consumable.quality,
+          description: pillDisplay?.primaryEffect ?? consumable.description,
+          pillKeywordLabels: pillDisplay?.keywordLabels,
           badgeExtra: (
             <>
               <InkBadge tone="default">{rankInfo.label}</InkBadge>
@@ -343,6 +354,9 @@ export default function AuctionPage() {
         {...displayProps}
         meta={
           <div className="text-ink-secondary mt-1 space-y-2 text-xs">
+            {displayProps.pillKeywordLabels ? (
+              <PillKeywordLine labels={displayProps.pillKeywordLabels} />
+            ) : null}
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span>
@@ -521,6 +535,7 @@ export default function AuctionPage() {
         isOpen={!!selectedItem}
         onClose={() => setSelectedItem(null)}
         item={selectedItem}
+        viewerRealm={cultivator?.realm}
       />
     </GameSceneFrame>
   );

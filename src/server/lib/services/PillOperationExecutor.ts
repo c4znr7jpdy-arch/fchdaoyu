@@ -10,6 +10,7 @@ import type {
 import type { ConditionOperation, PillSpec } from '@shared/types/consumable';
 import type { Cultivator } from '@shared/types/cultivator';
 import { isPillConsumable } from '@shared/lib/consumables';
+import { getPillUsageLimitReachedText } from '@shared/lib/pillUsageText';
 import { REALM_PILL_USAGE_LIMITS } from '@shared/config/consumableSystem';
 import { ConditionService } from './ConditionService';
 
@@ -297,9 +298,7 @@ export const PillOperationExecutor = {
         nextCondition.counters.longTermPillUsesByRealm[nextCultivator.realm] ?? 0;
       const limit = REALM_PILL_USAGE_LIMITS[nextCultivator.realm];
       if (used >= limit) {
-        throw new Error(
-          `本境长期丹药服用次数已达上限（${used}/${limit}），无法继续服用。`,
-        );
+        throw new Error(getPillUsageLimitReachedText(used, limit));
       }
       nextCondition = {
         ...nextCondition,

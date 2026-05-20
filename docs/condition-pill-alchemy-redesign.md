@@ -65,14 +65,14 @@
 对应边界如下：
 
 - `角色基础面板`：境界、基础属性、灵根、装备、功法、技能、寿元、修为进度。
-- `角色当前状态`：当前 HP、当前 MP、丹毒、炼体进度、洗髓进度、长期状态、时间戳、次数计数。
+- `角色当前状态`：当前气血、当前法力、丹毒、炼体进度、洗髓进度、长期状态、时间戳、次数计数。
 - `状态模板系统`：定义某个状态如何影响战斗、恢复、突破、展示。
 - `玩法结算器`：只负责触发操作，不直接写散乱字段。
 
 ## 5. 核心术语
 
 - `condition`：角色当前状态总字段。
-- `resource`：当前资源值，例如 HP、MP。
+- `resource`：当前资源值，例如气血、法力。
 - `gauge`：可累积的连续量，例如丹毒。
 - `track`：长期成长进度，例如炼体、洗髓。
 - `counter`：玩法计数，例如本境长期丹药已服次数。
@@ -147,7 +147,7 @@ export type TemperingTrackKey =
 - `hp_deficit`
 - `mana_depleted`
 - “丹毒轻染 / 丹毒郁结 / 毒火攻心”这类丹毒展示标签
-- 当前 HP/MP 百分比
+- 当前气血/法力百分比
 - 由状态和资源共同推导出的前端提示文案
 
 ### 6.3 初始默认值
@@ -278,8 +278,8 @@ export interface ConditionStatusTemplate {
 
 以下内容统一迁入 `condition`：
 
-- 当前 HP
-- 当前 MP
+- 当前气血
+- 当前法力
 - 丹毒
 - 破境辅助状态
 - 炼体 / 洗髓进度
@@ -391,8 +391,8 @@ export type BattleMode =
 
 建议保留当前思路，但迁移到 `ConditionService`：
 
-- HP 每小时基础恢复：`maxHp * hpPerHour`
-- MP 每小时基础恢复：`maxMp * mpPerHour`
+- 气血每小时基础恢复：`maxHp * hpPerHour`
+- 法力每小时基础恢复：`maxMp * mpPerHour`
 - 丹毒越高，恢复倍率越低
 - `minor_wound / major_wound / near_death` 再额外降低恢复倍率
 
@@ -949,7 +949,7 @@ export interface AlchemyFormula {
 
 完成标准：
 
-- PVE 战后 HP/MP 与伤势可持续保存
+- PVE 战后气血/法力与伤势可持续保存
 - 排行榜和赌战仍保持满状态公平性
 
 ### Phase 3：丹药系统重做
@@ -1002,7 +1002,7 @@ export interface AlchemyFormula {
 满足以下条件时，视为本设计实现完成：
 
 - 角色存在唯一 `condition` 字段，不再维护 `persistent_state` 和 `persistent_statuses`
-- PVE 战斗会消耗并回写当前 HP/MP 与伤势
+- PVE 战斗会消耗并回写当前气血/法力与伤势
 - 排行榜挑战和赌战不受当前伤势影响
 - 丹药执行模型统一为 `operations`
 - 运行时代码不再保留旧丹药兼容逻辑

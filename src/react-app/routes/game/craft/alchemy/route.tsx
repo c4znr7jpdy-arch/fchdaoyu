@@ -3,6 +3,12 @@ import {
   SelectedMaterialsWithDose,
 } from '@app/components/feature/creation';
 import {
+  PillDetailGroups,
+  PillSummary,
+  getPillFamilyLabel,
+  toPillDisplayModel,
+} from '@app/components/feature/consumables';
+import {
   GameSceneAsideSection,
   GameSceneFrame,
   GameSceneNote,
@@ -25,14 +31,11 @@ import { CREATION_INPUT_CONSTRAINTS } from '@shared/engine/creation-v2/config/Cr
 import { cn } from '@shared/lib/cn';
 import { isPillConsumable } from '@shared/lib/consumables';
 import { getMaterialAlchemyTagLabel } from '@shared/lib/materialAlchemy';
-import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
-import type { MaterialType } from '@shared/types/constants';
+import type { MaterialType, RealmType } from '@shared/types/constants';
 import type {
   AlchemyFormula,
   AlchemyFormulaDiscoveryCandidate,
   AlchemyMode,
-  ConditionOperation,
-  PillFamily,
 } from '@shared/types/consumable';
 import type { Consumable, Material } from '@shared/types/cultivator';
 import { useEffect, useMemo, useState } from 'react';
@@ -118,55 +121,13 @@ const DEFAULT_PREVIEW_STATE: PreviewState = {
   previewError: null,
 };
 
-function getPillFamilyLabel(family: PillFamily): string {
-  switch (family) {
-    case 'healing':
-      return '疗伤';
-    case 'mana':
-      return '回元';
-    case 'detox':
-      return '解毒';
-    case 'breakthrough':
-      return '破境';
-    case 'tempering':
-      return '炼体';
-    case 'marrow_wash':
-      return '洗髓';
-    case 'hybrid':
-      return '复合';
-  }
-}
-
-function describeOperation(operation: ConditionOperation): string {
-  switch (operation.type) {
-    case 'restore_resource':
-      return `${operation.resource === 'hp' ? '恢复气血' : '恢复真元'} ${
-        operation.mode === 'percent'
-          ? `${Math.round(operation.value * 100)}%`
-          : `+${operation.value}`
-      }`;
-    case 'change_gauge':
-      return `丹毒变化 ${operation.delta > 0 ? '+' : ''}${operation.delta}`;
-    case 'remove_status':
-      return `移除状态 ${operation.status}`;
-    case 'add_status':
-      return `新增状态 ${operation.status}${
-        typeof operation.usesRemaining === 'number'
-          ? `（可用 ${operation.usesRemaining} 次）`
-          : ''
-      }`;
-    case 'advance_track':
-      return `推进 ${getTrackConfig(operation.track).name} +${operation.value}`;
-  }
-}
-
 function formatFormulaTags(formula: AlchemyFormula): string {
   return formula.pattern.requiredTags
     .map(getMaterialAlchemyTagLabel)
     .join('、');
 }
 
-function AlchemyResultModal({
+export function AlchemyResultModal({
   consumable,
   formulaDiscovery,
   formulaProgress,
@@ -175,6 +136,7 @@ function AlchemyResultModal({
   onAcceptDiscovery,
   onClose,
   onRejectDiscovery,
+  viewerRealm,
 }: {
   consumable: Consumable | null;
   formulaDiscovery: AlchemyFormulaDiscoveryCandidate | null;
@@ -184,11 +146,13 @@ function AlchemyResultModal({
   onAcceptDiscovery: () => void;
   onClose: () => void;
   onRejectDiscovery: () => void;
+  viewerRealm?: RealmType;
 }) {
   if (!consumable || !isPillConsumable(consumable)) {
     return null;
   }
 
+  const model = toPillDisplayModel(consumable, { realm: viewerRealm });
   const meta = consumable.spec.alchemyMeta;
 
   return (
@@ -212,34 +176,10 @@ function AlchemyResultModal({
           </InkBadge>
         ) : undefined,
       ].filter(Boolean)}
-      summary={
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="text-ink-secondary">稳度</div>
-          <div className="text-right font-semibold">{meta.stability}</div>
-          <div className="text-ink-secondary">丹毒</div>
-          <div className="text-right font-semibold">{meta.toxicityRating}</div>
-          <div className="text-ink-secondary">主元素</div>
-          <div className="text-right font-semibold">
-            {meta.dominantElement || '未显'}
-          </div>
-        </div>
-      }
+      summary={<PillSummary model={model} />}
       metaSection={
         <div className="space-y-2">
-          <div className="border-ink/10 border border-dashed p-3">
-            <div className="text-ink-secondary mb-2 text-xs">炼制材料</div>
-            <div className="text-sm">{meta.sourceMaterials.join('、')}</div>
-          </div>
-          <div className="border-ink/10 border border-dashed p-3">
-            <div className="text-ink-secondary mb-2 text-xs">药性结果</div>
-            <div className="space-y-1 text-sm">
-              {consumable.spec.operations.map((operation, index) => (
-                <div key={`${operation.type}-${index}`}>
-                  {describeOperation(operation)}
-                </div>
-              ))}
-            </div>
-          </div>
+          <PillDetailGroups groups={model.detailGroups} />
           {formulaProgress && (
             <div className="border-ink/10 border border-dashed p-3">
               <div className="text-ink-secondary mb-2 text-xs">丹方熟练</div>
@@ -1011,6 +951,7 @@ export default function AlchemyPage() {
         onAcceptDiscovery={() => void handleDiscoveryDecision(true)}
         onClose={() => setIsResultModalOpen(false)}
         onRejectDiscovery={() => void handleDiscoveryDecision(false)}
+        viewerRealm={cultivator?.realm}
       />
 
       {celebrationTick > 0 && (

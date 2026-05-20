@@ -118,7 +118,7 @@ export class Unit {
 
   /**
    * @param amount
-   * @returns 削减了多少 MP（如果 amount 大于当前 MP，则削减当前 MP 的全部）
+   * @returns 削减了多少法力（如果 amount 大于当前法力，则削减当前法力的全部）
    */
   takeMp(amount: number): number {
     if (amount < 0) {

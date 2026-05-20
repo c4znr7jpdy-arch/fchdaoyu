@@ -198,7 +198,7 @@ describe('AffixEffectTranslator', () => {
     }
   });
 
-  it('translate: artifact mana recovery 应生成 MP 回复效果', () => {
+  it('translate: artifact mana recovery 应生成法力回复效果', () => {
     const def = DEFAULT_AFFIX_REGISTRY.queryById('artifact-defense-mana-recovery')!;
     const result = translator.translate(toRolledAffix(def), '玄品');
 

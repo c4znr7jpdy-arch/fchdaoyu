@@ -206,7 +206,7 @@ export function GameSceneFrame({
       : 'lg:grid-cols-[minmax(0,1fr)_240px]';
 
   return (
-    <div className="battle-scroll h-full overflow-y-auto">
+    <div>
       <div
         className={cn(
           'mx-auto w-full px-3 py-3 md:px-6 md:py-4',

@@ -14,8 +14,8 @@ const snapshot: GameHudSnapshot = {
   statusText: '安稳无恙',
   activeStatuses: [],
   metrics: [
-    { key: 'hp', label: 'HP', display: '80/100', percent: 80, tone: 'hp' },
-    { key: 'mp', label: 'MP', display: '60/100', percent: 60, tone: 'mp' },
+    { key: 'hp', label: '气血', display: '80/100', percent: 80, tone: 'hp' },
+    { key: 'mp', label: '法力', display: '60/100', percent: 60, tone: 'mp' },
     {
       key: 'cultivation',
       label: '修为',

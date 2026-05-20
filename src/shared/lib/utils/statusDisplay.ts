@@ -1,3 +1,5 @@
+import { getResourceText } from '@shared/lib/resourceText';
+
 /**
  * 获取资源类型图标
  */
@@ -23,10 +25,10 @@ export function getResourceDisplayName(type: string): string {
   const nameMap: Record<string, string> = {
     spirit_stones: '灵石',
     lifespan: '寿元',
-    cultivation_exp: '修为',
+    cultivation_exp: getResourceText('cultivation_exp'),
     material: '材料',
-    hp_loss: '气血损失',
-    mp_loss: '灵力损失',
+    hp_loss: getResourceText('hp_loss'),
+    mp_loss: getResourceText('mp_loss'),
     weak: '虚弱',
     battle: '战斗',
     artifact_damage: '法宝损坏',

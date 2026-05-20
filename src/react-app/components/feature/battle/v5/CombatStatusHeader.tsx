@@ -1,5 +1,6 @@
 import { cn } from '@shared/lib/cn';
 import type { UnitStateSnapshot } from '@shared/engine/battle-v5/systems/state/types';
+import { getResourceLabel } from '@shared/lib/resourceText';
 import { format } from 'd3-format';
 import type { CSSProperties, ReactNode } from 'react';
 
@@ -84,7 +85,7 @@ function UnitSummary({
       </div>
 
       <ResourceRow
-        label="气血"
+        label={getResourceLabel('hp')}
         current={unit.hp.current}
         max={unit.hp.max}
         shield={unit.shield}
@@ -92,7 +93,7 @@ function UnitSummary({
         tone="hp"
       />
       <ResourceRow
-        label="灵力"
+        label={getResourceLabel('mp')}
         current={unit.mp.current}
         max={unit.mp.max}
         percent={unit.mp.percent}

@@ -145,7 +145,7 @@ describe('ConditionService', () => {
     expect(recovered.statuses).toEqual([]);
   });
 
-  it('lands defeated persistent PVE characters at 1 HP, 0 MP, near_death', () => {
+  it('lands defeated persistent PVE characters at 1 点气血、0 点法力、near_death', () => {
     const cultivator = createCultivator();
     const result = ConditionService.applyBattleOutcome(
       cultivator,
@@ -163,7 +163,7 @@ describe('ConditionService', () => {
     );
   });
 
-  it('adds wound states on persistent PVE victory based on remaining HP ratio', () => {
+  it('adds wound states on persistent PVE victory based on remaining 气血 ratio', () => {
     const cultivator = createCultivator();
     const { maxHp, maxMp } = ConditionService.getMaxResources(cultivator);
     const minor = ConditionService.applyBattleOutcome(

@@ -1,0 +1,179 @@
+import { describe, expect, it } from 'vitest';
+import type { Consumable } from '@shared/types/cultivator';
+import type { PillSpec } from '@shared/types/consumable';
+import { toPillDisplayModel } from './pillDisplay';
+
+function createPill(spec: PillSpec, description = '炉火既定，自有丹评。') {
+  return {
+    id: 'pill-1',
+    name: '测试丹',
+    type: '丹药',
+    quality: '玄品',
+    quantity: 1,
+    description,
+    spec,
+  } satisfies Consumable & { spec: PillSpec };
+}
+
+describe('toPillDisplayModel', () => {
+  it('formats percent healing pills with a max-resource primary effect', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'healing',
+        operations: [
+          { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.146 },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          countsTowardLongTermQuota: false,
+        },
+        alchemyMeta: {
+          source: 'improvised',
+          sourceMaterials: ['赤阳草'],
+          stability: 62,
+          toxicityRating: 18,
+          tags: ['healing'],
+        },
+      }),
+      { realm: '金丹' },
+    );
+
+    expect(model.primaryEffect).toBe('恢复最大气血 14.6%');
+    expect(model.keywordLabels).toEqual(['疗伤', '丹毒 +4']);
+  });
+
+  it('combines hybrid hp and mp recovery into one primary line', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'hybrid',
+        operations: [
+          { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.08 },
+          { type: 'restore_resource', resource: 'mp', mode: 'percent', value: 0.06 },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 6 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          countsTowardLongTermQuota: false,
+        },
+        alchemyMeta: {
+          source: 'improvised',
+          sourceMaterials: ['双生露'],
+          stability: 55,
+          toxicityRating: 24,
+          tags: ['healing', 'mana'],
+        },
+      }),
+      { realm: '金丹' },
+    );
+
+    expect(model.primaryEffect).toBe('恢复最大气血 8% / 最大法力 6%');
+  });
+
+  it('treats detox pills as a benefit instead of a cost', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'detox',
+        operations: [{ type: 'change_gauge', gauge: 'pillToxicity', delta: -18 }],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          countsTowardLongTermQuota: false,
+        },
+        alchemyMeta: {
+          source: 'improvised',
+          sourceMaterials: ['净心叶'],
+          stability: 71,
+          toxicityRating: 0,
+          tags: ['detox'],
+        },
+      }),
+      { realm: '金丹' },
+    );
+
+    expect(model.primaryEffect).toBe('丹毒 -18');
+    expect(model.detailGroups[0].lines).toContain('丹毒 -18');
+    expect(model.detailGroups[1].lines).not.toContain('丹毒 -18');
+  });
+
+  it('uses condition templates for breakthrough status names', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'breakthrough',
+        operations: [
+          { type: 'add_status', status: 'breakthrough_focus', usesRemaining: 1 },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 12 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          countsTowardLongTermQuota: true,
+        },
+        alchemyMeta: {
+          source: 'formula',
+          formulaId: 'formula-1',
+          sourceMaterials: ['凝神芝'],
+          stability: 80,
+          toxicityRating: 36,
+          tags: ['breakthrough'],
+        },
+      }),
+      { realm: '金丹' },
+    );
+
+    expect(model.primaryEffect).toContain('破境凝神');
+    expect(model.primaryEffect).not.toContain('breakthrough_focus');
+  });
+
+  it('uses track config names for tempering and marrow-wash pills', () => {
+    const temperingModel = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'tempering',
+        operations: [
+          { type: 'advance_track', track: 'tempering.vitality', value: 40 },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 10 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          countsTowardLongTermQuota: true,
+        },
+        alchemyMeta: {
+          source: 'improvised',
+          sourceMaterials: ['铁骨藤'],
+          stability: 49,
+          toxicityRating: 28,
+          tags: ['tempering_vitality'],
+        },
+      }),
+      { realm: '金丹' },
+    );
+    const marrowModel = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'marrow_wash',
+        operations: [
+          { type: 'advance_track', track: 'marrow_wash', value: 40 },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 14 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          countsTowardLongTermQuota: true,
+        },
+        alchemyMeta: {
+          source: 'improvised',
+          sourceMaterials: ['洗髓花'],
+          stability: 58,
+          toxicityRating: 34,
+          tags: ['marrow_wash'],
+        },
+      }),
+      { realm: '金丹' },
+    );
+
+    expect(temperingModel.primaryEffect).toBe('推进炼体·体魄 +40');
+    expect(marrowModel.primaryEffect).toBe('推进洗髓 +40');
+  });
+});

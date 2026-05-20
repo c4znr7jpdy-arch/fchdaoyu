@@ -241,8 +241,8 @@ export class DungeonService {
         accumulatedRewards: [],
         status: 'EXPLORING',
         condition: hydratedCondition,
-        accumulatedHpLoss: 0, // 累积HP损失百分比 (0-1)
-        accumulatedMpLoss: 0, // 累积MP损失百分比 (0-1)
+        accumulatedHpLoss: 0, // 累积气血损失百分比 (0-1)
+        accumulatedMpLoss: 0, // 累积法力损失百分比 (0-1)
       };
 
       // 4. 首次 AI 调用
@@ -374,7 +374,7 @@ export class DungeonService {
 
       state.summary_of_sacrifice?.push(...chosenOption.costs);
 
-      // 1.1 累加 HP/MP 损失百分比
+      // 1.1 累加气血/法力损失百分比
       for (const cost of chosenOption.costs) {
         if (cost.type === 'hp_loss') {
           const next = ConditionService.applyExternalResourceLoss(
@@ -507,7 +507,7 @@ export class DungeonService {
       realmRequirement as import('@shared/types/constants').RealmType,
     );
 
-    // 构建 BattleSession，传递状态快照和虚拟 HP/MP 损失百分比
+    // 构建 BattleSession，传递状态快照和虚拟气血/法力损失百分比
     const session: BattleSession = {
       battleId,
       dungeonStateKey,

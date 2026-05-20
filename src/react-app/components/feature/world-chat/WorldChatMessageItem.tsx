@@ -1,4 +1,5 @@
 import { ItemDetailModal } from '@app/routes/game/inventory/components/ItemDetailModal';
+import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import type { ItemDetailPayload } from '@app/routes/game/inventory/components/itemDetailPayload';
 import type { Tier } from '@app/components/ui/InkBadge';
 import { InkBadge, tierColorMap } from '@app/components/ui/InkBadge';
@@ -159,6 +160,7 @@ interface WorldChatMessageItemProps {
 }
 
 export function WorldChatMessageItem({ message }: WorldChatMessageItemProps) {
+  const { cultivator } = useCultivator();
   const [detailItem, setDetailItem] = useState<ItemDetailPayload | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const isSystemRumor =
@@ -226,6 +228,7 @@ export function WorldChatMessageItem({ message }: WorldChatMessageItemProps) {
         isOpen={detailOpen}
         onClose={() => setDetailOpen(false)}
         item={detailItem}
+        viewerRealm={cultivator?.realm}
       />
     </>
   );

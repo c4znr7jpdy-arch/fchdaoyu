@@ -195,7 +195,7 @@ describe('LogPresenter 行动日志聚合', () => {
     ]);
   });
 
-  it('魔法盾吸收应在伤害文案后追加真元化解描述', () => {
+  it('魔法盾吸收应在伤害文案后追加法力化解描述', () => {
     const presenter = new LogPresenter();
     const span = createActionSpan([
       createEntry('damage', {

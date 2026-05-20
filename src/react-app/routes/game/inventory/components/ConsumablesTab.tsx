@@ -1,11 +1,17 @@
+import {
+  PillKeywordLine,
+  toPillDisplayModel,
+} from '@app/components/feature/consumables';
 import { InkBadge, InkButton, InkList, InkNotice } from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
 import { isPillConsumable, isTalismanConsumable } from '@shared/lib/consumables';
+import type { RealmType } from '@shared/types/constants';
 import { buildManualDrawHref } from '@shared/types/manualDraw';
 import type { Consumable } from '@shared/types/cultivator';
 
 interface ConsumablesTabProps {
   consumables: Consumable[];
+  realm?: RealmType;
   isLoading?: boolean;
   pendingId: string | null;
   onShowDetails: (item: Consumable) => void;
@@ -18,6 +24,7 @@ interface ConsumablesTabProps {
  */
 export function ConsumablesTab({
   consumables,
+  realm,
   isLoading = false,
   pendingId,
   onShowDetails,
@@ -63,6 +70,9 @@ export function ConsumablesTab({
               ? '抽神通秘籍'
               : null;
         const canNavigateToScenario = Boolean(item.id && scenarioHref);
+        const pillDisplay = isDirectlyUsable
+          ? toPillDisplayModel(item, { realm })
+          : null;
         const usageHint = isTalisman
           ? isFateReshapeTalisman
             ? '【前往命格重塑功能页启封，开启时立即扣除】'
@@ -90,13 +100,13 @@ export function ConsumablesTab({
               </>
             }
             meta={
-              usageHint ? (
-                <div className="text-ink-primary text-xs">
-                  {usageHint}
-                </div>
+              isDirectlyUsable && pillDisplay ? (
+                <PillKeywordLine labels={pillDisplay.keywordLabels} />
+              ) : usageHint ? (
+                <div className="text-ink-primary text-xs">{usageHint}</div>
               ) : null
             }
-            description={item.description}
+            description={isDirectlyUsable && pillDisplay ? pillDisplay.primaryEffect : item.description}
             actions={
               <div className="flex gap-2">
                 <InkButton

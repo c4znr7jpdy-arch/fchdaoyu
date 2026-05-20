@@ -43,7 +43,7 @@ export function BreakthroughConfirmModal({
         <div className="border-wood/35 bg-bgpaper space-y-2 border border-dashed p-3">
           <p className="text-wood font-medium">【突破风险】</p>
           <p className="text-wood text-xs">
-            • 若冲关失败，修为将有所损耗，真元涣散
+            • 若冲关失败，修为将有所损耗，法力涣散
           </p>
           <p className="text-wood text-xs">
             • 道行感悟将有所降低，心生迷惘

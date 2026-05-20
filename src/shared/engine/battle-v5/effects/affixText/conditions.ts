@@ -4,6 +4,7 @@
  * 输入一组 ConditionConfig，产出如 "被暴击时"、"气血低于30%时"、"35%概率" 等短句，
  * 供 renderAffixLine 作为"触发条件"段落。
  */
+import { getResourceLabel } from '@shared/lib/resourceText';
 import type { ConditionConfig } from '../../core/configs';
 import { formatAffixPercent } from './format';
 import type { AffixTextRenderContext } from './context';
@@ -91,11 +92,11 @@ function describeOne(
         : null;
     case 'mp_below':
       return params.value !== undefined
-        ? prefixSubject(subject, `真元低于${formatAffixPercent(params.value)}`)
+        ? prefixSubject(subject, `${getResourceLabel('mp')}低于${formatAffixPercent(params.value)}`)
         : null;
     case 'mp_above':
       return params.value !== undefined
-        ? prefixSubject(subject, `真元高于${formatAffixPercent(params.value)}`)
+        ? prefixSubject(subject, `${getResourceLabel('mp')}高于${formatAffixPercent(params.value)}`)
         : null;
     case 'has_shield':
       return prefixSubject(subject, '存在护盾');

@@ -9,6 +9,7 @@ import {
   isAlchemyMaterialType,
   readMaterialAlchemyProfile,
 } from '@shared/lib/materialAlchemy';
+import { getPillUsageCraftWarningText } from '@shared/lib/pillUsageText';
 import type { ConditionTrackPath } from '@shared/types/condition';
 import type { ElementType, MaterialType, Quality } from '@shared/types/constants';
 import type { Consumable, MaterialDetails } from '@shared/types/cultivator';
@@ -135,6 +136,27 @@ function getQualityScalar(quality: Quality): number {
   return 1 + values.indexOf(quality) * 0.22;
 }
 
+function buildRestoreValue(baseRatio: number, scalar: number): number {
+  return Number((baseRatio * scalar).toFixed(4));
+}
+
+function scaleRestoreOperationValue(
+  operation: Extract<ConditionOperation, { type: 'restore_resource' }>,
+  factor: number,
+): Extract<ConditionOperation, { type: 'restore_resource' }> {
+  if (operation.mode === 'percent') {
+    return {
+      ...operation,
+      value: Math.max(0.0001, Number((operation.value * factor).toFixed(4))),
+    };
+  }
+
+  return {
+    ...operation,
+    value: Math.max(1, Math.floor(operation.value * factor)),
+  };
+}
+
 function countsTowardsQuota(family: PillFamily): boolean {
   return LONG_TERM_FAMILIES.has(family as LongTermFamily);
 }
@@ -223,7 +245,12 @@ function buildBaseOperations(
   switch (family) {
     case 'mana':
       return [
-        { type: 'restore_resource', resource: 'mp', mode: 'flat', value: Math.floor(90 * scalar) },
+        {
+          type: 'restore_resource',
+          resource: 'mp',
+          mode: 'percent',
+          value: buildRestoreValue(0.09, scalar),
+        },
         { type: 'change_gauge', gauge: 'pillToxicity', delta: 3 },
       ];
     case 'breakthrough':
@@ -259,14 +286,29 @@ function buildBaseOperations(
       ];
     case 'hybrid':
       return [
-        { type: 'restore_resource', resource: 'hp', mode: 'flat', value: Math.floor(80 * scalar) },
-        { type: 'restore_resource', resource: 'mp', mode: 'flat', value: Math.floor(60 * scalar) },
+        {
+          type: 'restore_resource',
+          resource: 'hp',
+          mode: 'percent',
+          value: buildRestoreValue(0.08, scalar),
+        },
+        {
+          type: 'restore_resource',
+          resource: 'mp',
+          mode: 'percent',
+          value: buildRestoreValue(0.06, scalar),
+        },
         { type: 'change_gauge', gauge: 'pillToxicity', delta: 6 },
       ];
     case 'healing':
     default:
       return [
-        { type: 'restore_resource', resource: 'hp', mode: 'flat', value: Math.floor(120 * scalar) },
+        {
+          type: 'restore_resource',
+          resource: 'hp',
+          mode: 'percent',
+          value: buildRestoreValue(0.12, scalar),
+        },
         { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
         {
           type: 'remove_status',
@@ -282,9 +324,12 @@ function applyLowStabilityPenalty(
 ): ConditionOperation[] {
   return operations.map((operation) => {
     if (
-      operation.type === 'restore_resource' ||
-      operation.type === 'advance_track'
+      operation.type === 'restore_resource'
     ) {
+      return scaleRestoreOperationValue(operation, 0.8);
+    }
+
+    if (operation.type === 'advance_track') {
       return {
         ...operation,
         value: Math.max(1, Math.floor(operation.value * 0.8)),
@@ -467,7 +512,7 @@ function buildPreviewWarnings(
       LONG_TERM_FAMILIES.has(family as LongTermFamily),
     )
   ) {
-    warnings.push('此炉偏向长期丹效，若成丹可能计入本境长期丹药配额。');
+    warnings.push(getPillUsageCraftWarningText());
   }
   if (estimatedToxicity >= 12) {
     warnings.push('药底燥烈，预计丹毒偏高，服用后需留意调息。');

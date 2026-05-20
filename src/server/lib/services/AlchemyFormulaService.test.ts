@@ -111,7 +111,7 @@ function createFormula(
     },
     blueprint: overrides.blueprint ?? {
       operations: [
-        { type: 'restore_resource', resource: 'hp', mode: 'flat', value: 120 },
+        { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
       ],
       consumeRules: {
         scene: 'out_of_battle_only',
@@ -140,7 +140,7 @@ function createConsumable(): Consumable & { spec: PillSpec } {
       kind: 'pill',
       family: 'healing',
       operations: [
-        { type: 'restore_resource', resource: 'hp', mode: 'flat', value: 120 },
+        { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
         { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
       ],
       consumeRules: {
@@ -285,7 +285,7 @@ describe('AlchemyFormulaService', () => {
       },
       blueprint: {
         operations: [
-          { type: 'restore_resource', resource: 'hp', mode: 'flat', value: 120 },
+          { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
           { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
         ],
         consumeRules: {
@@ -357,7 +357,7 @@ describe('AlchemyFormulaService', () => {
         },
         blueprint: {
           operations: [
-            { type: 'restore_resource', resource: 'hp', mode: 'flat', value: 120 },
+            { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
           ],
           consumeRules: {
             scene: 'out_of_battle_only',

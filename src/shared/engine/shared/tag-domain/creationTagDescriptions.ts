@@ -144,7 +144,7 @@ export const CREATION_TAG_DESCRIPTIONS: Record<string, TagDescription> = {
   },
   [CreationTags.MATERIAL.SEMANTIC_QI]: {
     name: '灵气',
-    description: '与灵气浓度、元气、真元、灵压相关的材料',
+    description: '与灵气浓度、元气、法力、灵压相关的材料',
     examples: '聚灵阵石、灵息草、元炁珠、灵压晶',
   },
 

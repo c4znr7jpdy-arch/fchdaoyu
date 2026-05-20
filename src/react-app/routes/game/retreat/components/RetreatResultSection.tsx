@@ -139,7 +139,7 @@ function BreakthroughResultContent({
               <p className="text-wood">
                 修为损失：-{summary.exp_lost} 点
                 <span className="ml-1 text-xs opacity-80">
-                  （冲关失败，真元涣散）
+                  （冲关失败，法力涣散）
                 </span>
               </p>
             )}

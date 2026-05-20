@@ -327,9 +327,9 @@ export const STATUS_EFFECT_DISPLAY_MAP: Record<
     description: '法宝损坏，威力大减',
   },
   mana_depleted: {
-    label: '灵力枯竭',
+    label: '法力枯竭',
     icon: '💫',
-    description: '灵力耗尽，难以施展术法',
+    description: '法力耗尽，难以施展术法',
   },
   hp_deficit: {
     label: '气血不足',

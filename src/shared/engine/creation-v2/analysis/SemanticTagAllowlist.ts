@@ -231,7 +231,7 @@ const SEMANTIC_TAG_TEXT_PATTERN_MAP: Record<CreationMaterialSemanticTag, RegExp>
   [CreationTags.MATERIAL.SEMANTIC_BONE]: /骨|骸|甲壳|角|刺/u,
   [CreationTags.MATERIAL.SEMANTIC_FORMATION]: /阵|禁|纹|符|阵图/u,
   [CreationTags.MATERIAL.SEMANTIC_ILLUSION]: /幻|梦|迷|蜃|惑/u,
-  [CreationTags.MATERIAL.SEMANTIC_QI]: /气|灵息|元炁|真元|灵压/u,
+  [CreationTags.MATERIAL.SEMANTIC_QI]: /气|灵息|元炁|法力|灵压/u,
 };
 
 const SEMANTIC_TAG_TEXT_PATTERNS = CREATION_MATERIAL_SEMANTIC_TAGS.map((tag) => ({
