@@ -1,6 +1,7 @@
-import { CultivatorStatusCard } from '@app/components/feature/cultivator/CultivatorStatusCard';
-import { LifespanStatusCard } from '@app/components/feature/cultivator/LifespanStatusCard';
-import { PersistentStatusesCard } from '@app/components/feature/cultivator/PersistentStatusesCard';
+import {
+  CultivatorCurrentStatusSection,
+  CultivatorTrackSection,
+} from '@app/components/feature/cultivator/PersistentStatusesCard';
 import { TitleEditorModal } from '@app/components/feature/cultivator/TitleEditorModal';
 import { FateDetailModal } from '@app/components/feature/fates/FateDetailModal';
 import { toFateDisplayModel } from '@app/components/feature/fates/FateDisplayAdapter';
@@ -18,9 +19,7 @@ import {
   InkButton,
   InkDialog,
   InkList,
-  InkListItem,
   InkNotice,
-  InkStatusBar,
   type InkDialogState,
 } from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
@@ -29,9 +28,10 @@ import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapter
 import { AttributeType } from '@shared/engine/battle-v5/core/types';
 import { attrLabel } from '@shared/engine/battle-v5/effects/affixText/attributes';
 import { cn } from '@shared/lib/cn';
+import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
 import type { Cultivator } from '@shared/types/cultivator';
 import { getEquipmentSlotInfo } from '@shared/types/dictionaries';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { GameSceneSection } from './GameSceneSection';
 
@@ -107,6 +107,41 @@ function chunkPairs<T>(items: T[]): T[][] {
     rows.push(items.slice(i, i + 2));
   }
   return rows;
+}
+
+function OverviewCard({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'border-ink/10 bg-ink/4 border border-dashed px-3 py-2',
+        className,
+      )}
+    >
+      <div className="text-battle-muted text-[0.68rem] tracking-[0.16em]">
+        {label}
+      </div>
+      <div className="text-ink mt-1 text-sm leading-6">{value}</div>
+    </div>
+  );
+}
+
+function OverviewLine({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="border-ink/10 bg-ink/4 border border-dashed px-3 py-2">
+      <div className="flex gap-3 text-sm leading-6">
+        <span className="text-battle-muted shrink-0">{label}</span>
+        <span className="text-ink min-w-0">{value}</span>
+      </div>
+    </div>
+  );
 }
 
 export function CultivatorOverviewPanel() {
@@ -187,6 +222,27 @@ export function CultivatorOverviewPanel() {
     setIsTitleModalOpen(true);
   };
 
+  const openReincarnateDialog = () => {
+    setDialog({
+      id: 'reincarnate-confirm',
+      title: '轮回重修',
+      content: (
+        <div className="space-y-2">
+          <p className="text-crimson text-lg font-bold">道友当真要轮回重修？</p>
+          <p>
+            轮回后，当前修为将尽数散去，
+            <span className="text-crimson">角色状态变为「已陨落」</span>。
+          </p>
+          <p>但可保留部分前世记忆（名字、故事）进入轮回，开启新的一世。</p>
+          <p className="text-sm opacity-60">此操作不可撤销。</p>
+        </div>
+      ),
+      confirmLabel: '轮回',
+      cancelLabel: '不可',
+      onConfirm: handleReincarnate,
+    });
+  };
+
   const { unit } = getCultivatorDisplayAttributes(cultivator);
   const orderedAttributes = [...PRIMARY_ATTR_ORDER, ...SECONDARY_ATTR_ORDER];
   const displayAttributes = orderedAttributes.map((attrType) => {
@@ -214,72 +270,90 @@ export function CultivatorOverviewPanel() {
         equipped.armor === item.id ||
         equipped.accessory === item.id),
   );
+  const marrowWashLevel = cultivator.condition?.tracks.marrowWash?.level ?? 0;
+  const marrowWashProgress =
+    cultivator.condition?.tracks.marrowWash?.progress ?? 0;
+  const marrowWashThreshold =
+    getTrackConfig('marrow_wash').thresholdByLevel(marrowWashLevel);
+  const marrowWashPercent = Math.max(
+    0,
+    Math.min(
+      100,
+      marrowWashThreshold > 0
+        ? (marrowWashProgress / marrowWashThreshold) * 100
+        : 0,
+    ),
+  );
 
   return (
-    <div className="space-y-6">
-      <InkList dense>
-        <InkListItem
-          title={
-            <div className="flex items-center gap-2">
-              <span>☯ 姓名：{cultivator.name}</span>
+    <div className="space-y-5">
+      <GameSceneSection title="道身概览" contentClassName="space-y-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-ink text-lg leading-7 font-semibold">
+                {cultivator.name}
+              </span>
               <InkBadge tier={cultivator.realm}>
                 {cultivator.realm_stage}
               </InkBadge>
             </div>
-          }
-          meta={
-            <div className="space-y-1 py-1 text-sm">
-              <div className="flex items-center gap-2">
-                <span>
-                  称号：
-                  {cultivator.title ? (
-                    <span className="text-crimson">「{cultivator.title}」</span>
-                  ) : (
-                    '暂无'
-                  )}
-                </span>
-                <InkButton onClick={openTitleEditor}>修改</InkButton>
-              </div>
-              <p>身世：{cultivator.origin || '散修'}</p>
-              <p>性格：{cultivator.personality}</p>
-              <p>背景：{cultivator.background}</p>
-              {cultivator.balance_notes ? (
-                <p>天道评语：{cultivator.balance_notes}</p>
-              ) : null}
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-6">
+              <span className="text-battle-muted">称号</span>
+              <span className="text-ink min-w-0">
+                {cultivator.title ? (
+                  <span className="text-crimson">「{cultivator.title}」</span>
+                ) : (
+                  '暂无'
+                )}
+              </span>
             </div>
-          }
-          description={
-            <InkStatusBar
-              className="mt-2 grid! grid-cols-2! gap-2 md:grid-cols-3!"
-              items={[
-                { label: '年龄：', value: cultivator.age, icon: '⏳' },
-                { label: '寿元：', value: cultivator.lifespan, icon: '🔮' },
-                {
-                  label: '性别：',
-                  value: cultivator.gender,
-                  icon: cultivator.gender === '男' ? '♂' : '♀',
-                },
-                {
-                  label: '灵石：',
-                  value: cultivator.spirit_stones,
-                  icon: '💎',
-                },
-              ]}
-            />
-          }
-        />
-        {cultivator.id ? (
-          <LifespanStatusCard cultivatorId={cultivator.id} />
-        ) : null}
-      </InkList>
+          </div>
+          <InkButton onClick={openTitleEditor} className="shrink-0 text-sm">
+            修改
+          </InkButton>
+        </div>
 
-      <PersistentStatusesCard />
+        <div className="grid grid-cols-2 gap-2">
+          <OverviewCard label="年龄" value={`${cultivator.age} 岁`} />
+          <OverviewCard label="寿元" value={`${cultivator.lifespan} 年`} />
+          <OverviewCard label="性别" value={cultivator.gender} />
+          <OverviewCard label="出身" value={cultivator.origin || '散修'} />
+        </div>
 
-      {cultivator.cultivation_progress ? (
-        <GameSceneSection title="修为与感悟">
-          <CultivatorStatusCard cultivator={cultivator} showDetails={true} />
-        </GameSceneSection>
-      ) : null}
+        <div className="space-y-2">
+          <OverviewLine label="性情" value={cultivator.personality || '未明'} />
+          <OverviewLine
+            label="洗髓"
+            value={
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-ink-secondary text-xs">
+                    Lv.{marrowWashLevel}
+                  </span>
+                  <span className="font-mono text-xs">
+                    {marrowWashProgress} / {marrowWashThreshold}
+                  </span>
+                </div>
+                <div className="border-ink/15 h-1.5 w-full overflow-hidden border bg-white/70">
+                  <div
+                    className="bg-crimson h-full transition-all duration-300"
+                    style={{ width: `${marrowWashPercent}%` }}
+                  />
+                </div>
+              </div>
+            }
+          />
+          <OverviewLine label="背景" value={cultivator.background || '未录'} />
+          {cultivator.balance_notes ? (
+            <OverviewLine label="天道评语" value={cultivator.balance_notes} />
+          ) : null}
+        </div>
+      </GameSceneSection>
+
+      <CultivatorTrackSection />
+
+      <CultivatorCurrentStatusSection />
 
       <LingGen
         spiritualRoots={cultivator.spiritual_roots || []}
@@ -405,7 +479,7 @@ export function CultivatorOverviewPanel() {
         ) : null}
       </GameSceneSection>
 
-      <GameSceneSection title="当前所御法宝">
+      <GameSceneSection title="所御法宝">
         {equippedItems.length > 0 ? (
           <InkList>
             {equippedItems.map((item) => {
@@ -443,7 +517,7 @@ export function CultivatorOverviewPanel() {
         )}
       </GameSceneSection>
 
-      <GameSceneSection title="功法">
+      <GameSceneSection title="所修功法">
         {(cultivator.cultivations || []).length === 0 ? (
           <InkNotice>尚无功法</InkNotice>
         ) : (
@@ -473,78 +547,47 @@ export function CultivatorOverviewPanel() {
         )}
       </GameSceneSection>
 
-      <GameSceneSection title="神通">
+      <GameSceneSection title="所修神通">
         {skills.length === 0 ? (
           <InkNotice>尚无神通</InkNotice>
         ) : (
-          <>
-            <InkList>
-              {skills.map((skill) => {
-                const product = toProductDisplayModel(
-                  skill as ProductRecordLike,
-                );
-                return (
-                  <ItemCard
-                    key={skill.id ?? skill.name}
-                    icon="📜"
-                    name={skill.name}
-                    quality={skill.quality}
-                    badgeExtra={
-                      <InkBadge tone="default">{skill.element}</InkBadge>
-                    }
-                    meta={
-                      <div className="space-y-1">
-                        <AffixInlineList affixes={product.affixes} />
-                        <AbilityMetaLine projection={product.projection} />
-                      </div>
-                    }
-                    description={skill.description}
-                    layout="col"
-                  />
-                );
-              })}
-            </InkList>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <InkButton href="/game/skills" className="text-sm">
-                所有神通一览 →
-              </InkButton>
-              <InkButton
-                variant="secondary"
-                onClick={() =>
-                  setDialog({
-                    id: 'reincarnate-confirm',
-                    title: '轮回重修',
-                    content: (
-                      <div className="space-y-2">
-                        <p className="text-crimson text-lg font-bold">
-                          道友当真要轮回重修？
-                        </p>
-                        <p>
-                          轮回后，当前修为将尽数散去，
-                          <span className="text-crimson">
-                            角色状态变为「已陨落」
-                          </span>
-                          。
-                        </p>
-                        <p>
-                          但可保留部分前世记忆（名字、故事）进入轮回，开启新的一世。
-                        </p>
-                        <p className="text-sm opacity-60">此操作不可撤销。</p>
-                      </div>
-                    ),
-                    confirmLabel: '轮回',
-                    cancelLabel: '不可',
-                    onConfirm: handleReincarnate,
-                  })
-                }
-              >
-                转世重修
-              </InkButton>
-            </div>
-          </>
+          <InkList>
+            {skills.map((skill) => {
+              const product = toProductDisplayModel(skill as ProductRecordLike);
+              return (
+                <ItemCard
+                  key={skill.id ?? skill.name}
+                  icon="📜"
+                  name={skill.name}
+                  quality={skill.quality}
+                  badgeExtra={
+                    <InkBadge tone="default">{skill.element}</InkBadge>
+                  }
+                  meta={
+                    <div className="space-y-1">
+                      <AffixInlineList affixes={product.affixes} />
+                      <AbilityMetaLine projection={product.projection} />
+                    </div>
+                  }
+                  description={skill.description}
+                  layout="col"
+                />
+              );
+            })}
+          </InkList>
         )}
       </GameSceneSection>
 
+      <GameSceneSection title="转世重修" contentClassName="space-y-3">
+        <p className="text-ink-secondary text-sm leading-7">
+          若此身道途已尽，可舍去当前修为与状态，再携前世姓名与故事重入轮回。
+        </p>
+        <div>
+          <InkButton variant="secondary" onClick={openReincarnateDialog}>
+            转世重修
+          </InkButton>
+        </div>
+      </GameSceneSection>
       <InkDialog dialog={dialog} onClose={() => setDialog(null)} />
       <FateDetailModal
         isOpen={detailFate !== null}

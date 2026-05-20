@@ -163,7 +163,7 @@ export const router = createBrowserRouter(
                   label: '道身',
                   group: 'cultivation',
                   presentation: 'archive',
-                  summary: '身世、修为、状态皆可在此细查。',
+                  summary: '名号、命格、根基与所修皆在此归卷。',
                 },
                 '道身',
               )}
