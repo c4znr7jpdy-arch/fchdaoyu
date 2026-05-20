@@ -272,16 +272,12 @@ export function CultivatorOverviewPanel() {
   return (
     <div className="space-y-5">
       <GameSceneSection title="道身概览" contentClassName="space-y-2.5">
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-1 bg-ink/3 px-2 py-3">
-          <span className="text-ink text-xl leading-7 font-semibold">
-            {cultivator.name}
-          </span>
-          <span className="text-battle-muted text-sm leading-6">
-            {cultivator.realm} · {cultivator.realm_stage}
-          </span>
-        </div>
-
-        <div className="space-y-2">
+        <div className="space-y-1">
+          <OverviewDetailItem
+            icon="👤"
+            label="身份"
+            value={`${cultivator.name} · ${cultivator.gender} · ${cultivator.origin || '散修'}`}
+          />
           <OverviewDetailItem
             icon="🏮"
             label="名号"
@@ -299,14 +295,14 @@ export function CultivatorOverviewPanel() {
             }
           />
           <OverviewDetailItem
-            icon="👤"
-            label="身份"
-            value={`${cultivator.gender} · ${cultivator.age} 岁 · ${cultivator.origin || '散修'}`}
+            icon="☯️"
+            label="境界"
+            value={<InkBadge className='px-0' tier={cultivator.realm}>{cultivator.realm_stage}</InkBadge>}
           />
           <OverviewDetailItem
             icon="⏳"
             label="寿元"
-            value={`${cultivator.lifespan} 年`}
+            value={`${cultivator.age} / ${cultivator.lifespan} 年`}
           />
           <OverviewDetailItem
             icon="🫧"
@@ -555,11 +551,11 @@ export function CultivatorOverviewPanel() {
         )}
       </GameSceneSection>
 
-      <div className='bg-ink/5 p-2 rounded-sm text-right'>
+      <div className="bg-ink/5 rounded-sm p-2 text-right">
         <p className="text-ink-secondary text-sm leading-7">
           若此身道途已尽，可舍去此生，重入轮回。
         </p>
-        <InkButton className='text-sm' onClick={openReincarnateDialog}>
+        <InkButton className="text-sm" onClick={openReincarnateDialog}>
           转世重修
         </InkButton>
       </div>

@@ -1,4 +1,5 @@
 import Link from '@app/components/router/AppLink';
+import { InkBadge, Tier } from '../ui';
 import type { GameHudSnapshot } from './useGameHudModel';
 
 function HudMeter({
@@ -18,71 +19,87 @@ function HudMeter({
 
   return (
     <div className="min-w-0 space-y-0.5">
-      <div className="flex items-center justify-between gap-2 text-[0.66rem] leading-4 md:text-[0.74rem]">
+      <div className="flex items-center justify-between gap-1.5 text-[0.62rem] leading-3.5 md:gap-2 md:text-[0.74rem] md:leading-4">
         <span className="text-battle-muted shrink-0 tracking-[0.12em]">
           {label}
         </span>
-        <span className="text-ink shrink-0 text-right font-mono text-[0.7rem] md:text-[0.8rem]">
+        <span className="text-ink shrink-0 text-right font-mono text-[0.66rem] md:text-[0.8rem]">
           {display}
         </span>
       </div>
       <div className="bg-battle-faint h-[3px] min-w-0 overflow-hidden">
-        <div className={`${toneClass} h-full`} style={{ width: `${percent}%` }} />
+        <div
+          className={`${toneClass} h-full`}
+          style={{ width: `${percent}%` }}
+        />
       </div>
     </div>
   );
 }
 
-export function GameTopHud({
-  snapshot,
-}: {
-  snapshot: GameHudSnapshot | null;
-}) {
+export function GameTopHud({ snapshot }: { snapshot: GameHudSnapshot | null }) {
   if (!snapshot) return null;
 
   return (
     <header className="border-ink/10 border-b border-dashed">
       <Link
         href="/game/cultivator"
-        className="mx-auto block w-full max-w-5xl px-3 py-1.5 text-left md:px-6 md:py-2"
+        className="mx-auto block w-full max-w-5xl px-2.5 py-2 text-left sm:px-3 md:px-6"
       >
-        <div className="grid grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] gap-2.5 md:gap-5">
-          <div className="min-w-0 space-y-0.5">
-            <div className="font-heading truncate text-[1.36rem] leading-none md:text-[1.7rem]">
-              {snapshot.name}
+        <div className="grid grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)] gap-2 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-5">
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 md:gap-4">
+            <div
+              aria-hidden="true"
+              className="border-ink/12 bg-bgpaper/85 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-dashed sm:w-16 md:h-16"
+            >
+              <img
+                src="/assets/daoyou_logo.png"
+                alt=""
+                className="h-10 w-10 object-contain md:h-12 md:w-12"
+              />
             </div>
-            <div className="text-battle-muted truncate text-[0.72rem] leading-4 tracking-[0.12em] md:text-[0.82rem]">
-              {snapshot.realm}·{snapshot.realmStage}
-            </div>
-            {snapshot.title ? (
-              <div className="text-crimson truncate text-[0.7rem] leading-4 tracking-[0.14em] md:text-[0.8rem]">
-                「{snapshot.title}」
+
+            <div className="min-w-0 space-y-2">
+              <div className="flex min-w-0 items-end gap-1.5 md:gap-2.5">
+                <div className="font-heading min-w-0 truncate text-2xl leading-none md:text-3xl">
+                  {snapshot.name}
+                </div>
+                {snapshot.title ? (
+                  <div className="text-crimson hidden text-xs md:inline-block md:text-sm">
+                    <span className="truncate">「{snapshot.title}」</span>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-            <div className="flex min-w-0 items-baseline gap-1 text-[0.66rem] leading-4 md:text-[0.74rem]">
-              <span className="text-battle-muted shrink-0 tracking-[0.14em]">
-                状态
-              </span>
-              <span className="text-ink truncate">{snapshot.statusText}</span>
+
+              <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-xs leading-3.5 md:gap-x-4 md:text-sm">
+                <div className="bg-ink/5 border-ink/15 flex min-w-0 gap-2 rounded border border-dashed p-1">
+                  <span className="text-battle-muted shrink-0">状态</span>
+                  <span className="text-ink truncate">
+                    {snapshot.statusText}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="min-w-0 pt-0.5">
-            <div className="mb-1 flex items-center justify-end gap-3">
-              <div className="shrink-0 text-[0.66rem] tracking-[0.14em] md:text-[0.76rem]">
-                <span className="text-battle-muted mr-1">灵石</span>
-                <span className="text-ink font-mono">{snapshot.spiritStones}</span>
+          <div className="min-w-0">
+            <div className="mb-1 flex items-center justify-end gap-2 text-xs md:text-sm">
+              <InkBadge
+                className="text-[0.68rem] md:text-sm"
+                compact
+                tier={snapshot.realm as Tier}
+              >
+                {snapshot.realmStage}
+              </InkBadge>
+              <span>/</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-battle-muted shrink-0">灵石</span>
+                <span className="text-ink shrink-0 text-right">
+                  {snapshot.spiritStones}
+                </span>
               </div>
-              {snapshot.unreadMailCount > 0 ? (
-                <div className="text-[0.66rem] tracking-[0.14em] md:text-[0.76rem]">
-                  <span className="text-battle-muted mr-1">玉简</span>
-                  <span className="text-crimson font-mono">
-                    {snapshot.unreadMailCount}
-                  </span>
-                </div>
-              ) : null}
             </div>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 md:gap-x-4 md:gap-y-2">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 md:gap-x-4 md:gap-y-2">
               {snapshot.metrics.map(({ key, ...metric }) => (
                 <HudMeter key={key} {...metric} />
               ))}

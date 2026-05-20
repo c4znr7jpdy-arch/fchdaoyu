@@ -43,5 +43,6 @@ describe('GameTopHud', () => {
 
     expect(html).toContain('href="/game/cultivator"');
     expect(html).toContain('林玄');
+    expect(html).toContain('/assets/daoyou_logo.png');
   });
 });

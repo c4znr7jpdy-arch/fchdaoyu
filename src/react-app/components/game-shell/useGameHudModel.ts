@@ -98,14 +98,14 @@ export function buildGameHudSnapshot(input: {
     metrics: [
       {
         key: 'hp',
-        label: 'HP',
+        label: '气血',
         display: `${currentHp}/${maxHp}`,
         percent: Math.round(clamp((currentHp / maxHp) * 100, 0, 100)),
         tone: 'hp',
       },
       {
         key: 'mp',
-        label: 'MP',
+        label: '法力',
         display: `${currentMp}/${maxMp}`,
         percent: Math.round(clamp((currentMp / maxMp) * 100, 0, 100)),
         tone: 'mp',
