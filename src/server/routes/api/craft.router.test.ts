@@ -186,7 +186,9 @@ describe('craft router alchemy routes', () => {
         formulaDiscovery: {
           token: '11111111-1111-1111-1111-111111111111',
           name: '青木疗伤丹丹方',
+          description: '此方偏于生机温养，主走木性回春之路。',
           family: 'healing',
+          discoveryRemark: '炉中药脉渐趋成环，这一路回春炉意已可留存。',
           patternSummary: '主药性：疗伤；炉位：1 种材料',
         },
       },

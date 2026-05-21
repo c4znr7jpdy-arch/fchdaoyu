@@ -30,6 +30,7 @@ import { parseRedisJson } from '@server/lib/redis/json';
 import { calculateSingleElixirScore } from '@server/utils/rankingUtils';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import { AlchemyServiceError } from './AlchemyServiceError';
+import { AlchemyNarrativeEnricher } from './AlchemyNarrativeEnricher';
 import { mapConsumableRow, serializeConsumableSpec } from './consumablePersistence';
 import { addConsumableToInventory } from './cultivatorService';
 
@@ -41,6 +42,7 @@ const HYBRID_DISCOVERY_TAGS: MaterialAlchemyEffectTag[] = [
   'mana',
   'detox',
 ];
+const alchemyNarrativeEnricher = new AlchemyNarrativeEnricher();
 
 type MaterialRow = typeof materials.$inferSelect;
 type AlchemyFormulaRow = typeof alchemyFormulas.$inferSelect;
@@ -167,6 +169,7 @@ function mapAlchemyFormulaRow(row: AlchemyFormulaRow): AlchemyFormula {
     id: row.id,
     cultivatorId: row.cultivatorId,
     name: row.name,
+    description: row.description,
     family: row.family,
     pattern: row.pattern,
     blueprint: row.blueprint,
@@ -199,6 +202,38 @@ function getFormulaProductName(formulaName: string): string {
   return formulaName.endsWith('丹方')
     ? formulaName.slice(0, -2) || formulaName
     : formulaName;
+}
+
+function buildFallbackFormulaName(sourcePillName: string): string {
+  return `${sourcePillName}丹方`;
+}
+
+function buildFallbackFormulaRecordDescription(
+  formula: Pick<AlchemyFormula, 'family' | 'pattern'>,
+): string {
+  const coreTags = formula.pattern.requiredTags
+    .map(getMaterialAlchemyTagLabel)
+    .join('、');
+  const optionalTags = formula.pattern.optionalTags?.length
+    ? `，辅以${formula.pattern.optionalTags
+        .map(getMaterialAlchemyTagLabel)
+        .join('、')}相济`
+    : '';
+  const qualityText = formula.pattern.minQuality
+    ? `，宜以至少${formula.pattern.minQuality}之材承炉`
+    : '';
+  const directionText =
+    formula.family === 'tempering'
+      ? '缓推肉身淬炼之势'
+      : formula.family === 'marrow_wash'
+        ? '引药力洗筋伐髓'
+        : '收束药性归于一脉';
+
+  return `此方以${coreTags}为炉中主脉${optionalTags}，重在${directionText}，${formula.pattern.slotCount}味合炉${qualityText}。`;
+}
+
+function buildFallbackDiscoveryRemark(formulaName: string): string {
+  return `炉中药脉已渐成章，《${formulaName}》的炉路可暂留于册。`;
 }
 
 function buildFormulaDescription(
@@ -653,23 +688,48 @@ export async function buildDiscoveryCandidate(
     return null;
   }
 
+  const fallbackName = buildFallbackFormulaName(consumable.name);
+  const pattern = {
+    requiredTags,
+    optionalTags: buildOptionalTags(requiredTags, tagScores),
+    dominantElement: spec.alchemyMeta.dominantElement,
+    minQuality: getLowestQuality(ingredients),
+    slotCount: ingredients.length,
+  };
+  const blueprint = {
+    operations: spec.operations,
+    consumeRules: spec.consumeRules,
+    targetStability: spec.alchemyMeta.stability,
+    targetToxicity: spec.alchemyMeta.toxicityRating,
+  };
+  const generatedCopy = await alchemyNarrativeEnricher.generateFormulaRecordCopy({
+    fallbackName,
+    sourcePillName: consumable.name,
+    sourcePillDescription: consumable.description ?? '',
+    family: spec.family,
+    dominantElement: spec.alchemyMeta.dominantElement,
+    minQuality: pattern.minQuality,
+    slotCount: pattern.slotCount,
+    materialNames: ingredients.map((ingredient) => ingredient.name),
+    requiredTags: pattern.requiredTags,
+    optionalTags: pattern.optionalTags ?? [],
+    operations: spec.operations,
+    targetStability: blueprint.targetStability,
+    targetToxicity: blueprint.targetToxicity,
+    userPrompt: consumable.prompt,
+  });
   const formula: Omit<AlchemyFormula, 'id' | 'createdAt' | 'updatedAt'> = {
     cultivatorId,
-    name: `${consumable.name}丹方`,
+    name: generatedCopy?.name ?? fallbackName,
+    description:
+      generatedCopy?.description ??
+      buildFallbackFormulaRecordDescription({
+        family: spec.family,
+        pattern,
+      }),
     family: spec.family,
-    pattern: {
-      requiredTags,
-      optionalTags: buildOptionalTags(requiredTags, tagScores),
-      dominantElement: spec.alchemyMeta.dominantElement,
-      minQuality: getLowestQuality(ingredients),
-      slotCount: ingredients.length,
-    },
-    blueprint: {
-      operations: spec.operations,
-      consumeRules: spec.consumeRules,
-      targetStability: spec.alchemyMeta.stability,
-      targetToxicity: spec.alchemyMeta.toxicityRating,
-    },
+    pattern,
+    blueprint,
     mastery: {
       level: 0,
       exp: 0,
@@ -702,7 +762,10 @@ export async function buildDiscoveryCandidate(
   return {
     token,
     name: formula.name,
+    description: formula.description,
     family: formula.family,
+    discoveryRemark:
+      generatedCopy?.discoveryRemark ?? buildFallbackDiscoveryRemark(formula.name),
     patternSummary: getPatternSummary(formula.pattern),
   };
 }
@@ -753,6 +816,7 @@ export async function confirmDiscoveryCandidate(
       .values({
         cultivatorId,
         name: payload.formula.name,
+        description: payload.formula.description,
         family: payload.formula.family,
         pattern: payload.formula.pattern,
         blueprint: payload.formula.blueprint,
@@ -904,18 +968,34 @@ export async function craftFromFormula(
         ),
       },
     };
+    const generatedBatchDescription =
+      await alchemyNarrativeEnricher.generateFormulaBatchDescription({
+        formulaName: formula.name,
+        formulaDescription: formula.description,
+        family: formula.family,
+        dominantElement,
+        quality: highestMaterialRank,
+        materialNames: ingredients.map((ingredient) => ingredient.name),
+        operations: spec.operations,
+        fitMultiplier,
+        stability: spec.alchemyMeta.stability,
+        toxicityRating: spec.alchemyMeta.toxicityRating,
+        masteryLevel: formula.mastery.level,
+      });
     const consumable: Consumable = {
       name: getFormulaProductName(formula.name),
       type: '丹药',
       quality: highestMaterialRank,
       quantity: 1,
-      description: buildFormulaDescription(
-        formula,
-        ingredients.map((ingredient) => ingredient.name),
-        spec.alchemyMeta.stability,
-        spec.alchemyMeta.toxicityRating,
-        fitMultiplier,
-      ),
+      description:
+        generatedBatchDescription?.description ??
+        buildFormulaDescription(
+          formula,
+          ingredients.map((ingredient) => ingredient.name),
+          spec.alchemyMeta.stability,
+          spec.alchemyMeta.toxicityRating,
+          fitMultiplier,
+        ),
       score: 0,
       spec,
     };

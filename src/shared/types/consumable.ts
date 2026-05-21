@@ -159,6 +159,7 @@ export interface AlchemyFormula {
   id: string;
   cultivatorId: string;
   name: string;
+  description: string;
   family: PillFamily;
   pattern: AlchemyFormulaPattern;
   blueprint: AlchemyFormulaBlueprint;
@@ -170,6 +171,8 @@ export interface AlchemyFormula {
 export interface AlchemyFormulaDiscoveryCandidate {
   token: string;
   name: string;
+  description: string;
   family: PillFamily;
+  discoveryRemark: string;
   patternSummary: string;
 }

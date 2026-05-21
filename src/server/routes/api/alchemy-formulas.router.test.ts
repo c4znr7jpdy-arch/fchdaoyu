@@ -39,6 +39,7 @@ describe('alchemy formulas router', () => {
         id: '11111111-1111-4111-8111-111111111111',
         cultivatorId: 'cultivator-1',
         name: '青木疗伤丹丹方',
+        description: '此方偏于生机温养，主走木性回春之路。',
         family: 'healing',
         pattern: {
           requiredTags: ['healing'],
@@ -72,6 +73,7 @@ describe('alchemy formulas router', () => {
           expect.objectContaining({
             id: '11111111-1111-4111-8111-111111111111',
             name: '青木疗伤丹丹方',
+            description: '此方偏于生机温养，主走木性回春之路。',
           }),
         ],
       },
@@ -86,6 +88,7 @@ describe('alchemy formulas router', () => {
         id: '11111111-1111-4111-8111-111111111111',
         cultivatorId: 'cultivator-1',
         name: '青木疗伤丹丹方',
+        description: '此方偏于生机温养，主走木性回春之路。',
         family: 'healing',
         pattern: {
           requiredTags: ['healing'],
@@ -131,6 +134,7 @@ describe('alchemy formulas router', () => {
         formula: expect.objectContaining({
           id: '11111111-1111-4111-8111-111111111111',
           name: '青木疗伤丹丹方',
+          description: '此方偏于生机温养，主走木性回春之路。',
         }),
       },
     });

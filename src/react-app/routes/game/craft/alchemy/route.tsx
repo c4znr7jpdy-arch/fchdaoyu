@@ -126,6 +126,37 @@ function formatFormulaTags(formula: AlchemyFormula): string {
     .join('、');
 }
 
+export function FormulaNarrativeBlock({
+  formula,
+  showMasteryExp = false,
+}: {
+  formula: AlchemyFormula;
+  showMasteryExp?: boolean;
+}) {
+  return (
+    <div className="text-ink-secondary mt-2 space-y-1 text-sm">
+      <div>{formula.description}</div>
+      <div>核心药性：{formatFormulaTags(formula)}</div>
+      <div>
+        炉位 {formula.pattern.slotCount} 种
+        {formula.pattern.minQuality ? `，最低 ${formula.pattern.minQuality}` : ''}
+        {formula.pattern.dominantElement
+          ? `，主元素 ${formula.pattern.dominantElement}`
+          : ''}
+        {showMasteryExp ? `，当前熟练进度 ${formula.mastery.exp}` : ''}
+      </div>
+      {formula.pattern.optionalTags?.length ? (
+        <div>
+          辅性药性：
+          {formula.pattern.optionalTags
+            .map(getMaterialAlchemyTagLabel)
+            .join('、')}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function AlchemyResultModal({
   consumable,
   formulaDiscovery,
@@ -208,8 +239,14 @@ export function AlchemyResultModal({
         formulaDiscovery ? (
           <div className="space-y-2 pt-2">
             <InkNotice tone="info">
-              你已摸到一缕成方脉络：{formulaDiscovery.name}。
-              {formulaDiscovery.patternSummary}
+              <div className="space-y-1">
+                <div>{formulaDiscovery.discoveryRemark}</div>
+                <div className="font-semibold">{formulaDiscovery.name}</div>
+                <div>{formulaDiscovery.description}</div>
+                <div className="text-ink-secondary text-xs">
+                  {formulaDiscovery.patternSummary}
+                </div>
+              </div>
             </InkNotice>
             <InkActionGroup align="right">
               <InkButton
@@ -767,26 +804,7 @@ export default function AlchemyPage() {
                         {`Lv.${formula.mastery.level}`}
                       </InkBadge>
                     </div>
-                    <div className="text-ink-secondary mt-2 space-y-1 text-sm">
-                      <div>核心药性：{formatFormulaTags(formula)}</div>
-                      <div>
-                        炉位 {formula.pattern.slotCount} 种
-                        {formula.pattern.minQuality
-                          ? `，最低 ${formula.pattern.minQuality}`
-                          : ''}
-                        {formula.pattern.dominantElement
-                          ? `，主元素 ${formula.pattern.dominantElement}`
-                          : ''}
-                      </div>
-                      {formula.pattern.optionalTags?.length ? (
-                        <div>
-                          辅性药性：
-                          {formula.pattern.optionalTags
-                            .map(getMaterialAlchemyTagLabel)
-                            .join('、')}
-                        </div>
-                      ) : null}
-                    </div>
+                    <FormulaNarrativeBlock formula={formula} />
                   </button>
                 );
               })}
@@ -857,19 +875,10 @@ export default function AlchemyPage() {
                     {`熟练 Lv.${selectedFormula.mastery.level}`}
                   </InkBadge>
                 </div>
-                <div>核心药性：{formatFormulaTags(selectedFormula)}</div>
-                <div>
-                  炉位 {selectedFormula.pattern.slotCount} 种，当前熟练进度{' '}
-                  {selectedFormula.mastery.exp}
-                </div>
-                {selectedFormula.pattern.optionalTags?.length ? (
-                  <div>
-                    辅性药性：
-                    {selectedFormula.pattern.optionalTags
-                      .map(getMaterialAlchemyTagLabel)
-                      .join('、')}
-                  </div>
-                ) : null}
+                <FormulaNarrativeBlock
+                  formula={selectedFormula}
+                  showMasteryExp
+                />
               </div>
             </InkCard>
           ) : (

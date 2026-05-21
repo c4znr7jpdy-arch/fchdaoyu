@@ -1,6 +1,8 @@
 const {
   executorState,
   getExecutorMock,
+  narrativeBatchDescriptionMock,
+  narrativeFormulaCopyMock,
   redisDelMock,
   redisGetMock,
   redisSetMock,
@@ -62,6 +64,8 @@ const {
   return {
     executorState: state,
     getExecutorMock: vi.fn(() => executor),
+    narrativeBatchDescriptionMock: vi.fn(),
+    narrativeFormulaCopyMock: vi.fn(),
     redisSetMock: vi.fn(),
     redisGetMock: vi.fn(),
     redisDelMock: vi.fn(),
@@ -84,6 +88,13 @@ vi.mock('./cultivatorService', () => ({
   addConsumableToInventory: vi.fn(),
 }));
 
+vi.mock('./AlchemyNarrativeEnricher', () => ({
+  AlchemyNarrativeEnricher: class AlchemyNarrativeEnricher {
+    generateFormulaBatchDescription = narrativeBatchDescriptionMock;
+    generateFormulaRecordCopy = narrativeFormulaCopyMock;
+  },
+}));
+
 import type { Consumable } from '@shared/types/cultivator';
 import type { AlchemyFormula, PillSpec } from '@shared/types/consumable';
 import {
@@ -101,6 +112,8 @@ function createFormula(
     id: overrides.id ?? '11111111-1111-1111-1111-111111111111',
     cultivatorId: overrides.cultivatorId ?? 'cultivator-1',
     name: overrides.name ?? '青木疗伤丹丹方',
+    description:
+      overrides.description ?? '此方偏于生机温养，主走木性回春之路。',
     family: overrides.family ?? 'healing',
     pattern: overrides.pattern ?? {
       requiredTags: ['healing'],
@@ -168,6 +181,10 @@ describe('AlchemyFormulaService', () => {
     redisSetMock.mockReset();
     redisGetMock.mockReset();
     redisDelMock.mockReset();
+    narrativeFormulaCopyMock.mockReset();
+    narrativeBatchDescriptionMock.mockReset();
+    narrativeFormulaCopyMock.mockResolvedValue(null);
+    narrativeBatchDescriptionMock.mockResolvedValue(null);
   });
 
   it('normalizes formula signatures independent of required tag order', () => {
@@ -269,10 +286,47 @@ describe('AlchemyFormulaService', () => {
     expect(candidate).toEqual({
       token: expect.any(String),
       name: '青木疗伤丹丹方',
+      description: expect.stringContaining('此方以疗伤为炉中主脉'),
       family: 'healing',
+      discoveryRemark: expect.stringContaining('《青木疗伤丹丹方》'),
       patternSummary: expect.stringContaining('主药性：疗伤'),
     });
     expect(redisSetMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses generated formula copy when llm formula naming succeeds', async () => {
+    redisSetMock.mockResolvedValueOnce('OK');
+    narrativeFormulaCopyMock.mockResolvedValueOnce({
+      name: '回春灵藏丹方',
+      description: '此方温引木性生机，重在缓和归拢药气，不以躁火争先。',
+      discoveryRemark: '一缕回春炉意忽而贯通，丹路已可成篇。',
+    });
+
+    const candidate = await buildDiscoveryCandidate('cultivator-1', {
+      consumable: createConsumable(),
+      ingredients: [
+        {
+          id: 'm1',
+          name: '青岚草',
+          rank: '真品',
+          element: '木',
+          type: 'herb',
+          dose: 1,
+          effectTags: ['healing'],
+          potency: 26,
+        },
+      ],
+      targetTags: ['healing'],
+    });
+
+    expect(candidate).toEqual({
+      token: expect.any(String),
+      name: '回春灵藏丹方',
+      description: '此方温引木性生机，重在缓和归拢药气，不以躁火争先。',
+      family: 'healing',
+      discoveryRemark: '一缕回春炉意忽而贯通，丹路已可成篇。',
+      patternSummary: expect.stringContaining('主药性：疗伤'),
+    });
   });
 
   it('skips discovery when formula signature already exists', async () => {
@@ -302,6 +356,7 @@ describe('AlchemyFormulaService', () => {
         id: existing.id,
         cultivatorId: existing.cultivatorId,
         name: existing.name,
+        description: existing.description,
         family: existing.family,
         pattern: existing.pattern,
         blueprint: existing.blueprint,
@@ -348,6 +403,7 @@ describe('AlchemyFormulaService', () => {
       formula: {
         cultivatorId: 'cultivator-1',
         name: '青木疗伤丹丹方',
+        description: '此方偏于生机温养，主走木性回春之路。',
         family: 'healing',
         pattern: {
           requiredTags: ['healing'],
@@ -386,6 +442,7 @@ describe('AlchemyFormulaService', () => {
       expect.objectContaining({
         cultivatorId: 'cultivator-1',
         name: '青木疗伤丹丹方',
+        description: '此方偏于生机温养，主走木性回春之路。',
       }),
     );
     expect(result).toEqual({

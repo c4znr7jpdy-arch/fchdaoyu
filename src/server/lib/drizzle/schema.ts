@@ -254,6 +254,7 @@ export const alchemyFormulas = pgTable(
       .references(() => cultivators.id, { onDelete: 'cascade' })
       .notNull(),
     name: varchar('name', { length: 100 }).notNull(),
+    description: text('description').notNull().default(''),
     family: varchar('family', { length: 20 }).$type<PillFamily>().notNull(),
     pattern: jsonb('pattern').$type<AlchemyFormulaPattern>().notNull(),
     blueprint: jsonb('blueprint').$type<AlchemyFormulaBlueprint>().notNull(),

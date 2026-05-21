@@ -55,7 +55,9 @@ describe('AlchemyResultModal', () => {
         formulaDiscovery={{
           token: 'token-1',
           name: '回春丹方',
+          description: '此方偏走木性生机，炉势圆融而不躁进。',
           family: 'healing',
+          discoveryRemark: '炉中药意已渐成章，回春一路可暂留于册。',
           patternSummary: '以木性生机为主，辅以回春药意。',
         }}
         formulaProgress={{
@@ -81,7 +83,9 @@ describe('AlchemyResultModal', () => {
     expect(html).not.toContain('服用上限');
     expect(html).toContain('丹方熟练');
     expect(html).toContain('本次熟练 +12');
-    expect(html).toContain('你已摸到一缕成方脉络：回春丹方');
+    expect(html).toContain('炉中药意已渐成章，回春一路可暂留于册。');
+    expect(html).toContain('回春丹方');
+    expect(html).toContain('此方偏走木性生机，炉势圆融而不躁进。');
     expect(html).toContain('丹成评述');
     expect(html.indexOf('核心药效')).toBeLessThan(html.indexOf('丹方熟练'));
   });

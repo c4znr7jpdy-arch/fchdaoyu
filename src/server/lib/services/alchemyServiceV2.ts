@@ -35,6 +35,7 @@ import {
   type AlchemyFocusMode,
   type AlchemyIntentResolution,
 } from './AlchemyIntentResolver';
+import { AlchemyNarrativeEnricher } from './AlchemyNarrativeEnricher';
 
 export { AlchemyServiceError } from './AlchemyServiceError';
 
@@ -116,6 +117,7 @@ const FAMILY_NAME_MAP: Record<PillFamily, string> = {
   marrow_wash: '洗髓丹',
   hybrid: '和元丹',
 };
+const alchemyNarrativeEnricher = new AlchemyNarrativeEnricher();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -867,22 +869,37 @@ export function createAlchemyService(
           ingredients.map((ingredient) => ingredient.name),
           intent.targetTags,
         );
+        const fallbackName = buildConsumableName(
+          synthesis.family,
+          synthesis.dominantElement,
+        );
+        const fallbackDescription = buildDescription(
+          ingredients.map((ingredient) => ingredient.name),
+          prompt,
+          synthesis.stability,
+          synthesis.toxicityRating,
+          intent.focusMode,
+        );
+        const generatedCopy =
+          await alchemyNarrativeEnricher.generateImprovisedPillCopy({
+            family: synthesis.family,
+            dominantElement: synthesis.dominantElement,
+            quality: highestMaterialRank,
+            materialNames: ingredients.map((ingredient) => ingredient.name),
+            targetTags: intent.targetTags,
+            operations: spec.operations,
+            stability: synthesis.stability,
+            toxicityRating: synthesis.toxicityRating,
+            userPrompt: prompt,
+            focusMode: intent.focusMode,
+          });
         const consumable: Consumable = {
-          name: buildConsumableName(
-            synthesis.family,
-            synthesis.dominantElement,
-          ),
+          name: generatedCopy?.name ?? fallbackName,
           type: '丹药',
           quality: highestMaterialRank,
           quantity: 1,
           prompt,
-          description: buildDescription(
-            ingredients.map((ingredient) => ingredient.name),
-            prompt,
-            synthesis.stability,
-            synthesis.toxicityRating,
-            intent.focusMode,
-          ),
+          description: generatedCopy?.description ?? fallbackDescription,
           spec,
         };
         consumable.score = calculateSingleElixirScore(consumable);
