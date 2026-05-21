@@ -5,8 +5,6 @@ import type {
   EnemyLoadoutPlan,
   EnemyPersonaArtifactPlan,
   EnemyPersonaDefinition,
-  EnemyPersonaSkillPlan,
-  EnemyPersonaTechniquePlan,
   EnemyPlannedProductIntent,
   NormalizedEnemyGenerationInput,
 } from './types';

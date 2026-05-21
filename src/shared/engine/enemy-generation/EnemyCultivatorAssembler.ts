@@ -5,16 +5,31 @@ import {
   REALM_STAGE_CAPS,
 } from '@shared/types/constants';
 import type {
+  Artifact,
   Attributes,
   Cultivator,
+  Skill,
   SpiritualRoot,
 } from '@shared/types/cultivator';
 import type {
+  EnemyCraftedProduct,
   EnemyCraftedLoadout,
   EnemyRaceProfile,
   NormalizedEnemyGenerationInput,
 } from './types';
 import { hashText } from './utils';
+
+function isArtifactProduct(
+  entry: EnemyCraftedProduct,
+): entry is EnemyCraftedProduct & { item: Artifact } {
+  return 'slot' in entry.item;
+}
+
+function isSkillProduct(
+  entry: EnemyCraftedProduct,
+): entry is EnemyCraftedProduct & { item: Skill } {
+  return 'cooldown' in entry.item;
+}
 
 export class EnemyCultivatorAssembler {
   assemble(args: {
@@ -38,16 +53,18 @@ export class EnemyCultivatorAssembler {
       description,
       loadout,
     } = args;
+    const artifactEntries = loadout.artifacts.filter(isArtifactProduct);
+    const skillEntries = loadout.skills.filter(isSkillProduct);
 
     const equipped = {
       weapon:
-        loadout.artifacts.find((artifact) => artifact.item.slot === 'weapon')?.item.id ??
+        artifactEntries.find((artifact) => artifact.item.slot === 'weapon')?.item.id ??
         null,
       armor:
-        loadout.artifacts.find((artifact) => artifact.item.slot === 'armor')?.item.id ??
+        artifactEntries.find((artifact) => artifact.item.slot === 'armor')?.item.id ??
         null,
       accessory:
-        loadout.artifacts.find(
+        artifactEntries.find(
           (artifact) => artifact.item.slot === 'accessory',
         )?.item.id ?? null,
     };
@@ -92,14 +109,14 @@ export class EnemyCultivatorAssembler {
       spiritual_roots: spiritualRoots,
       pre_heaven_fates: [],
       cultivations: [loadout.technique.item],
-      skills: loadout.skills.map((entry) => entry.item),
+      skills: skillEntries.map((entry) => entry.item),
       inventory: {
-        artifacts: loadout.artifacts.map((entry) => entry.item),
+        artifacts: artifactEntries.map((entry) => entry.item),
         consumables: [],
         materials: [],
       },
       equipped,
-      max_skills: Math.max(6, loadout.skills.length + 1),
+      max_skills: Math.max(6, skillEntries.length + 1),
       spirit_stones: 0,
       background,
       description,

@@ -1,11 +1,18 @@
 import { useInkUI } from '@app/components/providers/InkUIProvider';
-import type {
-  BreakthroughResult, CultivationResult, } from '@shared/engine/cultivation/CultivationEngine';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
-import { calculateBreakthroughChance } from '@server/utils/breakthroughCalculator';
+import { useTaskList } from '@app/lib/hooks/useTaskList';
+import { findCurrentMajorBreakthroughTask } from '@app/lib/tasks/taskClient';
+import type {
+  BreakthroughResult,
+  CultivationResult,
+} from '@shared/engine/cultivation/CultivationEngine';
+import type { TaskInstance } from '@shared/types/task';
+import {
+  calculateBreakthroughChance,
+  getNextStage,
+} from '@server/utils/breakthroughCalculator';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-
 
 export interface RetreatResultData {
   summary: BreakthroughResult['summary'] | CultivationResult['summary'];
@@ -32,25 +39,26 @@ export interface BreakthroughChancePreviewData {
 }
 
 export interface UseRetreatViewModelReturn {
-  // 数据
   cultivator: ReturnType<typeof useCultivator>['cultivator'];
   isLoading: boolean;
   note: string | undefined;
   remainingLifespan: number;
   cultivationProgress: CultivationProgressData | null;
   breakthroughPreview: BreakthroughChancePreviewData | null;
+  currentMajorTask: TaskInstance | null;
+  isMajorBreakthrough: boolean;
+  majorBreakthroughBlocked: boolean;
+  tasksLoading: boolean;
+  taskError: string | undefined;
 
-  // 表单状态
   retreatYears: string;
   setRetreatYears: (years: string) => void;
   handleRetreatYearsChange: (value: string) => void;
 
-  // 操作状态
   retreatLoading: boolean;
   retreatResult: RetreatResultData | null;
   showBreakthroughConfirm: boolean;
 
-  // 业务操作
   handleRetreat: () => Promise<void>;
   handleBreakthroughClick: () => void;
   handleBreakthrough: () => Promise<void>;
@@ -59,34 +67,29 @@ export interface UseRetreatViewModelReturn {
   clearRetreatResult: () => void;
 }
 
-/**
- * 洞府页面 ViewModel
- * 封装所有修炼和突破相关业务逻辑
- */
 export function useRetreatViewModel(): UseRetreatViewModelReturn {
   const { cultivator, isLoading, refresh, note } = useCultivator();
   const { pushToast } = useInkUI();
   const navigate = useNavigate();
+  const {
+    tasks,
+    loading: tasksLoading,
+    error: taskError,
+    reload: reloadTasks,
+  } = useTaskList(cultivator?.id);
 
-  // 表单状态
   const [retreatYears, setRetreatYears] = useState('10');
-
-  // 结果状态
   const [retreatResult, setRetreatResult] = useState<RetreatResultData | null>(
     null,
   );
-
-  // 操作状态
   const [retreatLoading, setRetreatLoading] = useState(false);
   const [showBreakthroughConfirm, setShowBreakthroughConfirm] = useState(false);
 
-  // 计算剩余寿元
   const remainingLifespan = useMemo(() => {
     if (!cultivator) return 0;
     return Math.max(cultivator.lifespan - cultivator.age, 0);
   }, [cultivator]);
 
-  // 计算修为进度
   const cultivationProgress = useMemo((): CultivationProgressData | null => {
     if (!cultivator?.cultivation_progress) return null;
 
@@ -96,7 +99,6 @@ export function useRetreatViewModel(): UseRetreatViewModelReturn {
     );
     const canBreakthrough = percent >= 60;
 
-    // 计算突破类型
     let breakthroughType: 'forced' | 'normal' | 'perfect' | null = null;
     if (percent >= 100 && progress.comprehension_insight >= 50) {
       breakthroughType = 'perfect';
@@ -116,34 +118,76 @@ export function useRetreatViewModel(): UseRetreatViewModelReturn {
     };
   }, [cultivator]);
 
+  const nextBreakthrough = useMemo(() => {
+    if (!cultivator) {
+      return null;
+    }
+
+    return getNextStage(cultivator.realm, cultivator.realm_stage);
+  }, [cultivator]);
+
+  const isMajorBreakthrough = Boolean(
+    cultivator &&
+      nextBreakthrough &&
+      nextBreakthrough.realm !== cultivator.realm,
+  );
+
+  const currentMajorTask = useMemo(
+    () => findCurrentMajorBreakthroughTask(cultivator, tasks),
+    [cultivator, tasks],
+  );
+
+  const majorBreakthroughBlocked = Boolean(
+    isMajorBreakthrough &&
+      (!currentMajorTask || currentMajorTask.status !== 'completed'),
+  );
+
   const breakthroughPreview = useMemo((): BreakthroughChancePreviewData | null => {
-    if (!cultivator || !cultivationProgress?.canBreakthrough) {
+    if (
+      !cultivator ||
+      !cultivationProgress?.canBreakthrough ||
+      (isMajorBreakthrough && majorBreakthroughBlocked)
+    ) {
       return null;
     }
 
     try {
       const result = calculateBreakthroughChance(cultivator);
-      const baseChance = result.chance;
-      const finalChance = baseChance;
+      const baseChance = Math.min(
+        1,
+        Math.max(
+          0.05,
+          result.modifiers.baseChance *
+            result.modifiers.realmDifficulty *
+            result.modifiers.progressMultiplier *
+            result.modifiers.insightMultiplier *
+            result.modifiers.wisdomMultiplier *
+            result.modifiers.demonPenalty +
+            result.modifiers.toxicityPenalty,
+        ),
+      );
 
       return {
         baseChance,
-        finalChance,
-        buffBonus: 0,
+        finalChance: result.chance,
+        buffBonus: result.modifiers.pillBonus + result.modifiers.fateBonus,
         recommendation: result.recommendation,
       };
     } catch {
       return null;
     }
-  }, [cultivator, cultivationProgress?.canBreakthrough]);
+  }, [
+    cultivator,
+    cultivationProgress?.canBreakthrough,
+    isMajorBreakthrough,
+    majorBreakthroughBlocked,
+  ]);
 
-  // 处理闭关年限输入
   const handleRetreatYearsChange = useCallback((value: string) => {
     const numeric = value.replace(/[^\d]/g, '');
     setRetreatYears(numeric);
   }, []);
 
-  // 闭关修炼
   const handleRetreat = useCallback(async () => {
     if (!cultivator) return;
 
@@ -173,7 +217,7 @@ export function useRetreatViewModel(): UseRetreatViewModelReturn {
       }
 
       setRetreatResult(payload.data);
-      await refresh();
+      await Promise.all([refresh(), reloadTasks()]);
     } catch (error) {
       pushToast({
         message:
@@ -183,19 +227,26 @@ export function useRetreatViewModel(): UseRetreatViewModelReturn {
     } finally {
       setRetreatLoading(false);
     }
-  }, [cultivator, retreatYears, pushToast, refresh]);
+  }, [cultivator, pushToast, refresh, reloadTasks, retreatYears]);
 
-  // 点击突破按钮
   const handleBreakthroughClick = useCallback(() => {
-    setShowBreakthroughConfirm(true);
-  }, []);
+    if (isMajorBreakthrough && majorBreakthroughBlocked) {
+      pushToast({
+        message: tasksLoading
+          ? '破境卷宗仍在整理，请稍后再试。'
+          : '先完成当前破境任务，再回静室正式冲关。',
+        tone: 'warning',
+      });
+      return;
+    }
 
-  // 关闭突破确认弹窗
+    setShowBreakthroughConfirm(true);
+  }, [isMajorBreakthrough, majorBreakthroughBlocked, pushToast, tasksLoading]);
+
   const closeBreakthroughConfirm = useCallback(() => {
     setShowBreakthroughConfirm(false);
   }, []);
 
-  // 执行突破
   const handleBreakthrough = useCallback(async () => {
     if (!cultivator) return;
 
@@ -213,11 +264,23 @@ export function useRetreatViewModel(): UseRetreatViewModelReturn {
 
       const payload = await response.json();
       if (!response.ok || !payload.success) {
+        if (payload?.errorCode === 'MAJOR_BREAKTHROUGH_TASK_REQUIRED') {
+          await reloadTasks();
+          pushToast({
+            message:
+              typeof payload.error === 'string'
+                ? payload.error
+                : '大境界突破仍需先完成破境任务',
+            tone: 'warning',
+          });
+          return;
+        }
+
         throw new Error(payload.error || '突破失败');
       }
 
       setRetreatResult(payload.data);
-      await refresh();
+      await Promise.all([refresh(), reloadTasks()]);
     } catch (error) {
       pushToast({
         message:
@@ -227,9 +290,8 @@ export function useRetreatViewModel(): UseRetreatViewModelReturn {
     } finally {
       setRetreatLoading(false);
     }
-  }, [cultivator, pushToast, refresh]);
+  }, [cultivator, pushToast, refresh, reloadTasks]);
 
-  // 前往转世
   const handleGoReincarnate = useCallback(() => {
     if (retreatResult?.story && typeof window !== 'undefined' && cultivator) {
       window.sessionStorage.setItem(
@@ -245,31 +307,28 @@ export function useRetreatViewModel(): UseRetreatViewModelReturn {
     navigate('/game/reincarnate');
   }, [cultivator, navigate, retreatResult]);
 
-  // 清除结果
   const clearRetreatResult = useCallback(() => {
     setRetreatResult(null);
   }, []);
 
   return {
-    // 数据
     cultivator,
     isLoading,
     note,
     remainingLifespan,
     cultivationProgress,
     breakthroughPreview,
-
-    // 表单状态
+    currentMajorTask,
+    isMajorBreakthrough,
+    majorBreakthroughBlocked,
+    tasksLoading,
+    taskError,
     retreatYears,
     setRetreatYears,
     handleRetreatYearsChange,
-
-    // 操作状态
     retreatLoading,
     retreatResult,
     showBreakthroughConfirm,
-
-    // 业务操作
     handleRetreat,
     handleBreakthroughClick,
     handleBreakthrough,

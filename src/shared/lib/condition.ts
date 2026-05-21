@@ -1,4 +1,5 @@
 import type {
+  ConditionStatusKey,
   ConditionStatusDuration,
   ConditionStatusInstance,
   CultivatorCondition,
@@ -36,6 +37,18 @@ export function isConditionStatusActive(
   }
 
   return true;
+}
+
+export function hasActiveConditionStatus(
+  conditionInput: CultivatorCondition | undefined,
+  statusKey: ConditionStatusKey,
+  now: Date = new Date(),
+): boolean {
+  return (conditionInput?.statuses ?? []).some(
+    (status) =>
+      status.key === statusKey &&
+      isConditionStatusActive(status, now),
+  );
 }
 
 export function getBreakthroughPenalty(

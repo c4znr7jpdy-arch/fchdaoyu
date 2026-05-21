@@ -19,6 +19,7 @@ import marketRouter from '@server/routes/api/market.router';
 import productsRouter from '@server/routes/api/products.router';
 import rankingsRouter from '@server/routes/api/rankings.router';
 import saveCharacterRouter from '@server/routes/api/save-character.router';
+import tasksRouter from '@server/routes/api/tasks.router';
 import worldChatRouter from '@server/routes/api/world-chat.router';
 import type { AppEnv } from '@server/lib/hono/types';
 import playerRouter from '@server/routes/player.router';
@@ -54,6 +55,7 @@ apiRouter.route('/manual-draw', manualDrawRouter);
 apiRouter.route('/market', marketRouter);
 apiRouter.route('/rankings', rankingsRouter);
 apiRouter.route('/save-character', saveCharacterRouter);
+apiRouter.route('/tasks', tasksRouter);
 apiRouter.route('/v2/products', productsRouter);
 apiRouter.route('/world-chat', worldChatRouter);
 

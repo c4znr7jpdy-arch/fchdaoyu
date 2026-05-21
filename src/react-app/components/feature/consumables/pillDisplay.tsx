@@ -4,6 +4,7 @@ import {
   getAffixToneStyle,
   getAffixUnderlineStyle,
 } from '@app/components/feature/products/affixPresentation';
+import { getBreakthroughPillLabel } from '@shared/lib/breakthroughPill';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { getResourceLabel } from '@shared/lib/resourceText';
 import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
@@ -61,6 +62,15 @@ function getRestoreTargetText(
 
 function getGaugeChangeText(delta: number): string {
   return `丹毒 ${delta > 0 ? '+' : ''}${delta}`;
+}
+
+function getBreakthroughPurposeLabel(spec: PillSpec): string | null {
+  return (
+    spec.alchemyMeta.breakthroughLabel ??
+    (spec.alchemyMeta.breakthroughTargetRealm
+      ? getBreakthroughPillLabel(spec.alchemyMeta.breakthroughTargetRealm)
+      : null)
+  );
 }
 
 export function getPillFamilyLabel(family: PillFamily): string {
@@ -148,7 +158,14 @@ function buildPrimaryEffect(spec: PillSpec): string {
         ): operation is Extract<ConditionOperation, { type: 'add_status' }> =>
           operation.type === 'add_status',
       );
-      return status ? describePillOperation(status) : '助力破境';
+      const breakthroughLabel = getBreakthroughPurposeLabel(spec);
+      if (!status) {
+        return breakthroughLabel ? `${breakthroughLabel}，助力破境` : '助力破境';
+      }
+
+      return breakthroughLabel
+        ? `${breakthroughLabel}：${describePillOperation(status)}`
+        : describePillOperation(status);
     }
     case 'tempering':
     case 'marrow_wash': {
@@ -166,6 +183,7 @@ function buildPrimaryEffect(spec: PillSpec): string {
 function buildKeywordLabels(spec: PillSpec, realm?: RealmType): string[] {
   const labels = [
     getPillFamilyLabel(spec.family),
+    spec.family === 'breakthrough' ? getBreakthroughPurposeLabel(spec) : null,
     getPillUsageKeywordLabel(spec.consumeRules.countsTowardLongTermQuota, realm),
   ].filter((label): label is string => Boolean(label));
 
@@ -215,9 +233,14 @@ function buildCostAndRuleLines(spec: PillSpec, realm?: RealmType): string[] {
 
 function buildAlchemyInfoLines(consumable: Consumable & { spec: PillSpec }): string[] {
   const { alchemyMeta } = consumable.spec;
+  const breakthroughLabel = getBreakthroughPurposeLabel(consumable.spec);
 
   return [
     `丹药类别：${getPillFamilyLabel(consumable.spec.family)}`,
+    breakthroughLabel ? `破境用途：${breakthroughLabel}` : undefined,
+    alchemyMeta.breakthroughTargetRealm
+      ? `目标大境界：${alchemyMeta.breakthroughTargetRealm}`
+      : undefined,
     `炼制来源：${alchemyMeta.source === 'formula' ? '丹方炼制' : '即兴炼制'}`,
     `稳度：${alchemyMeta.stability}`,
     alchemyMeta.dominantElement

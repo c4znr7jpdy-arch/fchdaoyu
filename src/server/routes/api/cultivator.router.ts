@@ -37,6 +37,7 @@ import {
   identifyMysteryMaterial,
   MarketServiceError,
 } from '@server/lib/services/MarketService';
+import { TaskService } from '@server/lib/services/TaskService';
 import {
   addBreakthroughHistoryEntry,
   addRetreatRecord,
@@ -267,6 +268,11 @@ router.post('/consume', requireActiveCultivator(), async (c) => {
       cultivator.id,
       parsed.data.consumableId,
     );
+    try {
+      await TaskService.syncCultivatorTasks(cultivator.id);
+    } catch (syncError) {
+      console.error('服用丹药后同步任务失败:', syncError);
+    }
     return c.json({
       success: true,
       data: {
@@ -576,6 +582,21 @@ router.post('/retreat', requireActiveCultivator(), async (c) => {
           },
         },
       });
+    }
+
+    const majorGate = await TaskService.getMajorBreakthroughGate(cultivatorId);
+    if (majorGate.required && majorGate.blocked) {
+      return c.json(
+        {
+          success: false,
+          error: '大境界突破仍需先完成破境任务',
+          errorCode: 'MAJOR_BREAKTHROUGH_TASK_REQUIRED',
+          data: {
+            task: majorGate.task,
+          },
+        },
+        409,
+      );
     }
 
     const result = attemptBreakthrough(cultivator);

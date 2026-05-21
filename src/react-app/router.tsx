@@ -222,6 +222,18 @@ export const router = createBrowserRouter(
               )}
             />
             <Route
+              path="tasks"
+              lazy={lazyRoute(() => import('@app/routes/game/tasks/route'))}
+              handle={scene(
+                {
+                  id: 'tasks',
+                  presentation: 'archive',
+                  summary: '当前破境前置、试炼进度与已完成任务都在此归卷。',
+                },
+                '任务中心',
+              )}
+            />
+            <Route
               path="skills"
               lazy={lazyRoute(() => import('@app/routes/game/skills/route'))}
               handle={scene(
@@ -551,6 +563,20 @@ export const router = createBrowserRouter(
                   dock: 'hidden',
                 },
                 '练功房',
+              )}
+            />
+            <Route
+              path="tasks/:taskId/challenge"
+              lazy={lazyRoute(
+                () => import('@app/routes/game/tasks/challenge/route'),
+              )}
+              handle={scene(
+                {
+                  id: 'task-challenge',
+                  chrome: 'immersive',
+                  dock: 'hidden',
+                },
+                '破境试炼',
               )}
             />
           </Route>

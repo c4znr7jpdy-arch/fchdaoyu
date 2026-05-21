@@ -1,5 +1,9 @@
 import { calculateCraftCost, calculateHighestMaterialRank } from '@shared/engine/creation-v2/CraftCostCalculator';
 import {
+  getBreakthroughPillLabel,
+  getNextMajorRealm,
+} from '@shared/lib/breakthroughPill';
+import {
   getMaterialAlchemyTagFamily,
   getMaterialAlchemyTagLabel,
   getTrackPathAlchemyTag,
@@ -7,7 +11,13 @@ import {
   readMaterialAlchemyProfile,
 } from '@shared/lib/materialAlchemy';
 import type { ConditionTrackPath } from '@shared/types/condition';
-import { QUALITY_ORDER, type ElementType, type MaterialType, type Quality } from '@shared/types/constants';
+import {
+  QUALITY_ORDER,
+  type ElementType,
+  type MaterialType,
+  type Quality,
+  type RealmType,
+} from '@shared/types/constants';
 import type { MaterialDetails, Consumable } from '@shared/types/cultivator';
 import type {
   AlchemyFormula,
@@ -968,6 +978,15 @@ export async function craftFromFormula(
         ),
       },
     };
+    const breakthroughTargetRealm =
+      formula.family === 'breakthrough'
+        ? getNextMajorRealm(cultivator.realm as RealmType)
+        : null;
+    if (formula.family === 'breakthrough' && breakthroughTargetRealm) {
+      spec.alchemyMeta.breakthroughTargetRealm = breakthroughTargetRealm;
+      spec.alchemyMeta.breakthroughLabel =
+        getBreakthroughPillLabel(breakthroughTargetRealm);
+    }
     const generatedBatchDescription =
       await alchemyNarrativeEnricher.generateFormulaBatchDescription({
         formulaName: formula.name,
@@ -983,7 +1002,10 @@ export async function craftFromFormula(
         masteryLevel: formula.mastery.level,
       });
     const consumable: Consumable = {
-      name: getFormulaProductName(formula.name),
+      name:
+        formula.family === 'breakthrough' && breakthroughTargetRealm
+          ? getBreakthroughPillLabel(breakthroughTargetRealm)
+          : getFormulaProductName(formula.name),
       type: '丹药',
       quality: highestMaterialRank,
       quantity: 1,

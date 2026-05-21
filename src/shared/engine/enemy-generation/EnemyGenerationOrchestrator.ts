@@ -281,9 +281,14 @@ export class EnemyGenerationOrchestrator {
         remaining -= 1;
       });
 
-    const attributes = Object.fromEntries(
-      base.map((entry) => [entry.key, entry.value]),
-    ) as Attributes;
+    const valueMap = new Map(base.map((entry) => [entry.key, entry.value]));
+    const attributes: Attributes = {
+      vitality: valueMap.get('vitality') ?? 0,
+      spirit: valueMap.get('spirit') ?? 0,
+      wisdom: valueMap.get('wisdom') ?? 0,
+      speed: valueMap.get('speed') ?? 0,
+      willpower: valueMap.get('willpower') ?? 0,
+    };
 
     return {
       attributes,

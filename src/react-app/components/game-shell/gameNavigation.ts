@@ -137,6 +137,12 @@ export const gameDockGroups: GameNavGroup[] = [
         expandedDockLabel: '🔮 重塑命格',
       },
       {
+        id: 'tasks',
+        sceneLabel: '任务中心',
+        href: '/game/tasks',
+        expandedDockLabel: '📜 任务中心',
+      },
+      {
         id: 'manual-draw',
         sceneLabel: '悟道演法',
         href: '/game/enlightenment/manual-draw',
@@ -226,6 +232,10 @@ export const gameDockGroups: GameNavGroup[] = [
       {
         id: 'battle-replay',
         sceneLabel: '战斗回放',
+      },
+      {
+        id: 'task-challenge',
+        sceneLabel: '破境试炼',
       },
       {
         id: 'bet-battle-challenge',

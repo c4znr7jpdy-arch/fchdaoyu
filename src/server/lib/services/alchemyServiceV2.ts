@@ -9,8 +9,17 @@ import {
   isAlchemyMaterialType,
   readMaterialAlchemyProfile,
 } from '@shared/lib/materialAlchemy';
+import {
+  getBreakthroughPillLabel,
+  getNextMajorRealm,
+} from '@shared/lib/breakthroughPill';
 import type { ConditionTrackPath } from '@shared/types/condition';
-import type { ElementType, MaterialType, Quality } from '@shared/types/constants';
+import type {
+  ElementType,
+  MaterialType,
+  Quality,
+  RealmType,
+} from '@shared/types/constants';
 import type { Consumable, MaterialDetails } from '@shared/types/cultivator';
 import type {
   AlchemyFormulaDiscoveryCandidate,
@@ -864,11 +873,20 @@ export function createAlchemyService(
           intent,
           highestMaterialRank,
         );
+        const breakthroughTargetRealm =
+          synthesis.family === 'breakthrough'
+            ? getNextMajorRealm(cultivator.realm as RealmType)
+            : null;
         const spec = buildAlchemySpec(
           synthesis,
           ingredients.map((ingredient) => ingredient.name),
           intent.targetTags,
         );
+        if (synthesis.family === 'breakthrough' && breakthroughTargetRealm) {
+          spec.alchemyMeta.breakthroughTargetRealm = breakthroughTargetRealm;
+          spec.alchemyMeta.breakthroughLabel =
+            getBreakthroughPillLabel(breakthroughTargetRealm);
+        }
         const fallbackName = buildConsumableName(
           synthesis.family,
           synthesis.dominantElement,
@@ -893,8 +911,12 @@ export function createAlchemyService(
             userPrompt: prompt,
             focusMode: intent.focusMode,
           });
+        const resolvedName =
+          synthesis.family === 'breakthrough' && breakthroughTargetRealm
+            ? getBreakthroughPillLabel(breakthroughTargetRealm)
+            : (generatedCopy?.name ?? fallbackName);
         const consumable: Consumable = {
-          name: generatedCopy?.name ?? fallbackName,
+          name: resolvedName,
           type: '丹药',
           quality: highestMaterialRank,
           quantity: 1,

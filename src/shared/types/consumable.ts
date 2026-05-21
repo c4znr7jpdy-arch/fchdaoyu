@@ -1,5 +1,5 @@
 import type { ConditionStatusDuration, ConditionStatusKey, ConditionTrackPath } from './condition';
-import type { ElementType, Quality } from './constants';
+import type { ElementType, Quality, RealmType } from './constants';
 
 export const PILL_FAMILY_VALUES = [
   'healing',
@@ -34,6 +34,8 @@ export type PillAlchemyMeta =
       stability: number;
       toxicityRating: number;
       tags: string[];
+      breakthroughTargetRealm?: RealmType;
+      breakthroughLabel?: string;
     }
   | {
       source: 'formula';
@@ -43,6 +45,8 @@ export type PillAlchemyMeta =
       stability: number;
       toxicityRating: number;
       tags: string[];
+      breakthroughTargetRealm?: RealmType;
+      breakthroughLabel?: string;
     };
 
 export interface RestoreResourceOperation {

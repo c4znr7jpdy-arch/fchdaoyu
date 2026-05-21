@@ -19,7 +19,10 @@ import type {
 import {
   evaluateFateGrowthContext,
 } from '@shared/lib/fates';
-import { getBreakthroughPenalty } from '@shared/lib/condition';
+import {
+  getBreakthroughPenalty,
+  hasActiveConditionStatus,
+} from '@shared/lib/condition';
 import { format } from 'd3-format';
 import { calculateExpProgress, getBreakthroughType } from './cultivationUtils';
 import { getRealmStageAttributeCap } from './cultivatorUtils';
@@ -104,6 +107,14 @@ export function calculateBreakthroughChance(
   }
 
   const isMajorBreakthrough = nextStage.realm !== cultivator.realm;
+  const hasBreakthroughFocus = hasActiveConditionStatus(
+    cultivator.condition,
+    'breakthrough_focus',
+  );
+  const hasClearMind = hasActiveConditionStatus(
+    cultivator.condition,
+    'clear_mind',
+  );
 
   // 1. 基础成功率（根据突破类型）
   const baseChance = getBaseChanceByType(breakthroughType, isMajorBreakthrough);
@@ -125,10 +136,18 @@ export function calculateBreakthroughChance(
   );
 
   // 6. 心魔惩罚
-  const demonPenalty = progress.inner_demon ? 0.95 : 1.0;
+  const demonPenalty = progress.inner_demon
+    ? hasClearMind
+      ? 0.98
+      : isMajorBreakthrough
+        ? 0.9
+        : 0.95
+    : 1.0;
   const fateBonus = evaluateFateGrowthContext(
     cultivator.pre_heaven_fates ?? [],
   ).breakthroughChanceBonus;
+  const pillBonus =
+    (hasBreakthroughFocus ? 0.06 : 0) + (hasClearMind ? 0.04 : 0);
   const toxicityPenalty = getBreakthroughPenalty(
     cultivator.condition,
   );
@@ -145,6 +164,7 @@ export function calculateBreakthroughChance(
         wisdomMultiplier *
         demonPenalty +
         fateBonus +
+        pillBonus +
         toxicityPenalty,
     ),
   );
@@ -168,7 +188,7 @@ export function calculateBreakthroughChance(
       wisdomMultiplier,
       demonPenalty,
       fateBonus,
-      pillBonus: 0,
+      pillBonus,
       toxicityPenalty,
       finalChance,
     },

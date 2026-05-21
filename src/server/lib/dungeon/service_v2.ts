@@ -27,6 +27,7 @@ import {
 } from '../services/cultivatorService';
 import { ConditionService } from '../services/ConditionService';
 import { FateEngine } from '../services/FateEngine';
+import { TaskService } from '../services/TaskService';
 import { buildDungeonBattleInit } from './battleInit';
 import { checkDungeonLimit, consumeDungeonLimit } from './dungeonLimiter';
 import type { RewardBlueprint } from './reward';
@@ -880,6 +881,16 @@ export class DungeonService {
 
     // 清理并存档 (逻辑同你之前)
     await this.archiveDungeon(state, settlement, realGains);
+    if (!options?.abandonedBattle) {
+      try {
+        await TaskService.recordDungeonCompletion(
+          state.cultivatorId,
+          state.mapNodeId,
+        );
+      } catch (taskError) {
+        console.error('[DungeonSettlement] 同步任务进度失败:', taskError);
+      }
+    }
 
     return { isFinished: true, settlement, realGains };
   }

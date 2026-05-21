@@ -1,3 +1,4 @@
+import { BreakthroughTaskCard } from '@app/components/feature/tasks/BreakthroughTaskCard';
 import { useLifespanStatus } from '@app/components/feature/cultivator/LifespanStatusCard';
 import {
   GameSceneAsideSection,
@@ -63,6 +64,11 @@ export function RetreatView() {
     remainingLifespan,
     cultivationProgress,
     breakthroughPreview,
+    currentMajorTask,
+    isMajorBreakthrough,
+    majorBreakthroughBlocked,
+    tasksLoading,
+    taskError,
     retreatYears,
     handleRetreatYearsChange,
     retreatLoading,
@@ -147,10 +153,19 @@ export function RetreatView() {
               <p>
                 道心感悟：{cultivationProgress?.comprehension_insight ?? 0}/100
               </p>
-              <p>成功把握：{formatChance(breakthroughPreview?.finalChance)}</p>
+              <p>
+                成功把握：
+                {isMajorBreakthrough && majorBreakthroughBlocked
+                  ? '前置未齐'
+                  : formatChance(breakthroughPreview?.finalChance)}
+              </p>
               {breakthroughPreview?.recommendation ? (
                 <p className="text-ink-secondary">
                   {breakthroughPreview.recommendation}
+                </p>
+              ) : isMajorBreakthrough && majorBreakthroughBlocked ? (
+                <p className="text-ink-secondary">
+                  先把当前破境前置做完，再谈正式冲关。
                 </p>
               ) : (
                 <p className="text-ink-secondary">
@@ -162,6 +177,41 @@ export function RetreatView() {
         </>
       }
     >
+      {isMajorBreakthrough ? (
+        <GameSceneSection title="破境前置">
+          {tasksLoading ? (
+            <p className="text-sm leading-7 text-ink-secondary">
+              破境卷宗整理中……稍后便会显出这一关该先做什么。
+            </p>
+          ) : taskError ? (
+            <InkNotice>{taskError}</InkNotice>
+          ) : currentMajorTask ? (
+            <div className="space-y-3">
+              <BreakthroughTaskCard task={currentMajorTask} />
+              {currentMajorTask.status === 'completed' ? (
+                <p className="text-sm leading-7 text-emerald-800">
+                  前置卷宗已齐，现在可以回到静室，正式冲击
+                  {currentMajorTask.snapshot.toRealm}。
+                </p>
+              ) : currentMajorTask.snapshot.missingRequirements.length > 0 ? (
+                <div className="border-ink/10 bg-bgpaper border border-dashed px-4 py-3">
+                  <p className="text-sm font-medium text-ink">当前缺口</p>
+                  <ul className="mt-2 space-y-1 text-sm leading-7 text-ink-secondary">
+                    {currentMajorTask.snapshot.missingRequirements.map((requirement) => (
+                      <li key={requirement}>{requirement}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm leading-7 text-ink-secondary">
+              当前已临大境界门槛，但卷宗尚未归档完成。稍后刷新即可继续。
+            </p>
+          )}
+        </GameSceneSection>
+      ) : null}
+
       <GameSceneSection title="当前火候">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <QuietRoomMetric
@@ -202,7 +252,11 @@ export function RetreatView() {
       <GameSceneSection title="本次闭关">
         <div className="space-y-4 text-sm leading-7">
           <p>
-            静室只看与这一次决断直接相关的事：要押几年寿元、此刻该不该冲关，以及冲关失败后还能否承受代价。
+            {isMajorBreakthrough
+              ? majorBreakthroughBlocked
+                ? '这一关先别急着起手。先把破境前置做完，静室此刻更适合补足修为、准备资源。'
+                : '前置卷宗已齐，静室此刻只剩最后的冲关决断，以及你愿不愿承受失败后的代价。'
+              : '静室只看与这一次决断直接相关的事：要押几年寿元、此刻该不该冲关，以及冲关失败后还能否承受代价。'}
           </p>
 
           <InkInput
@@ -222,7 +276,8 @@ export function RetreatView() {
               {retreatLoading ? '修炼中……' : '闭关修炼'}
             </InkButton>
 
-            {cultivationProgress?.canBreakthrough ? (
+            {cultivationProgress?.canBreakthrough &&
+            (!isMajorBreakthrough || !majorBreakthroughBlocked) ? (
               <InkButton
                 onClick={handleBreakthroughClick}
                 disabled={retreatLoading}
@@ -231,6 +286,14 @@ export function RetreatView() {
               </InkButton>
             ) : null}
           </div>
+
+          {cultivationProgress?.canBreakthrough &&
+          isMajorBreakthrough &&
+          majorBreakthroughBlocked ? (
+            <p className="text-xs leading-6 text-ink-secondary">
+              大境界突破暂未开放正式冲关，先按上方卷宗补齐当前阶段。
+            </p>
+          ) : null}
         </div>
       </GameSceneSection>
 
@@ -239,6 +302,7 @@ export function RetreatView() {
         onClose={closeBreakthroughConfirm}
         onConfirm={handleBreakthrough}
         chancePreview={breakthroughPreview}
+        isMajorBreakthrough={isMajorBreakthrough}
       />
 
       {retreatResult ? (

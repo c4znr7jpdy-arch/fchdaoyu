@@ -16,6 +16,7 @@ import {
   craftFromFormula,
   previewFormulaCraft,
 } from '@server/lib/services/AlchemyFormulaService';
+import { TaskService } from '@server/lib/services/TaskService';
 import {
   requireActiveCultivator,
 } from '@server/lib/hono/middleware';
@@ -221,6 +222,11 @@ router.post('/', requireActiveCultivator(), async (c) => {
             materialQuantities,
             userPrompt,
           });
+      try {
+        await TaskService.syncCultivatorTasks(cultivator.id);
+      } catch (syncError) {
+        console.error('炼丹后同步任务失败:', syncError);
+      }
 
       return c.json({ success: true, data: result });
     }

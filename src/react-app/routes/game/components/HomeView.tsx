@@ -6,6 +6,9 @@ import { HomeUrgentRow } from '@app/components/feature/home/HomeUrgentRow';
 import { GameSceneFrame, GameSceneSection } from '@app/components/game-shell';
 import { InkButton, InkNotice } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import { useTaskList } from '@app/lib/hooks/useTaskList';
+import { findCurrentMajorBreakthroughTask } from '@app/lib/tasks/taskClient';
+import { getNextMajorRealm } from '@shared/lib/breakthroughPill';
 import {
   getPillToxicityStage,
   isConditionStatusActive,
@@ -26,6 +29,11 @@ function calculateYieldHours(lastYieldAt: Date | string | undefined) {
 
 export function HomeView() {
   const { cultivator, isLoading, finalAttributes } = useCultivator();
+  const {
+    tasks,
+    loading: tasksLoading,
+    error: taskError,
+  } = useTaskList(cultivator?.id);
   const [yieldHours, setYieldHours] = useState(() =>
     calculateYieldHours(cultivator?.last_yield_at),
   );
@@ -109,6 +117,11 @@ export function HomeView() {
     };
   }, [cultivator, finalAttributes]);
 
+  const currentMajorTask = useMemo(
+    () => findCurrentMajorBreakthroughTask(cultivator, tasks),
+    [cultivator, tasks],
+  );
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -139,6 +152,9 @@ export function HomeView() {
       caveStatus.pillToxicityStage.key !== 'none' ||
       caveStatus.activeStatuses.length > 0);
   const hasBreakthroughAlert = (caveStatus?.cultivationPercent ?? 0) >= 60;
+  const isMajorBreakthroughCandidate = Boolean(
+    cultivator.realm_stage === '圆满' && getNextMajorRealm(cultivator.realm),
+  );
   const lifespanAction = lifespanStatus ? (
     <span className="text-ink/70 text-sm">
       {lifespanStatus.remaining} / {lifespanStatus.dailyLimit}
@@ -155,12 +171,42 @@ export function HomeView() {
     );
   }
 
-  if (hasBreakthroughAlert) {
+  if (currentMajorTask) {
+    const summary =
+      currentMajorTask.status === 'completed'
+        ? '准备充分，可冲关'
+        : '需准备充分，方可冲关'
+    urgentItems.push(
+      <HomeUrgentRow
+        key="major-breakthrough-task"
+        title={<span className="text-crimson">⚡ 突破境界</span>}
+        summary={summary}
+        action={
+          <InkButton
+            href={
+              currentMajorTask.status === 'completed'
+                ? '/game/retreat'
+                : '/game/tasks'
+            }
+            variant="primary"
+          >
+            {currentMajorTask.status === 'completed' ? '冲关' : '准备'}
+          </InkButton>
+        }
+      />,
+    );
+  }
+
+  if (
+    hasBreakthroughAlert &&
+    !currentMajorTask &&
+    (!isMajorBreakthroughCandidate || taskError || !tasksLoading)
+  ) {
     urgentItems.push(
       <HomeUrgentRow
         key="breakthrough"
         title={<span className="text-crimson">⚡ 突破瓶颈</span>}
-        summary={`修为进度已达 ${Math.min(100,(caveStatus?.cultivationPercent ?? 0))}%`}
+        summary={`修为进度已达 ${Math.min(100, caveStatus?.cultivationPercent ?? 0)}%`}
         action={
           <InkButton href="/game/retreat" variant="primary">
             突破
@@ -195,11 +241,11 @@ export function HomeView() {
     urgentItems.push(
       <HomeUrgentRow
         key="resource"
-        title={<span className="text-crimson">☯ 道体未稳</span>}
+        title={<span className="text-crimson">☯ 道体状态</span>}
         summary={parts.join(' · ')}
         action={
-          <InkButton href="/game/cultivator" variant="primary" className="px-0">
-            看道身
+          <InkButton href="/game/cultivator" variant="primary">
+            查看
           </InkButton>
         }
       />,
@@ -211,7 +257,7 @@ export function HomeView() {
       <GameSceneSection title="当下要事">
         <div>
           <HomeUrgentRow
-          className='pr-2'
+            className="pr-2"
             title={<span>⏳ 可用寿元</span>}
             summary={<span className="text-ink/50 text-xs">（每日凌晨重置）</span>}
             action={lifespanAction}
@@ -228,7 +274,7 @@ export function HomeView() {
                   variant="primary"
                   className="px-0"
                 >
-                  入静室
+                  修炼
                 </InkButton>
               }
             />

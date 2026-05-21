@@ -302,6 +302,13 @@
       "when": 1779335736297,
       "tag": "0042_sharp_master_chief",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1779355054234,
+      "tag": "0043_square_stepford_cuckoos",
+      "breakpoints": true
     }
   ]
 }

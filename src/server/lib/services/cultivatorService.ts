@@ -198,8 +198,17 @@ async function assembleCultivatorFromRelations(
       )?.id ?? null,
   };
 
-  const consumables: Consumable[] = [];
-  const materials: Material[] = [];
+  const consumables = relations.consumables.map(mapConsumableRow);
+  const materials = relations.materials.map((material) => ({
+    id: material.id,
+    name: material.name,
+    type: material.type as MaterialType,
+    rank: material.rank as Quality,
+    element: material.element as ElementType | undefined,
+    description: material.description || undefined,
+    details: (material.details as Record<string, unknown>) || undefined,
+    quantity: material.quantity,
+  }));
   const retreat_records: RetreatRecord[] = [];
   const breakthrough_history: BreakthroughHistoryEntry[] = [];
 

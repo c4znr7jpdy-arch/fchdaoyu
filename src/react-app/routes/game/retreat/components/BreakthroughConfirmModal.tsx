@@ -8,6 +8,7 @@ interface BreakthroughConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   chancePreview?: BreakthroughChancePreviewData | null;
+  isMajorBreakthrough?: boolean;
 }
 
 /**
@@ -18,6 +19,7 @@ export function BreakthroughConfirmModal({
   onClose,
   onConfirm,
   chancePreview,
+  isMajorBreakthrough = false,
 }: BreakthroughConfirmModalProps) {
   return (
     <InkModal
@@ -42,15 +44,31 @@ export function BreakthroughConfirmModal({
 
         <div className="border-wood/35 bg-bgpaper space-y-2 border border-dashed p-3">
           <p className="text-wood font-medium">【突破风险】</p>
-          <p className="text-wood text-xs">
-            • 若冲关失败，修为将有所损耗，法力涣散
-          </p>
-          <p className="text-wood text-xs">
-            • 道行感悟将有所降低，心生迷惘
-          </p>
-          <p className="text-wood text-xs">
-            • 连续失败三次将生心魔，影响后续突破
-          </p>
+          {isMajorBreakthrough ? (
+            <>
+              <p className="text-wood text-xs">
+                • 大境界失败会重创根基，经脉、丹田或识海都会承压
+              </p>
+              <p className="text-wood text-xs">
+                • 元婴及以上失败更易抬升心魔与走火入魔风险
+              </p>
+              <p className="text-wood text-xs">
+                • 护脉与清心准备只会减轻代价，不会替你稳过此关
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-wood text-xs">
+                • 若冲关失败，修为将有所损耗，法力涣散
+              </p>
+              <p className="text-wood text-xs">
+                • 道行感悟将有所降低，心生迷惘
+              </p>
+              <p className="text-wood text-xs">
+                • 连续失败三次将生心魔，影响后续突破
+              </p>
+            </>
+          )}
         </div>
 
         {chancePreview && (
@@ -61,7 +79,7 @@ export function BreakthroughConfirmModal({
             </p>
             {chancePreview.buffBonus > 0 && (
               <p className="text-xs text-emerald-800">
-                机缘加成：+{format('.1%')(chancePreview.buffBonus)}
+                外物与机缘加成：+{format('.1%')(chancePreview.buffBonus)}
               </p>
             )}
             <p className="text-xs text-emerald-800">

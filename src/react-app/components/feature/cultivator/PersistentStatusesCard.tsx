@@ -182,7 +182,7 @@ export function CultivatorCurrentStatusSection() {
             value={`${state.currentMp} / ${state.maxMp}`}
           />
           <CompactInfoRow
-            icon="🫙"
+            icon="☠️"
             label="丹毒"
             note={state.pillToxicityStage.label}
             value={`${state.pillToxicity}`}

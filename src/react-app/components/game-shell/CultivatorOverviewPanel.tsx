@@ -324,9 +324,8 @@ export function CultivatorOverviewPanel() {
         </div>
       </GameSceneSection>
 
-      <CultivatorTrackSection />
-
       <CultivatorCurrentStatusSection />
+
 
       <LingGen
         spiritualRoots={cultivator.spiritual_roots || []}
@@ -451,6 +450,8 @@ export function CultivatorOverviewPanel() {
           </div>
         ) : null}
       </GameSceneSection>
+
+      <CultivatorTrackSection />
 
       <GameSceneSection title="所御法宝">
         {equippedItems.length > 0 ? (

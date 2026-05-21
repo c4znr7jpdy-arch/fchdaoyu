@@ -118,13 +118,18 @@ describe('toPillDisplayModel', () => {
           stability: 80,
           toxicityRating: 36,
           tags: ['breakthrough'],
+          breakthroughTargetRealm: '元婴',
+          breakthroughLabel: '护婴丹',
         },
       }),
       { realm: '金丹' },
     );
 
+    expect(model.primaryEffect).toContain('护婴丹');
     expect(model.primaryEffect).toContain('破境凝神');
     expect(model.primaryEffect).not.toContain('breakthrough_focus');
+    expect(model.keywordLabels).toContain('护婴丹');
+    expect(model.detailGroups[2].lines).toContain('目标大境界：元婴');
   });
 
   it('uses track config names for tempering and marrow-wash pills', () => {

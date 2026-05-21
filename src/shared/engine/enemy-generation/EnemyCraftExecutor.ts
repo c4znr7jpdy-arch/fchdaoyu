@@ -16,7 +16,6 @@ import type {
 } from '@shared/engine/creation-v2/types';
 import type {
   ElementType,
-  EquipmentSlot,
 } from '@shared/types/constants';
 import type {
   Artifact,
@@ -67,7 +66,7 @@ function isSkill(item: RuntimeEnemyProduct): item is Skill {
 }
 
 function sameTargetPolicy(
-  actual: Skill['abilityConfig']['targetPolicy'],
+  actual: EnemyArchetypeDefinition['targetPolicy'],
   expected: IntentCraftInput['requestedTargetPolicy'],
 ): boolean {
   if (!expected) return true;
@@ -80,7 +79,9 @@ function sameTargetPolicy(
     actual.scope === expected.scope &&
     (actual.maxTargets ?? 1) === (expected.maxTargets ?? 1) &&
     leftFilters.length === rightFilters.length &&
-    leftFilters.every((filter, index) => filter === rightFilters[index])
+    leftFilters.every(
+      (filter: string, index: number) => filter === rightFilters[index],
+    )
   );
 }
 

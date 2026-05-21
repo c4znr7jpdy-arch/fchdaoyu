@@ -1,16 +1,28 @@
 import { getExecutor, type DbExecutor } from '@server/lib/drizzle/db';
 import type { CreationProductRecord } from '@server/lib/repositories/creationProductRepository';
 import * as schema from '@server/lib/drizzle/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 export type CultivatorRecord = typeof schema.cultivators.$inferSelect;
 export type SpiritualRootRecord = typeof schema.spiritualRoots.$inferSelect;
 export type PreHeavenFateRecord = typeof schema.preHeavenFates.$inferSelect;
+export type ConsumableRecord = typeof schema.consumables.$inferSelect;
+export type MaterialRecord = typeof schema.materials.$inferSelect;
+export interface CultivatorBreakthroughPillRecord {
+  spec: typeof schema.consumables.$inferSelect.spec;
+  quantity: number;
+}
+
+export interface CultivatorTechniqueQualityRecord {
+  quality: string | null;
+}
 
 export interface CultivatorRelations {
   spiritualRoots: SpiritualRootRecord[];
   preHeavenFates: PreHeavenFateRecord[];
   creationProducts: CreationProductRecord[];
+  consumables: ConsumableRecord[];
+  materials: MaterialRecord[];
 }
 
 export async function loadCultivatorRelations(
@@ -29,12 +41,59 @@ export async function loadCultivatorRelations(
     .select()
     .from(schema.creationProducts)
     .where(eq(schema.creationProducts.cultivatorId, cultivatorId));
+  const consumables = await q
+    .select()
+    .from(schema.consumables)
+    .where(eq(schema.consumables.cultivatorId, cultivatorId));
+  const materials = await q
+    .select()
+    .from(schema.materials)
+    .where(eq(schema.materials.cultivatorId, cultivatorId));
 
   return {
     spiritualRoots,
     preHeavenFates,
     creationProducts,
+    consumables,
+    materials,
   };
+}
+
+export async function listCultivatorBreakthroughPills(
+  cultivatorId: string,
+  q: DbExecutor = getExecutor(),
+): Promise<CultivatorBreakthroughPillRecord[]> {
+  return q
+    .select({
+      spec: schema.consumables.spec,
+      quantity: schema.consumables.quantity,
+    })
+    .from(schema.consumables)
+    .where(
+      and(
+        eq(schema.consumables.cultivatorId, cultivatorId),
+        eq(schema.consumables.type, '丹药'),
+        sql`${schema.consumables.spec} ->> 'kind' = 'pill'`,
+        sql`${schema.consumables.spec} ->> 'family' = 'breakthrough'`,
+      ),
+    );
+}
+
+export async function listCultivatorTechniqueQualities(
+  cultivatorId: string,
+  q: DbExecutor = getExecutor(),
+): Promise<CultivatorTechniqueQualityRecord[]> {
+  return q
+    .select({
+      quality: schema.creationProducts.quality,
+    })
+    .from(schema.creationProducts)
+    .where(
+      and(
+        eq(schema.creationProducts.cultivatorId, cultivatorId),
+        eq(schema.creationProducts.productType, 'gongfa'),
+      ),
+    );
 }
 
 export async function findActiveCultivatorIdByUserId(

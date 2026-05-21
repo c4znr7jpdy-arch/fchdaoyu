@@ -328,6 +328,38 @@ export const breakthroughHistory = pgTable(
   ],
 );
 
+export const cultivatorTasks = pgTable(
+  'wanjiedaoyou_cultivator_tasks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    cultivatorId: uuid('cultivator_id')
+      .references(() => cultivators.id, { onDelete: 'cascade' })
+      .notNull(),
+    definitionId: varchar('definition_id', { length: 120 }).notNull(),
+    category: varchar('category', { length: 40 }).notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('active'),
+    currentStage: varchar('current_stage', { length: 120 }),
+    objectives: jsonb('objectives').notNull().default([]),
+    metadata: jsonb('metadata').notNull().default({}),
+    completedAt: timestamp('completed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index('cultivator_tasks_cultivator_status_updated_idx').on(
+      table.cultivatorId,
+      table.status,
+      table.updatedAt,
+    ),
+    uniqueIndex('cultivator_tasks_cultivator_definition_unique').on(
+      table.cultivatorId,
+      table.definitionId,
+    ),
+  ],
+);
+
 // 装备状态表（1对1）
 export const equippedItems = pgTable('wanjiedaoyou_equipped_items', {
   id: uuid('id').primaryKey().defaultRandom(),

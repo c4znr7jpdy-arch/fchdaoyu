@@ -6,6 +6,7 @@ import {
 import {
   evaluateFateGrowthContext,
 } from '@shared/lib/fates';
+import { hasActiveConditionStatus } from '@shared/lib/condition';
 import type {
   Attributes,
   BreakthroughHistoryEntry,
@@ -33,6 +34,32 @@ import {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function randomInt(min: number, max: number, rng: () => number): number {
+  return Math.floor(rng() * (max - min + 1)) + min;
+}
+
+function getMajorDeviationGain(
+  fromRealm: RealmType,
+  rng: () => number,
+): number {
+  switch (fromRealm) {
+    case '金丹':
+      return randomInt(22, 35, rng);
+    case '元婴':
+      return randomInt(30, 45, rng);
+    case '化神':
+      return randomInt(35, 50, rng);
+    case '炼虚':
+      return randomInt(40, 55, rng);
+    case '合体':
+      return randomInt(45, 60, rng);
+    case '大乘':
+      return randomInt(50, 65, rng);
+    default:
+      return randomInt(12, 20, rng);
+  }
 }
 
 /**
@@ -235,23 +262,31 @@ export function attemptBreakthrough(
   let historyEntry: BreakthroughHistoryEntry | undefined;
   let insight_change = 0;
   let exp_lost = 0;
+  const isMajorBreakthrough = nextStage.realm !== fromRealm;
+  const hasProtectMeridians = hasActiveConditionStatus(
+    cultivator.condition,
+    'protect_meridians',
+  );
+  const hasClearMind = hasActiveConditionStatus(
+    cultivator.condition,
+    'clear_mind',
+  );
 
   if (success) {
     // 突破成功
     // 应用属性成长
-    const isMajor = nextStage.realm !== fromRealm;
     const growthRange = getAttributeGrowthRange(
       cultivator.attributes.wisdom,
       { realm: fromRealm, stage: fromStage },
       nextStage,
-      isMajor,
+      isMajorBreakthrough,
     );
 
     const { attributes: grownAttributes, growth } = applyAttributeGrowth(
       cultivator.attributes,
       getRealmStageAttributeCap(nextStage.realm, nextStage.stage),
       growthRange,
-      isMajor,
+      isMajorBreakthrough,
       rng,
     );
 
@@ -284,7 +319,7 @@ export function attemptBreakthrough(
     cultivator.realm_stage = nextStage.stage;
 
     // 大境界突破增加寿元
-    if (nextStage.realm !== fromRealm) {
+    if (isMajorBreakthrough) {
       lifespanGained = LIFESPAN_BONUS_BY_REALM[nextStage.realm] ?? 0;
       cultivator.lifespan += lifespanGained;
     }
@@ -295,6 +330,7 @@ export function attemptBreakthrough(
     progress.breakthrough_failures = 0;
     progress.bottleneck_state = false;
     progress.inner_demon = false;
+    progress.deviation_risk = 0;
 
     // 感悟值变化
     if (breakthrough_type === 'perfect') {
@@ -327,21 +363,62 @@ export function attemptBreakthrough(
   } else {
     // 突破失败
     exp_lost = calculateExpLossOnFailure(progress, rng);
+    if (isMajorBreakthrough && hasProtectMeridians) {
+      exp_lost = Math.floor(exp_lost * 0.6);
+    }
     progress.cultivation_exp = Math.max(0, progress.cultivation_exp - exp_lost);
 
     // 感悟值降低
     const insightLoss = Math.floor(10 + rng() * 10); // 10-20
-    insight_change = -insightLoss;
+    const finalInsightLoss =
+      isMajorBreakthrough && hasClearMind
+        ? Math.max(4, Math.floor(insightLoss * 0.7))
+        : insightLoss;
+    insight_change = -finalInsightLoss;
     progress.comprehension_insight = Math.max(
       0,
-      progress.comprehension_insight - insightLoss,
+      progress.comprehension_insight - finalInsightLoss,
     );
 
     // 连续失败次数+1
     progress.breakthrough_failures += 1;
 
-    // 检查心魔触发
-    if (progress.breakthrough_failures >= 3) {
+    if (isMajorBreakthrough) {
+      let deviationGain = getMajorDeviationGain(fromRealm, rng);
+      if (hasClearMind) {
+        deviationGain = Math.max(5, Math.floor(deviationGain * 0.65));
+      }
+      if (hasProtectMeridians) {
+        deviationGain = Math.max(4, Math.floor(deviationGain * 0.8));
+      }
+
+      progress.deviation_risk = clamp(
+        progress.deviation_risk + deviationGain,
+        0,
+        100,
+      );
+
+      if (fromRealm === '金丹') {
+        if (
+          progress.deviation_risk >= 45 ||
+          progress.breakthrough_failures >= 2
+        ) {
+          progress.inner_demon = true;
+        }
+      } else if (
+        ['元婴', '化神', '炼虚', '合体', '大乘'].includes(fromRealm)
+      ) {
+        if (
+          progress.deviation_risk >= 30 ||
+          progress.breakthrough_failures >= 1
+        ) {
+          progress.inner_demon = true;
+        }
+      }
+    }
+
+    // 小境界维持原有心魔触发逻辑
+    if (!isMajorBreakthrough && progress.breakthrough_failures >= 3) {
       progress.inner_demon = true;
     }
   }
