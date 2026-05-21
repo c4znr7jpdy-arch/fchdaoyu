@@ -210,7 +210,7 @@ function buildFormulaDescription(
 ): string {
   return [
     `依《${formula.name}》炉意炼成，以${sourceMaterials.join('、')}合炉。`,
-    `成丹稳度 ${stability}，丹毒评定 ${toxicityRating}，药力拟合 ${(fitMultiplier * 100).toFixed(0)}%。`,
+    `成丹稳度 ${stability}，药力拟合 ${(fitMultiplier * 100).toFixed(0)}%。`,
   ].join('');
 }
 

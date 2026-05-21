@@ -47,7 +47,7 @@ export function GameTopHud({ snapshot }: { snapshot: GameHudSnapshot | null }) {
         className="mx-auto block w-full max-w-5xl px-2.5 py-2 text-left sm:px-3 md:px-6"
       >
         <div className="grid grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)] gap-2 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-5">
-          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 md:gap-4">
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 md:gap-4">
             <div
               aria-hidden="true"
               className="border-ink/12 bg-bgpaper/85 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-dashed sm:w-16 md:h-16"
@@ -55,11 +55,11 @@ export function GameTopHud({ snapshot }: { snapshot: GameHudSnapshot | null }) {
               <img
                 src="/assets/daoyou_logo.png"
                 alt=""
-                className="h-10 w-10 object-contain md:h-12 md:w-12"
+                className="h-10 w-10 object-contain md:h-12 md:w-12 -mt-0.5"
               />
             </div>
 
-            <div className="min-w-0 space-y-2">
+            <div className="min-w-0 space-y-2 mt-2">
               <div className="flex min-w-0 items-end gap-1.5 md:gap-2.5">
                 <div className="font-heading min-w-0 truncate text-2xl leading-none md:text-3xl">
                   {snapshot.name}

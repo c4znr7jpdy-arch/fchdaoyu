@@ -220,7 +220,6 @@ function buildAlchemyInfoLines(consumable: Consumable & { spec: PillSpec }): str
     `丹药类别：${getPillFamilyLabel(consumable.spec.family)}`,
     `炼制来源：${alchemyMeta.source === 'formula' ? '丹方炼制' : '即兴炼制'}`,
     `稳度：${alchemyMeta.stability}`,
-    `丹毒评定：${alchemyMeta.toxicityRating}`,
     alchemyMeta.dominantElement
       ? `主元素：${alchemyMeta.dominantElement}`
       : undefined,
@@ -307,15 +306,15 @@ export function PillDetailGroups({ groups }: { groups: PillDetailGroup[] }) {
       {groups
         .filter((group) => group.lines.length > 0)
         .map((group) => (
-          <section key={group.key} className="space-y-1.5">
-            <h3 className="text-ink-secondary text-xs font-semibold tracking-wide">
+          <section key={group.key} className="space-y-1">
+            <h3 className="text-ink-secondary text-sm font-semibold tracking-wide">
               {group.title}
             </h3>
-            <ul className="space-y-1.5">
+            <ul className='list-disc list-inside'>
               {group.lines.map((line, index) => (
                 <li
                   key={`${group.key}-${line}-${index}`}
-                  className="border border-dashed border-ink/10 px-2 py-1.5 text-sm leading-relaxed text-ink-secondary"
+                  className="px-2 py-0.5 text-ink/75 leading-relaxed"
                 >
                   {line}
                 </li>

@@ -9,7 +9,6 @@ import {
   isAlchemyMaterialType,
   readMaterialAlchemyProfile,
 } from '@shared/lib/materialAlchemy';
-import { getPillUsageCraftWarningText } from '@shared/lib/pillUsageText';
 import type { ConditionTrackPath } from '@shared/types/condition';
 import type { ElementType, MaterialType, Quality } from '@shared/types/constants';
 import type { Consumable, MaterialDetails } from '@shared/types/cultivator';
@@ -231,7 +230,7 @@ function buildDescription(
 ): string {
   return [
     `以${materialNames.join('、')}熔炼而成，丹意取向「${userPrompt.trim()}」。`,
-    `此炉走${describeFocusMode(focusMode)}之势，稳度 ${stability}，丹毒评定 ${toxicityRating}。`,
+    `此炉走${describeFocusMode(focusMode)}之势，稳度 ${stability}。`,
   ].join('');
 }
 
@@ -507,13 +506,13 @@ function buildPreviewWarnings(
   if (distinctFamilies.size >= 3 || estimatedStability < 45) {
     warnings.push('材料药性过散，预计炉性偏浮，成丹稳度可能偏低。');
   }
-  if (
-    Array.from(distinctFamilies).some((family) =>
-      LONG_TERM_FAMILIES.has(family as LongTermFamily),
-    )
-  ) {
-    warnings.push(getPillUsageCraftWarningText());
-  }
+  // if (
+  //   Array.from(distinctFamilies).some((family) =>
+  //     LONG_TERM_FAMILIES.has(family as LongTermFamily),
+  //   )
+  // ) {
+  //   warnings.push(getPillUsageCraftWarningText());
+  // }
   if (estimatedToxicity >= 12) {
     warnings.push('药底燥烈，预计丹毒偏高，服用后需留意调息。');
   }

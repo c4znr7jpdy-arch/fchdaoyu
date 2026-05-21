@@ -1,13 +1,12 @@
 import {
-  MaterialSelector,
-  SelectedMaterialsWithDose,
-} from '@app/components/feature/creation';
-import {
   PillDetailGroups,
-  PillSummary,
   getPillFamilyLabel,
   toPillDisplayModel,
 } from '@app/components/feature/consumables';
+import {
+  MaterialSelector,
+  SelectedMaterialsWithDose,
+} from '@app/components/feature/creation';
 import {
   GameSceneAsideSection,
   GameSceneFrame,
@@ -159,12 +158,12 @@ export function AlchemyResultModal({
     <ItemShowcaseModal
       isOpen={isOpen}
       onClose={onClose}
-      icon="🧪"
+      icon="🌕"
       name={consumable.name}
       badges={[
         consumable.quality ? (
           <InkBadge key="quality" tier={consumable.quality}>
-            {consumable.quality}
+            {consumable.type}
           </InkBadge>
         ) : undefined,
         <InkBadge key="family" tone="default">
@@ -176,9 +175,12 @@ export function AlchemyResultModal({
           </InkBadge>
         ) : undefined,
       ].filter(Boolean)}
-      summary={<PillSummary model={model} />}
       metaSection={
         <div className="space-y-2">
+          <div className="border-border/50 flex justify-between border-b pb-2">
+            <span className="opacity-70">出炉份数</span>
+            <span className="font-bold">{consumable.quantity}</span>
+          </div>
           <PillDetailGroups groups={model.detailGroups} />
           {formulaProgress && (
             <div className="border-ink/10 border border-dashed p-3">
@@ -257,8 +259,9 @@ export default function AlchemyPage() {
   const [isHandlingDiscovery, setIsHandlingDiscovery] = useState(false);
   const [celebrationTick, setCelebrationTick] = useState(0);
   const [materialsRefreshKey, setMaterialsRefreshKey] = useState(0);
-  const [previewState, setPreviewState] =
-    useState<PreviewState>(DEFAULT_PREVIEW_STATE);
+  const [previewState, setPreviewState] = useState<PreviewState>(
+    DEFAULT_PREVIEW_STATE,
+  );
   const [formulas, setFormulas] = useState<AlchemyFormula[]>([]);
   const [formulasError, setFormulasError] = useState<string | null>(null);
   const [loadedFormulaCultivatorId, setLoadedFormulaCultivatorId] = useState<
@@ -413,7 +416,9 @@ export default function AlchemyPage() {
           validation: null,
           canAfford: true,
           previewError:
-            error instanceof Error ? error.message : '炼丹预估失败，请稍后再试。',
+            error instanceof Error
+              ? error.message
+              : '炼丹预估失败，请稍后再试。',
         });
       }
     };
@@ -690,7 +695,10 @@ export default function AlchemyPage() {
             </div>
           </GameSceneAsideSection>
 
-          <GameSceneAsideSection title="丹方与提示" className="text-sm leading-7">
+          <GameSceneAsideSection
+            title="丹方与提示"
+            className="text-sm leading-7"
+          >
             {activeMode === 'formula' && selectedFormula ? (
               <div className="space-y-2">
                 <p>已选丹方：{selectedFormula.name}</p>
@@ -787,7 +795,9 @@ export default function AlchemyPage() {
         </GameSceneSection>
       )}
 
-      <GameSceneSection title={activeMode === 'formula' ? '炉材甄选' : '甄选灵材'}>
+      <GameSceneSection
+        title={activeMode === 'formula' ? '炉材甄选' : '甄选灵材'}
+      >
         <MaterialSelector
           cultivatorId={cultivator?.id}
           selectedMaterialIds={selectedMaterialIds}
@@ -828,7 +838,6 @@ export default function AlchemyPage() {
             onChange={setUserPrompt}
             multiline
             rows={3}
-            hint="AI 只会解析你的丹意方向，具体数值仍由材料药性和规则系统决定。"
             disabled={isSubmitting}
           />
         </GameSceneSection>
@@ -908,33 +917,31 @@ export default function AlchemyPage() {
         ))}
       </GameSceneSection>
 
-      <GameSceneSection title={activeMode === 'formula' ? '按方起炉' : '开炉炼丹'}>
-        <InkActionGroup align="right">
-          <InkButton onClick={resetAll} disabled={isSubmitting}>
-            重置
-          </InkButton>
-          <InkButton
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={
-              isSubmitting ||
-              selectedMaterialIds.length === 0 ||
-              (activeMode === 'improvised' && !userPrompt.trim()) ||
-              (activeMode === 'formula' && !selectedFormulaId) ||
-              !!previewError ||
-              estimatedSpiritStones === null ||
-              !displayCanAfford ||
-              displayValidation?.valid === false
-            }
-          >
-            {isSubmitting
-              ? '丹火炼中……'
-              : activeMode === 'formula'
-                ? '依方成丹'
-                : '开炉炼丹'}
-          </InkButton>
-        </InkActionGroup>
-      </GameSceneSection>
+      <InkActionGroup align="right">
+        <InkButton onClick={resetAll} disabled={isSubmitting}>
+          重置
+        </InkButton>
+        <InkButton
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={
+            isSubmitting ||
+            selectedMaterialIds.length === 0 ||
+            (activeMode === 'improvised' && !userPrompt.trim()) ||
+            (activeMode === 'formula' && !selectedFormulaId) ||
+            !!previewError ||
+            estimatedSpiritStones === null ||
+            !displayCanAfford ||
+            displayValidation?.valid === false
+          }
+        >
+          {isSubmitting
+            ? '丹火炼中……'
+            : activeMode === 'formula'
+              ? '依方成丹'
+              : '开炉炼丹'}
+        </InkButton>
+      </InkActionGroup>
 
       {status && !isResultModalOpen && (
         <div className="mt-4">

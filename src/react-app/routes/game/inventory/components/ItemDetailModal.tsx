@@ -138,8 +138,8 @@ export function ItemDetailModal({
               </InkBadge>
             ),
           ].filter(Boolean)}
-          metaSection={<PillDetailGroups groups={model.detailGroups} />}
-          extraInfo={<QuantityInfo quantity={consumable.quantity} />}
+          metaSection={<QuantityInfo quantity={consumable.quantity} />}
+          extraInfo={<PillDetailGroups groups={model.detailGroups} />}
           description={model.flavorText}
           descriptionTitle="丹成评述"
         />

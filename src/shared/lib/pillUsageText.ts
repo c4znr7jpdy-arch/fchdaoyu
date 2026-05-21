@@ -35,10 +35,6 @@ export function getPillUsageRuleText(
   return `服用上限：${getRealmPillUsageLimit(realm)} 次`;
 }
 
-export function getPillUsageCraftWarningText(): string {
-  return '此炉药力偏持久，成丹后会占用当前境界的服用次数。';
-}
-
 export function getPillUsageLimitReachedText(
   used: number,
   limit: number,
