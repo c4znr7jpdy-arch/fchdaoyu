@@ -6,12 +6,12 @@ import { CreationProductType } from '../types';
 import { CREATION_SLUG_CONFIG } from '../config/CreationSlugConfig';
 
 export function buildAbilitySlug(
-  sessionId: string,
+  slugSeed: string,
   productType?: CreationProductType,
 ): string {
   return productType
-    ? `${CREATION_SLUG_CONFIG.abilityPrefix}-${productType}-${sessionId}`
-    : `${CREATION_SLUG_CONFIG.abilityPrefix}-${sessionId}`;
+    ? `${CREATION_SLUG_CONFIG.abilityPrefix}-${productType}-${slugSeed}`
+    : `${CREATION_SLUG_CONFIG.abilityPrefix}-${slugSeed}`;
 }
 
 export function buildStatBuffId(

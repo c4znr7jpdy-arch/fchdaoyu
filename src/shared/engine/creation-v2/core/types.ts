@@ -14,6 +14,8 @@ export interface CreationEvent {
 export interface CreationWorkflowOptions {
   autoMaterialize?: boolean;
   materialAnalysisMode?: 'sync' | 'async';
+  namingMode?: 'skip' | 'llm';
+  workflowMode?: 'material' | 'intent';
 }
 
 export interface CreationPhaseHandler<TEvent extends CreationEvent = CreationEvent> {

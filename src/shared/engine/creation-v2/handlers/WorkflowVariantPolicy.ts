@@ -15,10 +15,14 @@ import { WorkflowActionKey } from './PhaseActionRegistry';
 export class WorkflowVariantPolicy {
   private readonly autoMaterialize: boolean;
   private readonly materialAnalysisMode: 'sync' | 'async';
+  private readonly namingMode: 'skip' | 'llm';
+  private readonly workflowMode: 'material' | 'intent';
 
   constructor(options: Required<CreationWorkflowOptions>) {
     this.autoMaterialize = options.autoMaterialize;
     this.materialAnalysisMode = options.materialAnalysisMode;
+    this.namingMode = options.namingMode;
+    this.workflowMode = options.workflowMode;
   }
 
   /**
@@ -32,7 +36,7 @@ export class WorkflowVariantPolicy {
    * 根据当前 options 决定蓝图组合后的动作键
    */
   resolveBlueprintComposedAction(): WorkflowActionKey {
-    if (this.materialAnalysisMode === 'async') {
+    if (this.namingMode === 'llm') {
       return 'enrichNaming';
     }
     return this.autoMaterialize ? 'materializeOrComplete' : 'completeWorkflow';
@@ -52,14 +56,23 @@ export class WorkflowVariantPolicy {
     return this.autoMaterialize;
   }
 
+  workflowKind(): 'material' | 'intent' {
+    return this.workflowMode;
+  }
+
   /**
    * 从 CreationWorkflowOptions 创建策略实例
    * 应用默认值
    */
   static fromOptions(options: CreationWorkflowOptions = {}): WorkflowVariantPolicy {
+    const materialAnalysisMode = options.materialAnalysisMode ?? 'sync';
     return new WorkflowVariantPolicy({
       autoMaterialize: options.autoMaterialize ?? true,
-      materialAnalysisMode: options.materialAnalysisMode ?? 'sync',
+      materialAnalysisMode,
+      namingMode:
+        options.namingMode ??
+        (materialAnalysisMode === 'async' ? 'llm' : 'skip'),
+      workflowMode: options.workflowMode ?? 'material',
     });
   }
 }

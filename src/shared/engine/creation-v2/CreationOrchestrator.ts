@@ -1,3 +1,4 @@
+import { CreationTags } from '@shared/engine/shared/tag-domain';
 import { CreationAbilityAdapter } from './adapters/CreationAbilityAdapter';
 import { CreationOutcomeMaterializer } from './adapters/types';
 import {
@@ -6,6 +7,8 @@ import {
   AffixSelector,
   DEFAULT_AFFIX_REGISTRY,
 } from './affixes';
+import { AffixPicker } from './affixes/AffixPicker';
+import { AffixRollEngine } from './affixes/AffixRollEngine';
 import { AsyncMaterialAnalyzer } from './analysis/AsyncMaterialAnalyzer';
 import { buildCreationTagSignals } from './analysis/CreationTagSignalBuilder';
 import { DefaultMaterialAnalyzer } from './analysis/DefaultMaterialAnalyzer';
@@ -39,6 +42,7 @@ import { CreationPhaseHandlerRegistry } from './handlers/CreationPhaseHandlers';
 import { PhaseActionRegistry } from './handlers/PhaseActionRegistry';
 import { WorkflowVariantPolicy } from './handlers/WorkflowVariantPolicy';
 import { SkillProductModel } from './models';
+import { createSeededRandom } from './random';
 import { DefaultIntentResolver } from './resolvers/DefaultIntentResolver';
 import { AffixPoolDecision, AffixSelectionDecision } from './rules/contracts';
 import { DefaultRecipeValidator } from './rules/DefaultRecipeValidator';
@@ -49,6 +53,7 @@ import {
   CreationIntent,
   CreationSessionInput,
   EnergyBudget,
+  IntentCraftInput,
   MaterialFingerprint,
   RecipeMatch,
   RolledAffix,
@@ -265,6 +270,140 @@ export class CreationOrchestrator {
     return this.waitForWorkflowCompletion(session.id);
   }
 
+  craftFromIntent(
+    input: IntentCraftInput,
+    options: Omit<CreationWorkflowOptions, 'materialAnalysisMode'> & {
+      rng?: () => number;
+    } = {},
+  ): CreationSession {
+    if ((options.namingMode ?? 'skip') === 'llm') {
+      throw new Error(
+        'craftFromIntent does not support llm naming; use enemy copy enrichment instead',
+      );
+    }
+
+    const session = this.createSession({
+      sessionId: input.sessionId,
+      slugSeed: input.slugSeed,
+      cultivatorId: input.cultivatorId,
+      creatorName: input.creatorName,
+      realm: input.realm,
+      realmStage: input.realmStage,
+      productType: input.productType,
+      materials: [],
+      userPrompt: input.userPrompt,
+      contextPositiveTagBiases: input.positiveTagBiases,
+      contextNegativeTagBiases: input.negativeTagBiases,
+      requestedSlot: input.requestedSlot,
+      requestedTargetPolicy: input.requestedTargetPolicy,
+    });
+    session.state.intentCraftMeta = {
+      ...session.state.intentCraftMeta,
+      maxAffixCount: input.maxAffixCount,
+      excludedAffixIds: input.excludedAffixIds,
+      selectionSeed: `${String(input.seed)}:${input.stableOutputKey}`,
+      rng: options.rng,
+      stableOutputKey: input.stableOutputKey,
+    };
+
+    try {
+      const intent: CreationIntent = {
+        productType: input.productType,
+        dominantTags: Array.from(new Set(input.dominantTags)),
+        positiveTagBiases: input.positiveTagBiases,
+        negativeTagBiases: input.negativeTagBiases,
+        ...(input.elementBias ? { elementBias: input.elementBias } : {}),
+        ...(input.requestedSlot
+          ? {
+              slotBias: input.requestedSlot,
+              slotBiasSource: 'requested' as const,
+            }
+          : {}),
+        ...(input.requestedTargetPolicy
+          ? { targetPolicyBias: input.requestedTargetPolicy }
+          : {}),
+      };
+      this.resolveIntent(session, intent);
+
+      const recipeMatch = this.recipeValidator.validateFromMaterialFacts(
+        {
+          productType: input.productType,
+          fingerprints: [],
+          normalizedTags: [
+            ...intent.dominantTags,
+            this.resolveSyntheticRecipeBiasTag(input.productType),
+          ],
+          recipeTags: [this.resolveSyntheticRecipeBiasTag(input.productType)],
+          dominantTags: [...intent.dominantTags],
+          energyProfile: {
+            baseEnergy: Math.max(0, input.energyBudget),
+            diversityBonus: 0,
+            coherenceBonus: 0,
+            effectiveEnergy: Math.max(0, input.energyBudget),
+            unlockScore: Math.max(0, Math.round(input.unlockScore)),
+          },
+          unlockScore: Math.max(0, Math.round(input.unlockScore)),
+        },
+        intent,
+      );
+      if (!recipeMatch.valid) {
+        this.fail(session, recipeMatch.notes?.[0] ?? '意图造物配方校验失败', {
+          notes: recipeMatch.notes,
+        });
+        return session;
+      }
+      this.validateRecipe(session, recipeMatch);
+
+      const budget = {
+        baseTotal: Math.max(0, input.energyBudget),
+        effectiveTotal: Math.max(0, input.energyBudget),
+        reserved: recipeMatch.reservedEnergy ?? 0,
+        spent: 0,
+        remaining: Math.max(
+          0,
+          Math.max(0, input.energyBudget) - (recipeMatch.reservedEnergy ?? 0),
+        ),
+        initialRemaining: Math.max(
+          0,
+          Math.max(0, input.energyBudget) - (recipeMatch.reservedEnergy ?? 0),
+        ),
+        allocations: [],
+        rejections: [],
+        sources: [
+          { source: 'intent_budget', amount: Math.max(0, input.energyBudget) },
+        ],
+      } satisfies EnergyBudget;
+      this.budgetEnergy(session, budget);
+
+      this.activeWorkflowPolicies.set(
+        session.id,
+        WorkflowVariantPolicy.fromOptions({
+          autoMaterialize: options.autoMaterialize ?? false,
+          namingMode: options.namingMode ?? 'skip',
+          workflowMode: 'intent',
+        }),
+      );
+      this.executeSyncPhaseAction('buildAffixPool', session);
+
+      return session;
+    } finally {
+      this.clearSession(session.id);
+    }
+  }
+
+  private resolveSyntheticRecipeBiasTag(
+    productType: IntentCraftInput['productType'],
+  ): string {
+    switch (productType) {
+      case 'artifact':
+        return CreationTags.RECIPE.PRODUCT_BIAS_ARTIFACT;
+      case 'gongfa':
+        return CreationTags.RECIPE.PRODUCT_BIAS_GONGFA;
+      case 'skill':
+        return CreationTags.RECIPE.PRODUCT_BIAS_SKILL;
+    }
+  }
+
   private createWorkflowCompletion(sessionId: string) {
     const existing = this.workflowCompletions.get(sessionId);
     if (existing) {
@@ -460,8 +599,19 @@ export class CreationOrchestrator {
       this.affixRegistry,
       session,
     );
-    this.buildAffixPool(session, decision.candidates, decision);
-    return decision.candidates;
+    const excludedAffixIds = new Set(
+      session.state.intentCraftMeta?.excludedAffixIds ?? [],
+    );
+    const filteredCandidates = excludedAffixIds.size
+      ? decision.candidates.filter(
+          (candidate) => !excludedAffixIds.has(candidate.id),
+        )
+      : decision.candidates;
+    this.buildAffixPool(session, filteredCandidates, {
+      ...decision,
+      candidates: filteredCandidates,
+    });
+    return filteredCandidates;
   }
 
   rollAffixes(
@@ -525,14 +675,34 @@ export class CreationOrchestrator {
     if (!session.state.energyBudget) {
       throw new Error('Cannot roll affixes before energy budgeting');
     }
-    const { audit: selection } = this.affixSelector.selectWithDecision(
+    const availableAffixEnergy =
+      session.state.energyBudget.initialRemaining ??
+      session.state.energyBudget.remaining;
+    const overrideMaxAffixCount = session.state.intentCraftMeta?.maxAffixCount;
+    const maxAffixCount = overrideMaxAffixCount
+      ? Math.min(
+          resolveAffixSlotCount(availableAffixEnergy),
+          overrideMaxAffixCount,
+        )
+      : resolveAffixSlotCount(availableAffixEnergy);
+
+    const selectionSeed = session.state.intentCraftMeta?.selectionSeed;
+    const seededRng =
+      session.state.intentCraftMeta?.rng ??
+      (selectionSeed ? createSeededRandom(selectionSeed) : undefined);
+    const selector = seededRng
+      ? new AffixSelector(
+          undefined,
+          new AffixPicker(seededRng),
+          new AffixRollEngine(seededRng),
+        )
+      : this.affixSelector;
+
+    const { audit: selection } = selector.selectWithDecision(
       session.state.affixPool,
       session.state.energyBudget,
       session.state.intent,
-      resolveAffixSlotCount(
-        session.state.energyBudget.initialRemaining ??
-          session.state.energyBudget.remaining,
-      ),
+      maxAffixCount,
     );
 
     // 断言：必须包含核心词缀（如果是技能、功法、法宝）
@@ -557,6 +727,21 @@ export class CreationOrchestrator {
     }
     this.rollAffixes(session, selection.affixes, selection.finalDecision);
     return selection.affixes;
+  }
+
+  private executeSyncPhaseAction(
+    action: 'buildAffixPool' | 'rollAffixes' | 'composeBlueprint' | 'materializeOrComplete',
+    session: CreationSession,
+  ): void {
+    const phaseAction = this.phaseActionRegistry.get(action);
+    if (!phaseAction) {
+      throw new Error(`Missing phase action: ${action}`);
+    }
+
+    const result = phaseAction(session);
+    if (result instanceof Promise) {
+      throw new Error(`Action ${action} cannot run asynchronously in craftFromIntent`);
+    }
   }
 
   composeBlueprint(

@@ -10,7 +10,6 @@ import { Rule } from '../core/Rule';
 import { RuleContext } from '../core/RuleContext';
 import { CompositionDecision } from '../contracts/CompositionDecision';
 import { CompositionFacts } from '../contracts/CompositionFacts';
-import { CreationError } from '../../errors';
 
 /**
  * NamingRules
@@ -39,15 +38,9 @@ export class NamingRules implements Rule<CompositionFacts, CompositionDecision> 
 
     switch (productType) {
       case 'skill': {
-        if (!elementBias) {
-          throw new CreationError(
-            'Composition',
-            'MISSING_ELEMENT_BIAS',
-            '技能命名失败：缺少元素偏向',
-            { facts }
-          );
-        }
-        const prefix = ELEMENT_NAME_PREFIX[elementBias];
+        const prefix = elementBias
+          ? ELEMENT_NAME_PREFIX[elementBias]
+          : CREATION_SKILL_NAMING.defaultPrefix;
         return `${prefix}${CREATION_SKILL_NAMING.nameSuffix}`;
       }
       case 'artifact': {
@@ -55,23 +48,13 @@ export class NamingRules implements Rule<CompositionFacts, CompositionDecision> 
           ? (ARTIFACT_SLOT_DISPLAY_NAMES[intent.slotBias] ?? intent.slotBias)
           : undefined;
         if (!slotDisplayName) {
-          throw new CreationError(
-            'Composition',
-            'MISSING_SLOT_BIAS',
-            '法宝命名失败：缺少部位偏向',
-            { facts }
-          );
+          return CREATION_ARTIFACT_NAMING.defaultName;
         }
         return `${slotDisplayName}${CREATION_ARTIFACT_NAMING.slotSuffix}`;
       }
       case 'gongfa': {
         if (!materialNames[0]) {
-          throw new CreationError(
-            'Composition',
-            'NAMING_FAILED',
-            '功法命名失败：缺少主要材料名称',
-            { facts }
-          );
+          return CREATION_GONGFA_NAMING.defaultName;
         }
         return `${materialNames[0]}${CREATION_GONGFA_NAMING.nameSuffix}`;
       }
@@ -83,6 +66,9 @@ export class NamingRules implements Rule<CompositionFacts, CompositionDecision> 
   }
 
   private resolveDescription(facts: CompositionFacts): string {
+    if (facts.materialNames.length === 0) {
+      return '由灵机推演凝成的战斗蓝图';
+    }
     return `${CREATION_DESCRIPTION_TEMPLATE.materialListPrefix}${facts.materialNames.join('、')}${CREATION_DESCRIPTION_TEMPLATE.materialListSuffix}`;
   }
 }

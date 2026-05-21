@@ -119,7 +119,8 @@ export function createDisplayUnitFromCultivator(
       metadata?: { anchorRealm?: RealmType };
     };
     const factor = getCrossRealmModifierFactor(
-      productModel.metadata?.anchorRealm,
+      artifact.battleRuntimeMeta?.anchorRealm ??
+        productModel.metadata?.anchorRealm,
       cultivator.realm,
     );
     mountModifiers(unit, 'artifact', artifact, {

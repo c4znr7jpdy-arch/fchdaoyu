@@ -6,6 +6,11 @@ export { CreationOrchestrator } from './CreationOrchestrator';
 export { CreationSession } from './CreationSession';
 export { BattleAbilityBuilder } from './adapters/BattleAbilityBuilder';
 export { CreationAbilityAdapter } from './adapters/CreationAbilityAdapter';
+export {
+  composeProductFromAffixIds,
+  type ComposeProductFromAffixIdsArgs,
+  type ComposedProductModel,
+} from './composeProductFromAffixIds';
 export type {
 	CreationAbilityBuilder,
 	CreationOutcomeMaterializer,

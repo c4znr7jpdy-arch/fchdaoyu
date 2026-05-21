@@ -32,18 +32,26 @@ export class DefaultRecipeValidator {
     fingerprints: MaterialFingerprint[],
     intent: CreationIntent,
   ): RecipeMatch {
-    const materialFacts = this.materialFactsBuilder.build(
-      productType,
-      fingerprints,
-    );
+    const materialFacts = this.materialFactsBuilder.build(productType, fingerprints);
+    return this.validateFromMaterialFacts(materialFacts, intent);
+  }
+
+  validateFromMaterialFacts(
+    materialFacts: MaterialFacts,
+    intent: CreationIntent,
+  ): RecipeMatch {
     const materialDecision = this.materialRuleSet.evaluate(materialFacts);
 
     if (!materialDecision.valid) {
-      return this.toConflictRecipeMatch(productType, materialFacts, materialDecision);
+      return this.toConflictRecipeMatch(
+        materialFacts.productType,
+        materialFacts,
+        materialDecision,
+      );
     }
 
     const recipeFacts: RecipeFacts = {
-      productType,
+      productType: materialFacts.productType,
       material: materialFacts,
       intent,
     };

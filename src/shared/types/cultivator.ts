@@ -7,6 +7,7 @@ import type { CultivatorCondition } from '@shared/types/condition';
 import type {
   ConsumableType,
   ElementType,
+  EnemyRace,
   EquipmentSlot,
   GenderType,
   MaterialType,
@@ -186,6 +187,11 @@ export interface Artifact {
   score?: number;
   /** 背包/列表展示链路透传 creation_products.product_model */
   productModel?: unknown;
+  /** 轻量运行时元数据：供 battle/display 缩放等逻辑读取 */
+  battleRuntimeMeta?: {
+    anchorRealm?: RealmType;
+    anchorRealmStage?: RealmStage;
+  };
   /** 背包/列表展示态 */
   isEquipped?: boolean;
 }
@@ -250,6 +256,7 @@ export interface Cultivator {
   name: string;
   title?: string | null;
   gender: GenderType;
+  race?: EnemyRace;
   origin?: string;
   personality?: string;
 
@@ -275,6 +282,7 @@ export interface Cultivator {
   spirit_stones: number;
   last_yield_at?: Date;
   background?: string;
+  description?: string;
 
   // 兹容现有系统 & AI：保留原 prompt 入口（不进入战斗模型）
   prompt?: string;

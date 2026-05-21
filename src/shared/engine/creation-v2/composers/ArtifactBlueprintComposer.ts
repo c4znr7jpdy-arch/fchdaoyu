@@ -64,7 +64,7 @@ export class ArtifactBlueprintComposer implements ProductBlueprintComposer {
 
     const productModel: ArtifactProductModel = {
       productType: "artifact",
-      slug: buildAbilitySlug(session.id, input.productType),
+      slug: buildAbilitySlug(input.slugSeed ?? session.id, input.productType),
       name: decision.name,
       description: decision.description,
       projectionQuality,

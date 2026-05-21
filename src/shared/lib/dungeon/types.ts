@@ -3,9 +3,32 @@ import type {
 } from '@shared/engine/battle-v5/setup/types';
 import type { ResourceOperation } from '@shared/engine/resource/types';
 import type { CultivatorCondition } from '@shared/types/condition';
+import {
+  ENEMY_RACE_VALUES,
+  REALM_STAGE_VALUES,
+} from '@shared/types/constants';
 import { z } from 'zod';
 
 // === AI Interaction Schemas ===
+
+const DUNGEON_QUALITY_VALUES = [
+  '凡品',
+  '灵品',
+  '玄品',
+  '真品',
+  '地品',
+  '天品',
+  '仙品',
+] as const;
+
+const DungeonBattleMetadataSchema = z.object({
+  race: z.enum(ENEMY_RACE_VALUES).describe('敌人种族'),
+  realm_stage: z.enum(REALM_STAGE_VALUES).describe('敌人境界阶段'),
+  enemy_name: z.string().optional().describe('敌人名称'),
+  background: z.string().optional().describe('敌人背景'),
+  description: z.string().optional().describe('敌人描述'),
+  is_boss: z.boolean().optional().describe('是否BOSS'),
+});
 
 /**
  * 副本代价 Schema - 直接使用资源引擎类型
@@ -27,16 +50,18 @@ export const DungeonCostSchema = z.object({
   ]),
   value: z.number().describe('数量或强度'),
   name: z.string().optional().describe('材料名称（material 类型需要，如果未知可省略留给系统匹配）'),
-  required_quality: z.enum(['凡品', '灵品', '玄品', '真品', '地品', '天品', '仙品']).optional().describe('模糊要求时：最低品质'),
+  required_quality: z.enum(DUNGEON_QUALITY_VALUES).optional().describe('模糊要求时：最低品质'),
   required_type: z.enum(['herb', 'ore', 'monster', 'tcdb', 'aux', 'gongfa_manual', 'skill_manual']).optional().describe('模糊要求时：材料类型'),
   desc: z.string().optional().describe('描述信息'),
-  metadata: z
-    .object({
-      enemy_name: z.string().optional().describe('敌人名称'),
-      is_boss: z.boolean().optional().describe('是否BOSS'),
-    })
-    .optional()
-    .describe('元数据（battle 类型需要）'),
+  metadata: DungeonBattleMetadataSchema.optional().describe('元数据（battle 类型需要）'),
+}).superRefine((cost, ctx) => {
+  if (cost.type === 'battle' && !cost.metadata) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['metadata'],
+      message: 'battle 类型必须提供 metadata',
+    });
+  }
 });
 
 /**

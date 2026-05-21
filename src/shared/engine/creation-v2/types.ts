@@ -44,6 +44,7 @@ export function isCreationProductType(
 
 export interface CreationSessionInput {
   sessionId?: string;
+  slugSeed?: string;
   cultivatorId?: string;
   creatorName?: string;
   realm?: RealmType;
@@ -60,6 +61,29 @@ export interface CreationSessionInput {
 export interface CreationContextTagBias {
   tag: string;
   weight: number;
+}
+
+export interface IntentCraftInput {
+  sessionId?: string;
+  cultivatorId?: string;
+  creatorName?: string;
+  realm?: RealmType;
+  realmStage?: RealmStage;
+  productType: CreationProductType;
+  energyBudget: number;
+  unlockScore: number;
+  dominantTags: string[];
+  positiveTagBiases?: CreationContextTagBias[];
+  negativeTagBiases?: CreationContextTagBias[];
+  elementBias?: ElementType;
+  requestedSlot?: EquipmentSlot;
+  requestedTargetPolicy?: TargetPolicyConfig;
+  userPrompt?: string;
+  seed: number | string;
+  slugSeed: string;
+  stableOutputKey: string;
+  maxAffixCount?: number;
+  excludedAffixIds?: string[];
 }
 
 export interface MaterialFingerprint {
@@ -294,6 +318,13 @@ export interface CreationSessionState {
   input: CreationSessionInput;
   inputTagSignals: CreationTagSignal[];
   inputTags: string[];
+  intentCraftMeta?: {
+    maxAffixCount?: number;
+    excludedAffixIds?: string[];
+    selectionSeed?: string | number;
+    rng?: () => number;
+    stableOutputKey?: string;
+  };
 
   // ── 阶段 1：材料分析 ────────────────────────────────────────────────────────
   materialFingerprints: MaterialFingerprint[];

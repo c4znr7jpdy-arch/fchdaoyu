@@ -5,6 +5,8 @@
 import { AffixCandidate } from '../types';
 
 export class AffixPicker {
+  constructor(private readonly rng: () => number = Math.random) {}
+
   pick(pool: AffixCandidate[]): {
     candidate: AffixCandidate;
     totalWeight: number;
@@ -15,7 +17,7 @@ export class AffixPicker {
     }
 
     const totalWeight = pool.reduce((sum, candidate) => sum + candidate.weight, 0);
-    let random = Math.random() * totalWeight;
+    let random = this.rng() * totalWeight;
 
     for (const candidate of pool) {
       random -= candidate.weight;

@@ -49,7 +49,7 @@ export class GongFaBlueprintComposer implements ProductBlueprintComposer {
 
     const productModel: GongFaProductModel = {
       productType: "gongfa",
-      slug: buildAbilitySlug(session.id, input.productType),
+      slug: buildAbilitySlug(input.slugSeed ?? session.id, input.productType),
       name: decision.name,
       description: decision.description,
       projectionQuality,

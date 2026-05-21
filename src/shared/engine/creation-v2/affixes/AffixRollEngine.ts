@@ -7,6 +7,8 @@ import { AffixCandidate, RolledAffix, EnergyBudget } from '../types';
  * 为抽中的词缀计算最终的数值效率（rollEfficiency）和倍率（finalMultiplier）。
  */
 export class AffixRollEngine {
+  constructor(private readonly rng: () => number = Math.random) {}
+
   /**
    * 为抽中的词缀注入“灵魂”：计算数值波动与 Perfect 标记。
    * @param candidate 抽中的词缀候选项
@@ -35,7 +37,7 @@ export class AffixRollEngine {
       // 模拟正态分布：均值为 0.5 + bias，标准差为 0.16
       efficiency = this.nextNormal(0.5 + bias, 0.16);
     } else {
-      efficiency = Math.random() + bias;
+      efficiency = this.rng() + bias;
     }
 
     // 3. 截断并归一化到 0 - 1 之间
@@ -61,8 +63,8 @@ export class AffixRollEngine {
    * Box-Muller 变换：生成指定均值和标准差的正态分布随机数
    */
   private nextNormal(mean: number, stdDev: number): number {
-    const u = 1 - Math.random();
-    const v = 1 - Math.random();
+    const u = 1 - this.rng();
+    const v = 1 - this.rng();
     const z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
     return z * stdDev + mean;
   }

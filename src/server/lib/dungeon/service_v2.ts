@@ -171,6 +171,7 @@ export class DungeonService {
 - **数值范围**: hp_loss, mp_loss 必须是 0-1 之间的小数；其他类型为正整数。
 - **材料(material)**: 禁止指定 name，必须提供 required_type 和 required_quality。
 - **冲突禁止**: 若有 'battle'，严禁同时出现 'hp_loss' 或 'mp_loss'。
+- **战斗元数据(battle.metadata)**: 必须提供 race 与 realm_stage；可选提供 enemy_name、background、description、is_boss。
 
 ## 6. 当前上下文摘要
 - 地点：${state.location.location}
@@ -496,16 +497,22 @@ export class DungeonService {
     }
     const realmRequirement = (mapNode as { realm_requirement: string })
       .realm_requirement;
+    const metadata = battleCost.metadata;
+    if (!metadata?.race || !metadata.realm_stage) {
+      throw new Error('Battle cost metadata must include race and realm_stage');
+    }
 
-    // 生成敌人（传入境界门槛）
-    const enemy = await enemyGenerator.generate(
-      battleCost.metadata || {
-        enemy_name: battleCost.desc,
-        is_boss: false,
-      },
-      battleCost.value,
-      realmRequirement as import('@shared/types/constants').RealmType,
-    );
+    const draft = enemyGenerator.buildDraft({
+      realm: realmRequirement as import('@shared/types/constants').RealmType,
+      realmStage: metadata.realm_stage,
+      race: metadata.race,
+      difficulty: battleCost.value,
+      name: metadata.enemy_name,
+      background: metadata.background,
+      description: metadata.description,
+      isBoss: metadata.is_boss,
+    });
+    const enemy = draft.cultivator;
 
     // 构建 BattleSession，传递状态快照和虚拟气血/法力损失百分比
     const session: BattleSession = {

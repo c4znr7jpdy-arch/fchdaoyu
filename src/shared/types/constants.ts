@@ -72,6 +72,17 @@ export type ConsumableType = (typeof CONSUMABLE_TYPE_VALUES)[number];
 export const GENDER_VALUES = ['男', '女'] as const;
 export type GenderType = (typeof GENDER_VALUES)[number];
 
+// 敌人种族
+export const ENEMY_RACE_VALUES = [
+  '人族',
+  '妖族',
+  '鬼魂',
+  '魔族',
+  '古兽',
+  '灵族',
+] as const;
+export type EnemyRace = (typeof ENEMY_RACE_VALUES)[number];
+
 // 境界
 export const REALM_VALUES = [
   '炼气',

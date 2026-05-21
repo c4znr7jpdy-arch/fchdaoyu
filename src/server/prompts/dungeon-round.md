@@ -52,11 +52,13 @@ id: dungeon-round
   - **is_final_round**: 布尔值。若当前轮次({{currentRound}}) == {{maxRounds}}，则为 true。
 - **interaction**: 对象。
   - **options**: 数组，固定包含3个对象，每个对象必须包含 [id, text, risk_level, costs] 字段。
+  - 若任一 `costs` 项的 `type` 为 `battle`，则其 `metadata` 必须包含 `race` 与 `realm_stage`，且 `race` 只能取 `人族`、`妖族`、`鬼魂`、`魔族`、`古兽`、`灵族`，`realm_stage` 只能取 `初期`、`中期`、`后期`、`圆满`。
+  - `battle.metadata` 可额外提供 `enemy_name`、`background`、`description`、`is_boss`。
 - **acquired_items**: 可选数组，元素为奖励对象。**奖励应在玩家获得阶段发放（如击败敌人后或探索成功后进入的新场景中）。**
 
 ### 完整示例 (直接输出此类结构的原始 JSON)
 
-{ "scene_description": "描述文本...", "status_update": { "internal_danger_score": 30, "is_final_round": false }, "interaction": { "options": [ { "id": 1, "text": "...", "risk_level": "low", "costs": [] }, { "id": 2, "text": "...", "risk_level": "medium", "costs": [{ "type": "hp_loss", "value": 0.2, "desc": "气血受损" }] }, { "id": 3, "text": "...", "risk_level": "high", "costs": [{ "type": "material", "required_type": "herb", "required_quality": "灵品", "value": 1, "desc": "消耗灵草破阵" }] } ] }, "acquired_items": [] }
+{ "scene_description": "描述文本...", "status_update": { "internal_danger_score": 30, "is_final_round": false }, "interaction": { "options": [ { "id": 1, "text": "...", "risk_level": "low", "costs": [] }, { "id": 2, "text": "...", "risk_level": "medium", "costs": [{ "type": "hp_loss", "value": 0.2, "desc": "气血受损" }] }, { "id": 3, "text": "...", "risk_level": "high", "costs": [{ "type": "battle", "value": 62, "desc": "误触禁制惊醒守卫", "metadata": { "race": "鬼魂", "realm_stage": "后期", "enemy_name": "守陵阴魂", "description": "披着残旧法袍的阴魂自雾中现身" } }] } ] }, "acquired_items": [] }
 
 ## user
 

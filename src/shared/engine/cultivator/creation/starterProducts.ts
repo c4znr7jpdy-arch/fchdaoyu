@@ -1,40 +1,22 @@
 import type {
   AbilityConfig,
-  AttributeModifierConfig,
 } from '@shared/engine/battle-v5/core/configs';
-import { CreationSession } from '@shared/engine/creation-v2/CreationSession';
-import {
-  DEFAULT_AFFIX_REGISTRY,
-  flattenAffixMatcherTags,
-} from '@shared/engine/creation-v2/affixes';
-import type { AffixDefinition } from '@shared/engine/creation-v2/affixes/types';
-import { ProductComposerRegistry } from '@shared/engine/creation-v2/composers/ProductComposerRegistry';
 import {
   projectAbilityConfig,
   type GongFaProductModel,
   type SkillProductModel,
 } from '@shared/engine/creation-v2/models';
-import type { RolledAffix } from '@shared/engine/creation-v2/types';
 import type { ElementType, Quality } from '@shared/types/constants';
 import type { CultivationTechnique, Skill } from '@shared/types/cultivator';
+import {
+  buildPresetSkill,
+  buildPresetTechnique,
+  composePresetProductModel,
+  type InitializedSkill,
+  type InitializedTechnique,
+} from './presetProducts';
 
 const STARTER_QUALITY: Quality = '凡品';
-const STARTER_EFFECTIVE_ENERGY = 17;
-
-const composerRegistry = new ProductComposerRegistry();
-
-type InitializedTechnique = CultivationTechnique & {
-  abilityConfig: AbilityConfig;
-  attributeModifiers: AttributeModifierConfig[];
-  productModel: GongFaProductModel;
-  quality: Quality;
-};
-
-type InitializedSkill = Skill & {
-  abilityConfig: AbilityConfig;
-  productModel: SkillProductModel;
-  quality: Quality;
-};
 
 interface StarterTechniqueRecipe {
   affixIds: string[];
@@ -87,100 +69,6 @@ function hashText(input: string): string {
   return Math.abs(hash >>> 0).toString(36);
 }
 
-function toRolledAffix(def: AffixDefinition): RolledAffix {
-  return {
-    id: def.id,
-    name: def.displayName,
-    description: def.displayDescription,
-    category: def.category,
-    match: def.match,
-    tags: flattenAffixMatcherTags(def.match),
-    grantedAbilityTags: def.grantedAbilityTags,
-    weight: def.weight,
-    energyCost: def.energyCost,
-    exclusiveGroup: def.exclusiveGroup,
-    applicableArtifactSlots: def.applicableArtifactSlots,
-    targetPolicyConstraint: def.targetPolicyConstraint,
-    effectTemplate: def.effectTemplate,
-    rollScore: 1,
-    rollEfficiency: 1,
-    finalMultiplier: 1,
-    isPerfect: false,
-  };
-}
-
-function composeStarterModel(args: {
-  productType: 'skill' | 'gongfa';
-  element: ElementType;
-  name: string;
-  description?: string;
-  affixIds: string[];
-}): SkillProductModel | GongFaProductModel {
-  const { productType, element, name, description, affixIds } = args;
-  const defs = affixIds.map((affixId) => {
-    const def = DEFAULT_AFFIX_REGISTRY.queryById(affixId);
-    if (!def) {
-      throw new Error(`Unknown starter affix: ${affixId}`);
-    }
-    return def;
-  });
-
-  const rolledAffixes = defs.map(toRolledAffix);
-  const spentEnergy = defs.reduce((sum, def) => sum + def.energyCost, 0);
-  const unlockedAffixCategories = Array.from(
-    new Set(defs.map((def) => def.category)),
-  );
-
-  const session = new CreationSession({
-    sessionId: `starter-${productType}-${element}-${hashText(`${element}:${name}`)}`,
-    productType,
-    materials: [
-      {
-        name,
-        type: productType === 'skill' ? 'skill_manual' : 'gongfa_manual',
-        rank: STARTER_QUALITY,
-        quantity: 1,
-        element,
-      },
-    ],
-  });
-
-  session.state.intent = {
-    productType,
-    dominantTags: [],
-    elementBias: element,
-  };
-  session.state.recipeMatch = {
-    recipeId: `starter-${productType}`,
-    valid: true,
-    matchedTags: [],
-    unlockedAffixCategories,
-  };
-  session.state.energyBudget = {
-    baseTotal: STARTER_EFFECTIVE_ENERGY,
-    effectiveTotal: STARTER_EFFECTIVE_ENERGY,
-    reserved: 0,
-    spent: spentEnergy,
-    remaining: Math.max(0, STARTER_EFFECTIVE_ENERGY - spentEnergy),
-    initialRemaining: STARTER_EFFECTIVE_ENERGY,
-    allocations: [],
-    rejections: [],
-    sources: [{ source: 'starter', amount: STARTER_EFFECTIVE_ENERGY }],
-  };
-  session.state.rolledAffixes = rolledAffixes;
-
-  const blueprint = composerRegistry.compose(session);
-  const productModel = blueprint.productModel;
-  const originalName = productModel.name;
-
-  return {
-    ...productModel,
-    name,
-    description: description ?? productModel.description,
-    ...(originalName !== name ? { originalName } : {}),
-  } as SkillProductModel | GongFaProductModel;
-}
-
 function hasPopulatedAffixes(
   productModel: unknown,
 ): productModel is { affixes: Array<unknown> } {
@@ -196,21 +84,14 @@ function normalizeTechniqueFromRecipe(
   technique: CultivationTechnique,
   recipe: StarterTechniqueRecipe,
 ): InitializedTechnique {
-  const productModel = composeStarterModel({
-    productType: 'gongfa',
-    element: technique.element ?? '金',
-    name: technique.name,
-    description: technique.description,
-    affixIds: recipe.affixIds,
-  }) as GongFaProductModel;
-  const abilityConfig = projectAbilityConfig(productModel);
-
   return {
     ...technique,
-    quality: productModel.projectionQuality,
-    attributeModifiers: abilityConfig.modifiers ?? [],
-    abilityConfig,
-    productModel,
+    ...buildPresetTechnique({
+      name: technique.name,
+      element: technique.element ?? '金',
+      description: technique.description,
+      affixIds: recipe.affixIds,
+    }),
   };
 }
 
@@ -218,28 +99,14 @@ function normalizeSkillFromRecipe(
   skill: Skill,
   recipe: StarterSkillRecipe,
 ): InitializedSkill {
-  const productModel = composeStarterModel({
-    productType: 'skill',
-    element: skill.element,
-    name: skill.name,
-    description: skill.description,
-    affixIds: recipe.affixIds,
-  }) as SkillProductModel;
-  const abilityConfig = projectAbilityConfig(productModel);
-
   return {
     ...skill,
-    quality: productModel.projectionQuality,
-    cost: abilityConfig.mpCost ?? skill.cost ?? 0,
-    cooldown: abilityConfig.cooldown ?? skill.cooldown ?? 0,
-    target_self:
-      abilityConfig.targetPolicy?.team === 'self'
-        ? true
-        : abilityConfig.targetPolicy?.team === 'enemy'
-          ? false
-          : skill.target_self,
-    abilityConfig,
-    productModel,
+    ...buildPresetSkill({
+      name: skill.name,
+      element: skill.element,
+      description: skill.description,
+      affixIds: recipe.affixIds,
+    }),
   };
 }
 
@@ -279,7 +146,7 @@ export function ensureStarterTechnique(
     },
     productModel:
       productModel ??
-      composeStarterModel({
+      composePresetProductModel({
         productType: 'gongfa',
         element: technique.element ?? '金',
         name: technique.name,
@@ -320,7 +187,7 @@ export function ensureStarterSkill(skill: Skill): InitializedSkill {
     abilityConfig:
       abilityConfig ??
       projectAbilityConfig(
-        composeStarterModel({
+        composePresetProductModel({
           productType: 'skill',
           element: skill.element,
           name: skill.name,
@@ -330,7 +197,7 @@ export function ensureStarterSkill(skill: Skill): InitializedSkill {
       ),
     productModel:
       productModel ??
-      composeStarterModel({
+      composePresetProductModel({
         productType: 'skill',
         element: skill.element,
         name: skill.name,

@@ -42,7 +42,7 @@ export class SkillBlueprintComposer implements ProductBlueprintComposer {
 
     const productModel: SkillProductModel = {
       productType: 'skill',
-      slug: buildAbilitySlug(session.id, input.productType),
+      slug: buildAbilitySlug(input.slugSeed ?? session.id, input.productType),
       name: decision.name,
       description: decision.description,
       projectionQuality,

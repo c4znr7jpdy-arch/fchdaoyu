@@ -105,7 +105,8 @@ export function createCombatUnitFromCultivator(
       metadata?: { anchorRealm?: RealmType };
     };
     const factor = getCrossRealmModifierFactor(
-      productModel.metadata?.anchorRealm,
+      artifact.battleRuntimeMeta?.anchorRealm ??
+        productModel.metadata?.anchorRealm,
       cultivator.realm,
     );
     const effectiveAbilityConfig = scaleArtifactAbilityConfig(
