@@ -1,8 +1,3 @@
-import { ItemDetailModal } from '@app/routes/game/inventory/components/ItemDetailModal';
-import {
-  toInventoryItemDetail, type ItemDetailPayload, } from '@app/routes/game/inventory/components/itemDetailPayload';
-import {
-  TEMP_DISABLED_MESSAGES, temporaryRestrictions, } from '@shared/config/temporaryRestrictions';
 import {
   PillKeywordLine,
   toPillDisplayModel,
@@ -12,10 +7,29 @@ import { InkSection } from '@app/components/layout';
 import { InkModal } from '@app/components/layout/InkModal';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
-  InkActionGroup, InkBadge, InkButton, InkDialog, InkInput, InkList, InkNotice, InkTabs, inkFieldVariants, type InkDialogState, } from '@app/components/ui';
-import { ItemCard } from '@app/components/ui/ItemCard';
+  InkActionGroup,
+  InkBadge,
+  InkButton,
+  InkDialog,
+  InkInput,
+  InkList,
+  InkNotice,
+  InkTabs,
+  inkFieldVariants,
+  type InkDialogState,
+} from '@app/components/ui';
 import { tierColorMap, type Tier } from '@app/components/ui/InkBadge';
+import { ItemCard } from '@app/components/ui/ItemCard';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import { ItemDetailModal } from '@app/routes/game/inventory/components/ItemDetailModal';
+import {
+  toInventoryItemDetail,
+  type ItemDetailPayload,
+} from '@app/routes/game/inventory/components/itemDetailPayload';
+import {
+  TEMP_DISABLED_MESSAGES,
+  temporaryRestrictions,
+} from '@shared/config/temporaryRestrictions';
 import { cn } from '@shared/lib/cn';
 import { isPillConsumable } from '@shared/lib/consumables';
 import { REALM_VALUES, type RealmType } from '@shared/types/constants';
@@ -23,7 +37,10 @@ import type { Artifact, Consumable, Material } from '@shared/types/cultivator';
 import { useNavigate } from 'react-router';
 
 import {
-  CONSUMABLE_TYPE_DISPLAY_MAP, getEquipmentSlotInfo, getMaterialTypeInfo, } from '@shared/types/dictionaries';
+  CONSUMABLE_TYPE_DISPLAY_MAP,
+  getEquipmentSlotInfo,
+  getMaterialTypeInfo,
+} from '@shared/types/dictionaries';
 import {
   useCallback,
   useEffect,
@@ -179,6 +196,31 @@ function normalizeStakeSnapshot(raw: unknown): BetStakeSnapshot {
     spiritStones: 0,
     item: value.items?.[0] || null,
   };
+}
+
+function normalizeBetBattleListing(item: BetBattleListing): BetBattleListing {
+  return {
+    ...item,
+    creatorStakeSnapshot: normalizeStakeSnapshot(item.creatorStakeSnapshot),
+    challengerStakeSnapshot: item.challengerStakeSnapshot
+      ? normalizeStakeSnapshot(item.challengerStakeSnapshot)
+      : null,
+  };
+}
+
+async function readBetBattleListings(
+  url: string,
+  errorMessage: string,
+): Promise<BetBattleListing[]> {
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || errorMessage);
+  }
+
+  return ((data.listings || []) as BetBattleListing[]).map(
+    normalizeBetBattleListing,
+  );
 }
 
 function getInventoryCardProps(item: InventoryItem, realm?: RealmType) {
@@ -388,6 +430,7 @@ function useInventorySelector() {
 export default function BetBattlePage() {
   const { cultivator, refresh } = useCultivator();
   const { pushToast } = useInkUI();
+  const cultivatorId = cultivator?.id;
   const [now, setNow] = useState(() => Date.now());
 
   const [activeTab, setActiveTab] = useState<'hall' | 'mine'>('hall');
@@ -407,23 +450,12 @@ export default function BetBattlePage() {
   const loadHall = async () => {
     setLoadingHall(true);
     try {
-      const res = await fetch(
-        `/api/bet-battles/listings?page=1&limit=${PAGE_LIMIT}`,
+      setHallListings(
+        await readBetBattleListings(
+          `/api/bet-battles/listings?page=1&limit=${PAGE_LIMIT}`,
+          '获取赌战列表失败',
+        ),
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '获取赌战列表失败');
-      const normalized = ((data.listings || []) as BetBattleListing[]).map(
-        (item) => ({
-          ...item,
-          creatorStakeSnapshot: normalizeStakeSnapshot(
-            item.creatorStakeSnapshot,
-          ),
-          challengerStakeSnapshot: item.challengerStakeSnapshot
-            ? normalizeStakeSnapshot(item.challengerStakeSnapshot)
-            : null,
-        }),
-      );
-      setHallListings(normalized);
     } catch (error) {
       pushToast({
         message: error instanceof Error ? error.message : '获取赌战列表失败',
@@ -435,24 +467,20 @@ export default function BetBattlePage() {
   };
 
   const loadMine = async () => {
-    if (!cultivator) return;
+    if (!cultivatorId) {
+      setMyListings([]);
+      setLoadingMine(false);
+      return;
+    }
+
     setLoadingMine(true);
     try {
-      const res = await fetch(`/api/bet-battles/my?page=1&limit=${PAGE_LIMIT}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || '获取我的赌战失败');
-      const normalized = ((data.listings || []) as BetBattleListing[]).map(
-        (item) => ({
-          ...item,
-          creatorStakeSnapshot: normalizeStakeSnapshot(
-            item.creatorStakeSnapshot,
-          ),
-          challengerStakeSnapshot: item.challengerStakeSnapshot
-            ? normalizeStakeSnapshot(item.challengerStakeSnapshot)
-            : null,
-        }),
+      setMyListings(
+        await readBetBattleListings(
+          `/api/bet-battles/my?page=1&limit=${PAGE_LIMIT}`,
+          '获取我的赌战失败',
+        ),
       );
-      setMyListings(normalized);
     } catch (error) {
       pushToast({
         message: error instanceof Error ? error.message : '获取我的赌战失败',
@@ -468,57 +496,30 @@ export default function BetBattlePage() {
 
     const loadInitialLists = async () => {
       try {
-        const hallRes = await fetch(
-          `/api/bet-battles/listings?page=1&limit=${PAGE_LIMIT}`,
-        );
-        const hallData = await hallRes.json();
-        if (!hallRes.ok) {
-          throw new Error(hallData.error || '获取赌战列表失败');
+        const [nextHallListings, nextMineListings] = await Promise.all([
+          readBetBattleListings(
+            `/api/bet-battles/listings?page=1&limit=${PAGE_LIMIT}`,
+            '获取赌战列表失败',
+          ),
+          cultivatorId
+            ? readBetBattleListings(
+                `/api/bet-battles/my?page=1&limit=${PAGE_LIMIT}`,
+                '获取我的赌战失败',
+              )
+            : Promise.resolve<BetBattleListing[]>([]),
+        ]);
+
+        if (cancelled) {
+          return;
         }
 
-        if (!cancelled) {
-          const normalizedHall = ((hallData.listings || []) as BetBattleListing[]).map(
-            (item) => ({
-              ...item,
-              creatorStakeSnapshot: normalizeStakeSnapshot(
-                item.creatorStakeSnapshot,
-              ),
-              challengerStakeSnapshot: item.challengerStakeSnapshot
-                ? normalizeStakeSnapshot(item.challengerStakeSnapshot)
-                : null,
-            }),
-          );
-          setHallListings(normalizedHall);
-        }
-
-        if (cultivator) {
-          const mineRes = await fetch(
-            `/api/bet-battles/my?page=1&limit=${PAGE_LIMIT}`,
-          );
-          const mineData = await mineRes.json();
-          if (!mineRes.ok) {
-            throw new Error(mineData.error || '获取我的赌战失败');
-          }
-
-          if (!cancelled) {
-            const normalizedMine = ((mineData.listings || []) as BetBattleListing[]).map(
-              (item) => ({
-                ...item,
-                creatorStakeSnapshot: normalizeStakeSnapshot(
-                  item.creatorStakeSnapshot,
-                ),
-                challengerStakeSnapshot: item.challengerStakeSnapshot
-                  ? normalizeStakeSnapshot(item.challengerStakeSnapshot)
-                  : null,
-              }),
-            );
-            setMyListings(normalizedMine);
-          }
-        }
+        setHallListings(nextHallListings);
+        setMyListings(nextMineListings);
       } catch (error) {
         if (!cancelled) {
           pushToast({
-            message: error instanceof Error ? error.message : '获取赌战列表失败',
+            message:
+              error instanceof Error ? error.message : '获取赌战列表失败',
             tone: 'danger',
           });
         }
@@ -535,7 +536,7 @@ export default function BetBattlePage() {
     return () => {
       cancelled = true;
     };
-  }, [cultivator?.id]);
+  }, [cultivatorId, pushToast]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
@@ -702,11 +703,13 @@ export default function BetBattlePage() {
                 应战
               </InkButton>
             )}
-            {!isCreator && isConsumableStakeDisabled && item.status === 'pending' && (
-              <InkButton variant="secondary" disabled={true}>
-                暂不可应战
-              </InkButton>
-            )}
+            {!isCreator &&
+              isConsumableStakeDisabled &&
+              item.status === 'pending' && (
+                <InkButton variant="secondary" disabled={true}>
+                  暂不可应战
+                </InkButton>
+              )}
             {mine &&
               isCreator &&
               item.status === 'pending' &&
@@ -728,7 +731,7 @@ export default function BetBattlePage() {
   return (
     <div>
       <div className="mx-auto flex max-w-5xl flex-col px-3 pt-4 pb-8 md:px-6 md:pt-5 md:pb-10">
-        <section className="border-battle-rule-strong bg-[rgba(248,243,230,0.88)] border border-dashed px-4 py-4 md:px-5 md:py-5">
+        <section className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-4 md:px-5 md:py-5">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0">
               <div className="text-battle-muted text-[0.7rem] tracking-[0.18em]">
@@ -770,7 +773,9 @@ export default function BetBattlePage() {
 
           {temporaryRestrictions.disableConsumableBetBattle && (
             <div className="mt-4">
-              <InkNotice>{TEMP_DISABLED_MESSAGES.consumableBetBattle}</InkNotice>
+              <InkNotice>
+                {TEMP_DISABLED_MESSAGES.consumableBetBattle}
+              </InkNotice>
             </div>
           )}
         </section>
@@ -779,19 +784,21 @@ export default function BetBattlePage() {
           {activeTab === 'hall' ? (
             <InkSection title="">
               {loadingHall ? (
-                <div className="border-battle-rule-strong bg-[rgba(248,243,230,0.88)] border border-dashed px-4 py-10 text-center">
+                <div className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-10 text-center">
                   正在加载赌战列表...
                 </div>
               ) : hallListings.length === 0 ? (
                 <InkNotice>暂无进行中的赌战</InkNotice>
               ) : (
-                <InkList>{hallListings.map((item) => renderItem(item))}</InkList>
+                <InkList>
+                  {hallListings.map((item) => renderItem(item))}
+                </InkList>
               )}
             </InkSection>
           ) : (
             <InkSection title="">
               {loadingMine ? (
-                <div className="border-battle-rule-strong bg-[rgba(248,243,230,0.88)] border border-dashed px-4 py-10 text-center">
+                <div className="border-battle-rule-strong border border-dashed bg-[rgba(248,243,230,0.88)] px-4 py-10 text-center">
                   正在加载我的赌战...
                 </div>
               ) : myListings.length === 0 ? (
@@ -1046,7 +1053,6 @@ function BetBattleCreateModal({
                         name={item.name}
                         quality={card.quality}
                         badgeExtra={card.badgeExtra}
-
                         meta={card.meta}
                         description={card.description}
                         highlight={checked}
@@ -1293,11 +1299,11 @@ function BetBattleChallengeModal({
       ? Number(spiritStones) === creatorStake.spiritStones
       : isConsumableStakeDisabled
         ? false
-      : !!selectedItem &&
-        !!requiredItem &&
-        selectedItem.itemType === requiredItem.itemType &&
-        selectedItem.quality === requiredItem.quality &&
-        selectedItem.quantity === requiredItem.quantity;
+        : !!selectedItem &&
+          !!requiredItem &&
+          selectedItem.itemType === requiredItem.itemType &&
+          selectedItem.quality === requiredItem.quality &&
+          selectedItem.quantity === requiredItem.quantity;
 
   return (
     <InkModal
@@ -1371,7 +1377,6 @@ function BetBattleChallengeModal({
                         name={item.name}
                         quality={card.quality}
                         badgeExtra={card.badgeExtra}
-
                         meta={card.meta}
                         description={card.description}
                         highlight={checked}

@@ -38,6 +38,7 @@ import {
   MarketServiceError,
 } from '@server/lib/services/MarketService';
 import { TaskService } from '@server/lib/services/TaskService';
+import { InnRecoveryService } from '@server/lib/services/InnRecoveryService';
 import {
   addBreakthroughHistoryEntry,
   addRetreatRecord,
@@ -56,6 +57,7 @@ import {
 import { stream_text } from '@server/utils/aiClient';
 import { createBreakthroughStory } from '@server/utils/storyService';
 import { getRedeemPresetById } from '@shared/config/redeemRewardPresets';
+import { INN_RECOVERY_SPIRIT_STONE_COST } from '@shared/config/innRecovery';
 import {
   attemptBreakthrough,
   performCultivation,
@@ -289,6 +291,67 @@ router.post('/consume', requireActiveCultivator(), async (c) => {
       400,
     );
   }
+});
+
+router.post('/inn-recovery', requireActiveCultivator(), async (c) => {
+  const user = c.get('user');
+  const activeCultivator = c.get('cultivator');
+  if (!user || !activeCultivator) {
+    return c.json({ success: false, error: '未授权访问' }, 401);
+  }
+
+  const cultivator = await getCultivatorById(user.id, activeCultivator.id);
+  if (!cultivator) {
+    return c.json({ success: false, error: '角色不存在' }, 404);
+  }
+
+  const recovery = InnRecoveryService.buildRecoveryResult(cultivator);
+  const updatedBalance = await getExecutor().transaction(async (tx) => {
+    const [updatedCultivator] = await tx
+      .update(cultivators)
+      .set({
+        spirit_stones: sql`${cultivators.spirit_stones} - ${INN_RECOVERY_SPIRIT_STONE_COST}`,
+        cultivation_progress: recovery.nextCultivationProgress,
+        condition: recovery.nextCondition,
+      })
+      .where(
+        and(
+          eq(cultivators.id, activeCultivator.id),
+          sql`${cultivators.spirit_stones} >= ${INN_RECOVERY_SPIRIT_STONE_COST}`,
+        ),
+      )
+      .returning({
+        spiritStones: cultivators.spirit_stones,
+      });
+
+    return updatedCultivator ?? null;
+  });
+
+  if (!updatedBalance) {
+    return c.json(
+      {
+        success: false,
+        error: `囊中羞涩，灵石不足（至少需要 ${INN_RECOVERY_SPIRIT_STONE_COST} 灵石）`,
+      },
+      400,
+    );
+  }
+
+  return c.json({
+    success: true,
+    data: {
+      cultivator: {
+        ...cultivator,
+        spirit_stones: updatedBalance.spiritStones,
+        cultivation_progress: recovery.nextCultivationProgress,
+        condition: recovery.nextCondition,
+      },
+      spiritStoneCost: INN_RECOVERY_SPIRIT_STONE_COST,
+      cultivationLossPercent: recovery.cultivationLossPercent,
+      cultivationLossAmount: recovery.cultivationLossAmount,
+      clearedStatusCount: recovery.clearedStatusCount,
+    },
+  });
 });
 
 router.get('/equip', requireActiveCultivator(), async (c) => {

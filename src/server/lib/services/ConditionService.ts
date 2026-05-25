@@ -1,7 +1,13 @@
 import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
 import type { BattleInitConfigV5 } from '@shared/engine/battle-v5/setup/types';
 import type { UnitStateSnapshot } from '@shared/engine/battle-v5/systems/state/types';
-import { getBreakthroughPenalty, isConditionStatusActive } from '@shared/lib/condition';
+import {
+  getBreakthroughPenalty,
+  getNaturalRecoveryStatusMultiplier,
+  getPillToxicityRecoveryMultiplier,
+  isConditionStatusActive,
+  NATURAL_RECOVERY_CONFIG,
+} from '@shared/lib/condition';
 import {
   getConditionStatusTemplate,
   isConditionStatusKey,
@@ -15,12 +21,6 @@ import type {
   TemperingTrackKey,
 } from '@shared/types/condition';
 import type { Cultivator } from '@shared/types/cultivator';
-
-const RECOVERY_CONFIG = {
-  hpPerHour: 0.08,
-  mpPerHour: 0.18,
-  toxicityPenaltyDivisor: 180,
-};
 
 const WOUND_SEVERITY_ORDER: ConditionStatusKey[] = [
   'minor_wound',
@@ -198,22 +198,6 @@ function setMinimumWoundStatus(
   );
 }
 
-function getStatusRecoveryMultiplier(
-  statuses: ConditionStatusInstance[],
-  condition: CultivatorCondition,
-): number {
-  return statuses.reduce((lowest, status) => {
-    const multiplier = getConditionStatusTemplate(status.key)?.hooks.onNaturalRecovery?.(
-      status,
-      condition,
-    );
-    if (typeof multiplier !== 'number' || !Number.isFinite(multiplier)) {
-      return lowest;
-    }
-    return Math.min(lowest, multiplier);
-  }, 1);
-}
-
 function toBattleStatusRefs(statuses: ConditionStatusInstance[], now: Date) {
   return statuses
     .filter((status) => isConditionStatusActive(status, now))
@@ -385,18 +369,14 @@ export const ConditionService = {
       };
     }
 
-    const toxicityMultiplier = clamp(
-      1 - condition.gauges.pillToxicity / RECOVERY_CONFIG.toxicityPenaltyDivisor,
-      0.3,
-      1,
-    );
-    const statusMultiplier = getStatusRecoveryMultiplier(statuses, condition);
+    const toxicityMultiplier = getPillToxicityRecoveryMultiplier(condition);
+    const statusMultiplier = getNaturalRecoveryStatusMultiplier(condition, now);
     const recoveryFactor = toxicityMultiplier * statusMultiplier;
     const hpRecover = Math.floor(
-      maxHp * RECOVERY_CONFIG.hpPerHour * elapsedHours * recoveryFactor,
+      maxHp * NATURAL_RECOVERY_CONFIG.hpPerHour * elapsedHours * recoveryFactor,
     );
     const mpRecover = Math.floor(
-      maxMp * RECOVERY_CONFIG.mpPerHour * elapsedHours * recoveryFactor,
+      maxMp * NATURAL_RECOVERY_CONFIG.mpPerHour * elapsedHours * recoveryFactor,
     );
     const nextHp = clamp(condition.resources.hp.current + hpRecover, 0, maxHp);
     const nextMp = clamp(condition.resources.mp.current + mpRecover, 0, maxMp);

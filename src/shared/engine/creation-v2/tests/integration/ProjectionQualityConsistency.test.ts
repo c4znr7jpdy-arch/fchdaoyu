@@ -1,11 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { matchAll } from '@shared/engine/creation-v2/affixes';
-import { DEFAULT_AFFIX_REGISTRY } from '@shared/engine/creation-v2/affixes';
-import type { RolledAffix } from '@shared/engine/creation-v2/types';
-import type { SkillProductModel } from '@shared/engine/creation-v2/models/types';
-import type { CraftedOutcome } from '@shared/engine/creation-v2/types';
-import { toRow } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import { toProductDisplayModel } from '@app/components/feature/products';
+import { DEFAULT_AFFIX_REGISTRY } from '@shared/engine/creation-v2/affixes';
+import type { SkillProductModel } from '@shared/engine/creation-v2/models/types';
+import { toRow } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
+import type {
+  CraftedOutcome,
+  RolledAffix,
+} from '@shared/engine/creation-v2/types';
+import { describe, expect, it } from 'vitest';
 
 function toRolledAffix(id: string): RolledAffix {
   const def = DEFAULT_AFFIX_REGISTRY.queryById(id);
@@ -40,9 +41,19 @@ describe('ProjectionQuality consistency', () => {
       outcomeTags: ['Outcome.ActiveSkill'],
       affixes: [affix],
       // 故意制造“高 PBU”以模拟旧逻辑下会反推出更高品质的情况
-      balanceMetrics: { pbu: 999, targetTtkBand: '4-10', channels: {
-        damage: 0, sustain: 0, defense: 0, control: 0, resource: 0, utility: 0, modifier: 0,
-      } },
+      balanceMetrics: {
+        pbu: 999,
+        targetTtkBand: '4-10',
+        channels: {
+          damage: 0,
+          sustain: 0,
+          defense: 0,
+          control: 0,
+          resource: 0,
+          utility: 0,
+          modifier: 0,
+        },
+      },
       battleProjection: {
         projectionKind: 'active_skill',
         abilityTags: [],
@@ -57,7 +68,6 @@ describe('ProjectionQuality consistency', () => {
     const outcome: CraftedOutcome = {
       blueprint: { productType: 'skill', productModel: model },
       // toRow 内不会读取 outcome.ability，这里给个空对象即可
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ability: {} as any,
     };
 

@@ -1,21 +1,19 @@
-import { getPillUsageKeywordLabel, getPillUsageRuleText } from '@shared/lib/pillUsageText';
-import { InkBadge } from '@app/components/ui/InkBadge';
-import {
-  getAffixToneStyle,
-  getAffixUnderlineStyle,
-} from '@app/components/feature/products/affixPresentation';
 import { getBreakthroughPillLabel } from '@shared/lib/breakthroughPill';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
+import {
+  getPillUsageKeywordLabel,
+  getPillUsageRuleText,
+} from '@shared/lib/pillUsageText';
 import { getResourceLabel } from '@shared/lib/resourceText';
 import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
+import type { ConditionStatusKey } from '@shared/types/condition';
 import type { RealmType } from '@shared/types/constants';
-import type { Consumable } from '@shared/types/cultivator';
 import type {
   ConditionOperation,
   PillFamily,
   PillSpec,
 } from '@shared/types/consumable';
-import type { ConditionStatusKey } from '@shared/types/condition';
+import type { Consumable } from '@shared/types/cultivator';
 
 export interface PillDetailGroup {
   key: string;
@@ -118,8 +116,10 @@ function buildPrimaryEffect(spec: PillSpec): string {
       const restore = spec.operations.find(
         (
           operation,
-        ): operation is Extract<ConditionOperation, { type: 'restore_resource' }> =>
-          operation.type === 'restore_resource',
+        ): operation is Extract<
+          ConditionOperation,
+          { type: 'restore_resource' }
+        > => operation.type === 'restore_resource',
       );
       return restore
         ? getRestoreEffectText(restore)
@@ -129,8 +129,10 @@ function buildPrimaryEffect(spec: PillSpec): string {
       const restores = spec.operations.filter(
         (
           operation,
-        ): operation is Extract<ConditionOperation, { type: 'restore_resource' }> =>
-          operation.type === 'restore_resource',
+        ): operation is Extract<
+          ConditionOperation,
+          { type: 'restore_resource' }
+        > => operation.type === 'restore_resource',
       );
       if (restores.length === 0) return '复合药效';
 
@@ -160,7 +162,9 @@ function buildPrimaryEffect(spec: PillSpec): string {
       );
       const breakthroughLabel = getBreakthroughPurposeLabel(spec);
       if (!status) {
-        return breakthroughLabel ? `${breakthroughLabel}，助力破境` : '助力破境';
+        return breakthroughLabel
+          ? `${breakthroughLabel}，助力破境`
+          : '助力破境';
       }
 
       return breakthroughLabel
@@ -172,8 +176,10 @@ function buildPrimaryEffect(spec: PillSpec): string {
       const advance = spec.operations.find(
         (
           operation,
-        ): operation is Extract<ConditionOperation, { type: 'advance_track' }> =>
-          operation.type === 'advance_track',
+        ): operation is Extract<
+          ConditionOperation,
+          { type: 'advance_track' }
+        > => operation.type === 'advance_track',
       );
       return advance ? describePillOperation(advance) : '推进修炼进度';
     }
@@ -184,7 +190,10 @@ function buildKeywordLabels(spec: PillSpec, realm?: RealmType): string[] {
   const labels = [
     getPillFamilyLabel(spec.family),
     spec.family === 'breakthrough' ? getBreakthroughPurposeLabel(spec) : null,
-    getPillUsageKeywordLabel(spec.consumeRules.countsTowardLongTermQuota, realm),
+    getPillUsageKeywordLabel(
+      spec.consumeRules.countsTowardLongTermQuota,
+      realm,
+    ),
   ].filter((label): label is string => Boolean(label));
 
   const gaugeChange = spec.operations.find(
@@ -203,8 +212,7 @@ function buildKeywordLabels(spec: PillSpec, realm?: RealmType): string[] {
 function buildCoreEffectLines(spec: PillSpec): string[] {
   return spec.operations
     .filter(
-      (operation) =>
-        operation.type !== 'change_gauge' || operation.delta < 0,
+      (operation) => operation.type !== 'change_gauge' || operation.delta < 0,
     )
     .map(describePillOperation);
 }
@@ -231,7 +239,9 @@ function buildCostAndRuleLines(spec: PillSpec, realm?: RealmType): string[] {
   return lines;
 }
 
-function buildAlchemyInfoLines(consumable: Consumable & { spec: PillSpec }): string[] {
+function buildAlchemyInfoLines(
+  consumable: Consumable & { spec: PillSpec },
+): string[] {
   const { alchemyMeta } = consumable.spec;
   const breakthroughLabel = getBreakthroughPurposeLabel(consumable.spec);
 
@@ -279,86 +289,4 @@ export function toPillDisplayModel(
     ],
     flavorText: consumable.description,
   };
-}
-
-export function PillKeywordLine({ labels }: { labels: string[] }) {
-  if (labels.length === 0) return null;
-
-  return (
-    <div className="text-ink-secondary flex flex-wrap gap-x-2 gap-y-1 text-xs">
-      {labels.map((label, index) => (
-        <span
-          key={`${label}-${index}`}
-          className="relative inline-flex border-b border-dashed pb-px"
-          data-pill-keyword={label}
-          style={
-            label.includes('丹毒')
-              ? {
-                  ...getAffixUnderlineStyle(false),
-                  color: 'rgba(193, 18, 31, 0.76)',
-                }
-              : {
-                  ...getAffixUnderlineStyle(false),
-                  ...getAffixToneStyle(
-                    label.startsWith('服用上限') ? 'info' : 'muted',
-                  ),
-                }
-          }
-        >
-          {label}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-export function PillSummary({ model }: { model: PillDisplayModel }) {
-  return (
-    <div className="space-y-2 border border-dashed border-ink/10 px-3 py-2 text-left">
-      <div className="text-ink text-sm font-semibold leading-relaxed">
-        {model.primaryEffect}
-      </div>
-      <PillKeywordLine labels={model.keywordLabels} />
-    </div>
-  );
-}
-
-export function PillDetailGroups({ groups }: { groups: PillDetailGroup[] }) {
-  return (
-    <div className="space-y-3">
-      {groups
-        .filter((group) => group.lines.length > 0)
-        .map((group) => (
-          <section key={group.key} className="space-y-1">
-            <h3 className="text-ink-secondary text-sm font-semibold tracking-wide">
-              {group.title}
-            </h3>
-            <ul className='list-disc list-inside'>
-              {group.lines.map((line, index) => (
-                <li
-                  key={`${group.key}-${line}-${index}`}
-                  className="px-2 py-0.5 text-ink/75 leading-relaxed"
-                >
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-    </div>
-  );
-}
-
-export function PillKeywordBadges({ labels }: { labels: string[] }) {
-  if (labels.length === 0) return null;
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {labels.map((label, index) => (
-        <InkBadge key={`${label}-${index}`} tone="default">
-          {label}
-        </InkBadge>
-      ))}
-    </div>
-  );
 }

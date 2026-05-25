@@ -1,25 +1,7 @@
-import {
-  createContext,
-  type ReactNode,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import type { InkDialogState, InkToastData } from '../ui';
 import { InkDialog, InkToastHost } from '../ui';
-
-type ToastInput = Omit<InkToastData, 'id'> & { duration?: number };
-type DialogInput = Omit<InkDialogState, 'id'>;
-
-interface InkUIContextValue {
-  pushToast: (toast: ToastInput) => string;
-  dismissToast: (id: string) => void;
-  openDialog: (dialog: DialogInput) => string;
-  closeDialog: () => void;
-}
-
-const InkUIContext = createContext<InkUIContextValue | null>(null);
+import { DialogInput, InkUIContext, ToastInput } from './inkUIContext';
 
 export function InkUIProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<InkToastData[]>([]);
@@ -68,12 +50,4 @@ export function InkUIProvider({ children }: { children: ReactNode }) {
       <InkDialog dialog={dialog} onClose={closeDialog} />
     </InkUIContext.Provider>
   );
-}
-
-export function useInkUI() {
-  const context = useContext(InkUIContext);
-  if (!context) {
-    throw new Error('useInkUI must be used within InkUIProvider');
-  }
-  return context;
 }

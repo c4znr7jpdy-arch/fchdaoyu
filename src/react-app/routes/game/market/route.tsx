@@ -18,7 +18,7 @@ import { getMapNode } from '@shared/lib/game/mapSystem';
 import { Material } from '@shared/types/cultivator';
 import { getMaterialTypeInfo } from '@shared/types/dictionaries';
 import { MarketLayer } from '@shared/types/market';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 type MarketListing = Material & {
@@ -41,6 +41,49 @@ const LAYER_OPTIONS: Array<{ label: string; value: MarketLayer }> = [
   { label: '天宝殿', value: 'heaven' },
   { label: '黑市', value: 'black' },
 ];
+
+type MarketSnapshot = {
+  listings: MarketListing[];
+  nextRefresh: number;
+  access: {
+    allowed: boolean;
+    reason?: string;
+    entryFee?: number;
+  };
+  marketFlavor: {
+    title: string;
+    description: string;
+  } | null;
+  isRefreshingMarket: boolean;
+};
+
+async function readMarketSnapshot(
+  nodeId: string,
+  layer: MarketLayer,
+): Promise<MarketSnapshot> {
+  const res = await fetch(`/api/market/${nodeId}?layer=${layer}`, {
+    cache: 'no-store',
+  });
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data?.error || '坊市暂未开启');
+  }
+
+  const nextRefresh = data.nextRefresh || Date.now() + 5000;
+  const isShortRetryWindow =
+    typeof data.nextRefresh === 'number' &&
+    data.nextRefresh - Date.now() <= 20000;
+
+  return {
+    listings: data.listings || [],
+    nextRefresh,
+    access: data.access || { allowed: true },
+    marketFlavor: data.marketFlavor || null,
+    isRefreshingMarket:
+      (data.listings || []).length === 0 && isShortRetryWindow,
+  };
+}
 
 export default function MarketPage() {
   const navigate = useNavigate();
@@ -80,53 +123,54 @@ export default function MarketPage() {
   const nextRetryAtRef = useRef(0);
 
   const selectedNode = getMapNode(nodeId);
+  const applyMarketSnapshot = useCallback(
+    (snapshot: MarketSnapshot) => {
+      setListings(snapshot.listings);
+      setNextRefresh(snapshot.nextRefresh);
+      setAccess(snapshot.access);
+      setMarketFlavor(snapshot.marketFlavor);
+      setIsRefreshingMarket(snapshot.isRefreshingMarket);
+    },
+    [
+      setAccess,
+      setIsRefreshingMarket,
+      setListings,
+      setMarketFlavor,
+      setNextRefresh,
+    ],
+  );
 
-  const fetchMarket = async ({
-    silent = false,
-    showLoading = false,
-  }: {
-    silent?: boolean;
-    showLoading?: boolean;
-  } = {}) => {
-    if (isFetchingRef.current) return;
+  const fetchMarket = useCallback(
+    async ({
+      silent = false,
+      showLoading = false,
+    }: {
+      silent?: boolean;
+      showLoading?: boolean;
+    } = {}) => {
+      if (isFetchingRef.current) return;
 
-    isFetchingRef.current = true;
-    if (showLoading) setIsLoadingMarket(true);
+      isFetchingRef.current = true;
+      if (showLoading) setIsLoadingMarket(true);
 
-    try {
-      const res = await fetch(`/api/market/${nodeId}?layer=${activeLayer}`, {
-        cache: 'no-store',
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data?.error || '坊市暂未开启');
+      try {
+        applyMarketSnapshot(await readMarketSnapshot(nodeId, activeLayer));
+        nextRetryAtRef.current = 0;
+      } catch (error) {
+        nextRetryAtRef.current = Date.now() + 5000;
+        if (!silent) {
+          pushToast({
+            message: error instanceof Error ? error.message : '坊市暂未开启',
+            tone: 'warning',
+          });
+        }
+      } finally {
+        if (showLoading) setIsLoadingMarket(false);
+        isFetchingRef.current = false;
       }
-
-      setListings(data.listings || []);
-      setNextRefresh(data.nextRefresh || Date.now() + 5000);
-      setAccess(data.access || { allowed: true });
-      setMarketFlavor(data.marketFlavor || null);
-      const isShortRetryWindow =
-        typeof data.nextRefresh === 'number' &&
-        data.nextRefresh - Date.now() <= 20000;
-      setIsRefreshingMarket(
-        (data.listings || []).length === 0 && isShortRetryWindow,
-      );
-      nextRetryAtRef.current = 0;
-    } catch (error) {
-      nextRetryAtRef.current = Date.now() + 5000;
-      if (!silent) {
-        pushToast({
-          message: error instanceof Error ? error.message : '坊市暂未开启',
-          tone: 'warning',
-        });
-      }
-    } finally {
-      if (showLoading) setIsLoadingMarket(false);
-      isFetchingRef.current = false;
-    }
-  };
+    },
+    [activeLayer, applyMarketSnapshot, nodeId, pushToast, setIsLoadingMarket],
+  );
 
   useEffect(() => {
     if (!searchParams.get('nodeId')) {
@@ -140,26 +184,11 @@ export default function MarketPage() {
 
     const loadInitialMarket = async () => {
       try {
-        const res = await fetch(`/api/market/${nodeId}?layer=${activeLayer}`, {
-          cache: 'no-store',
-        });
-        const data = await res.json();
+        const snapshot = await readMarketSnapshot(nodeId, activeLayer);
 
         if (cancelled) return;
-        if (!res.ok) {
-          throw new Error(data?.error || '坊市暂未开启');
-        }
 
-        setListings(data.listings || []);
-        setNextRefresh(data.nextRefresh || Date.now() + 5000);
-        setAccess(data.access || { allowed: true });
-        setMarketFlavor(data.marketFlavor || null);
-        const isShortRetryWindow =
-          typeof data.nextRefresh === 'number' &&
-          data.nextRefresh - Date.now() <= 20000;
-        setIsRefreshingMarket(
-          (data.listings || []).length === 0 && isShortRetryWindow,
-        );
+        applyMarketSnapshot(snapshot);
         nextRetryAtRef.current = 0;
       } catch (error) {
         nextRetryAtRef.current = Date.now() + 5000;
@@ -183,7 +212,14 @@ export default function MarketPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeLayer, navigate, nodeId, pushToast, searchParams]);
+  }, [
+    activeLayer,
+    applyMarketSnapshot,
+    navigate,
+    nodeId,
+    pushToast,
+    searchParams,
+  ]);
 
   const handleBuy = async (item: MarketListing) => {
     if (!cultivator) return;

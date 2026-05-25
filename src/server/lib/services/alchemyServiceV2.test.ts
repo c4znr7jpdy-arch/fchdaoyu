@@ -188,4 +188,30 @@ describe('synthesizeAlchemy', () => {
 
     expect(result.dominantElement).toBe('水');
   });
+
+  it('lets high-tier healing pills cure near-death', () => {
+    const result = synthesizeAlchemy(
+      [
+        createIngredient({
+          id: 'm1',
+          name: '青岚草',
+          element: '木',
+          type: 'herb',
+          profile: createProfile(['healing']),
+        }),
+      ],
+      {
+        targetTags: ['healing'],
+        focusMode: 'focused',
+      },
+      '天品',
+    );
+
+    expect(result.family).toBe('healing');
+    expect(result.operations).toEqual([
+      { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.252 },
+      { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
+      { type: 'remove_status', status: 'near_death' },
+    ]);
+  });
 });

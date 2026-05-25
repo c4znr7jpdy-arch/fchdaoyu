@@ -10,6 +10,7 @@ import {
   isAlchemyMaterialType,
   readMaterialAlchemyProfile,
 } from '@shared/lib/materialAlchemy';
+import { getHealingCuredStatus } from '@shared/lib/healingPill';
 import type { ConditionTrackPath } from '@shared/types/condition';
 import {
   QUALITY_ORDER,
@@ -576,10 +577,23 @@ export function calculateFormulaFitMultiplier(
 function scaleFormulaOperations(
   operations: ConditionOperation[],
   fitMultiplier: number,
+  quality: Quality,
 ): ConditionOperation[] {
   return operations.map((operation) => {
     if (operation.type === 'restore_resource') {
       return scaleRestoreOperationValue(operation, fitMultiplier);
+    }
+
+    if (
+      operation.type === 'remove_status' &&
+      (operation.status === 'minor_wound' ||
+        operation.status === 'major_wound' ||
+        operation.status === 'near_death')
+    ) {
+      return {
+        ...operation,
+        status: getHealingCuredStatus(quality),
+      };
     }
 
     if (operation.type === 'advance_track') {
@@ -952,6 +966,7 @@ export async function craftFromFormula(
       operations: scaleFormulaOperations(
         formula.blueprint.operations,
         fitMultiplier,
+        highestMaterialRank,
       ),
       consumeRules: formula.blueprint.consumeRules,
       alchemyMeta: {

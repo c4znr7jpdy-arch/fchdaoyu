@@ -1,13 +1,12 @@
+import { GameplayTags } from '@shared/engine/shared/tag-domain';
 import { BattleEngineV5 } from '../../BattleEngineV5';
 import { EventBus } from '../../core/EventBus';
-import { GameplayTags } from '@shared/engine/shared/tag-domain';
 import { AbilityType, AttributeType } from '../../core/types';
 import { AbilityFactory } from '../../factories/AbilityFactory';
 import { Unit } from '../../units/Unit';
 
 describe('护盾 Buff 真实战斗验证', () => {
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (EventBus as any)._instance = null;
   });
 

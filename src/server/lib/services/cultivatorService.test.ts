@@ -3,9 +3,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   findActiveCultivatorRecordByIdMock,
   loadCultivatorRelationsMock,
+  normalizeConditionMock,
+  tickNaturalRecoveryMock,
 } = vi.hoisted(() => ({
   findActiveCultivatorRecordByIdMock: vi.fn(),
   loadCultivatorRelationsMock: vi.fn(),
+  normalizeConditionMock: vi.fn((_, condition) => condition),
+  tickNaturalRecoveryMock: vi.fn((_, condition) => ({
+    ...condition,
+    resources: {
+      hp: { current: 96 },
+      mp: { current: 88 },
+    },
+    timestamps: {
+      ...condition.timestamps,
+      lastRecoveryAt: '2026-05-22T00:00:00.000Z',
+    },
+  })),
 }));
 
 vi.mock('@server/lib/drizzle/db', () => ({
@@ -30,7 +44,8 @@ vi.mock('@server/utils/cultivationUtils', () => ({
 
 vi.mock('./ConditionService', () => ({
   ConditionService: {
-    normalizeCondition: vi.fn((_, condition) => condition),
+    normalizeCondition: normalizeConditionMock,
+    tickNaturalRecovery: tickNaturalRecoveryMock,
   },
 }));
 
@@ -200,5 +215,13 @@ describe('getCultivatorByIdUnsafe', () => {
         element: '火',
       },
     ]);
+    expect(bundle?.cultivator.condition?.resources).toEqual({
+      hp: { current: 96 },
+      mp: { current: 88 },
+    });
+    expect(bundle?.cultivator.condition?.timestamps.lastRecoveryAt).toBe(
+      '2026-05-22T00:00:00.000Z',
+    );
+    expect(tickNaturalRecoveryMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -5,7 +5,7 @@ import {
   useAuthFeedback,
 } from '@app/components/auth';
 import { InkButton } from '@app/components/ui/InkButton';
-import { useAuth, type AuthActionError } from '@app/lib/auth/AuthContext';
+import { useAuth, type AuthActionError } from '@app/lib/auth/authContext';
 import { useState } from 'react';
 
 export default function SignupRoute() {

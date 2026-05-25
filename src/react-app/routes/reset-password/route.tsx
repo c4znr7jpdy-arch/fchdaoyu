@@ -7,7 +7,7 @@ import {
 } from '@app/components/auth';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkInput } from '@app/components/ui/InkInput';
-import { useAuth, type AuthActionError } from '@app/lib/auth/AuthContext';
+import { useAuth, type AuthActionError } from '@app/lib/auth/authContext';
 import { useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 

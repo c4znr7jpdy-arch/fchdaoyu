@@ -159,23 +159,15 @@ export function FormulaNarrativeBlock({
 
 export function AlchemyResultModal({
   consumable,
-  formulaDiscovery,
   formulaProgress,
-  isHandlingDiscovery,
   isOpen,
-  onAcceptDiscovery,
   onClose,
-  onRejectDiscovery,
   viewerRealm,
 }: {
   consumable: Consumable | null;
-  formulaDiscovery: AlchemyFormulaDiscoveryCandidate | null;
   formulaProgress: FormulaProgress | null;
-  isHandlingDiscovery: boolean;
   isOpen: boolean;
-  onAcceptDiscovery: () => void;
   onClose: () => void;
-  onRejectDiscovery: () => void;
   viewerRealm?: RealmType;
 }) {
   if (!consumable || !isPillConsumable(consumable)) {
@@ -235,36 +227,71 @@ export function AlchemyResultModal({
       }
       description={consumable.description}
       descriptionTitle="丹成评述"
-      footer={
-        formulaDiscovery ? (
-          <div className="space-y-2 pt-2">
-            <InkNotice tone="info">
-              <div className="space-y-1">
-                <div>{formulaDiscovery.discoveryRemark}</div>
-                <div className="font-semibold">{formulaDiscovery.name}</div>
-                <div>{formulaDiscovery.description}</div>
-                <div className="text-ink-secondary text-xs">
-                  {formulaDiscovery.patternSummary}
-                </div>
+    />
+  );
+}
+
+export function AlchemyFormulaDiscoveryModal({
+  formulaDiscovery,
+  isHandlingDiscovery,
+  isOpen,
+  onAcceptDiscovery,
+  onRejectDiscovery,
+}: {
+  formulaDiscovery: AlchemyFormulaDiscoveryCandidate | null;
+  isHandlingDiscovery: boolean;
+  isOpen: boolean;
+  onAcceptDiscovery: () => void;
+  onRejectDiscovery: () => void;
+}) {
+  if (!formulaDiscovery) {
+    return null;
+  }
+
+  return (
+    <ItemShowcaseModal
+      isOpen={isOpen}
+      onClose={() => undefined}
+      icon="📜"
+      name={formulaDiscovery.name}
+      badges={[
+        <InkBadge key="discovery" tone="accent">
+          新悟丹方
+        </InkBadge>,
+        <InkBadge key="family" tone="default">
+          {getPillFamilyLabel(formulaDiscovery.family)}
+        </InkBadge>,
+      ]}
+      metaSection={
+        <div className="space-y-2">
+          <InkNotice tone="info">
+            <div className="space-y-1">
+              <div>{formulaDiscovery.discoveryRemark}</div>
+              <div className="text-ink-secondary text-xs">
+                {formulaDiscovery.patternSummary}
               </div>
-            </InkNotice>
-            <InkActionGroup align="right">
-              <InkButton
-                onClick={onRejectDiscovery}
-                disabled={isHandlingDiscovery}
-              >
-                暂不保存
-              </InkButton>
-              <InkButton
-                variant="primary"
-                onClick={onAcceptDiscovery}
-                disabled={isHandlingDiscovery}
-              >
-                {isHandlingDiscovery ? '留方中……' : '保存丹方'}
-              </InkButton>
-            </InkActionGroup>
-          </div>
-        ) : undefined
+            </div>
+          </InkNotice>
+        </div>
+      }
+      description={formulaDiscovery.description}
+      descriptionTitle="留方记述"
+      footer={
+        <InkActionGroup align="right">
+          <InkButton
+            onClick={onRejectDiscovery}
+            disabled={isHandlingDiscovery}
+          >
+            暂不保存
+          </InkButton>
+          <InkButton
+            variant="primary"
+            onClick={onAcceptDiscovery}
+            disabled={isHandlingDiscovery}
+          >
+            {isHandlingDiscovery ? '留方中……' : '保存丹方'}
+          </InkButton>
+        </InkActionGroup>
       }
     />
   );
@@ -293,6 +320,7 @@ export default function AlchemyPage() {
   const [formulaProgress, setFormulaProgress] =
     useState<FormulaProgress | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [isDiscoveryModalOpen, setIsDiscoveryModalOpen] = useState(false);
   const [isHandlingDiscovery, setIsHandlingDiscovery] = useState(false);
   const [celebrationTick, setCelebrationTick] = useState(0);
   const [materialsRefreshKey, setMaterialsRefreshKey] = useState(0);
@@ -473,6 +501,7 @@ export default function AlchemyPage() {
     setFormulaDiscovery(null);
     setFormulaProgress(null);
     setIsResultModalOpen(false);
+    setIsDiscoveryModalOpen(false);
     setSelectedMaterialIds([]);
     setSelectedMaterialMap({});
     setDoseMap({});
@@ -591,6 +620,7 @@ export default function AlchemyPage() {
     setFormulaDiscovery(null);
     setFormulaProgress(null);
     setIsResultModalOpen(false);
+    setIsDiscoveryModalOpen(false);
 
     try {
       const response = await fetch('/api/craft', {
@@ -605,11 +635,13 @@ export default function AlchemyPage() {
       }
 
       const nextConsumable = result.data.consumable;
+      const discoveredFormula = result.data.formulaDiscovery ?? null;
       const successMessage = `【${nextConsumable.name}】丹成！`;
       setCreatedConsumable(nextConsumable);
-      setFormulaDiscovery(result.data.formulaDiscovery ?? null);
+      setFormulaDiscovery(discoveredFormula);
       setFormulaProgress(result.data.formulaProgress ?? null);
       setIsResultModalOpen(true);
+      setIsDiscoveryModalOpen(false);
       setCelebrationTick((prev) => prev + 1);
       setStatus(successMessage);
       pushToast({ message: successMessage, tone: 'success' });
@@ -673,6 +705,7 @@ export default function AlchemyPage() {
       }
 
       setFormulaDiscovery(null);
+      setIsDiscoveryModalOpen(false);
     } catch (error) {
       pushToast({
         message:
@@ -960,14 +993,23 @@ export default function AlchemyPage() {
 
       <AlchemyResultModal
         consumable={createdConsumable}
-        formulaDiscovery={formulaDiscovery}
         formulaProgress={formulaProgress}
-        isHandlingDiscovery={isHandlingDiscovery}
         isOpen={isResultModalOpen}
-        onAcceptDiscovery={() => void handleDiscoveryDecision(true)}
-        onClose={() => setIsResultModalOpen(false)}
-        onRejectDiscovery={() => void handleDiscoveryDecision(false)}
+        onClose={() => {
+          setIsResultModalOpen(false);
+          if (formulaDiscovery) {
+            setIsDiscoveryModalOpen(true);
+          }
+        }}
         viewerRealm={cultivator?.realm}
+      />
+
+      <AlchemyFormulaDiscoveryModal
+        formulaDiscovery={formulaDiscovery}
+        isHandlingDiscovery={isHandlingDiscovery}
+        isOpen={isDiscoveryModalOpen}
+        onAcceptDiscovery={() => void handleDiscoveryDecision(true)}
+        onRejectDiscovery={() => void handleDiscoveryDecision(false)}
       />
 
       {celebrationTick > 0 && (

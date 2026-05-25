@@ -13,6 +13,7 @@ export interface ConditionStatusTemplate {
   key: ConditionStatusKey;
   name: string;
   description: string;
+  effectDetails?: string[];
   display: {
     icon: string;
     shortDesc: string;
@@ -85,6 +86,10 @@ function buildWoundTemplate(
     key,
     name,
     description,
+    effectDetails: [
+      `战斗时最大气血降低 ${Math.round((1 - hpRatio) * 100)}%。`,
+      `自然恢复速度降低至 ${Math.round(recoveryMultiplier * 100)}%。`,
+    ],
     display: {
       icon,
       shortDesc,
@@ -110,6 +115,10 @@ registry.register({
   key: 'weakness',
   name: '虚弱',
   description: '元气大伤，全属性随层数下降。',
+  effectDetails: [
+    '战斗时体魄、灵力、悟性、身法、神识都会同步下降。',
+    '每层额外降低 5%，最多衰减至原本的 50%。',
+  ],
   display: {
     icon: '😰',
     shortDesc: '元气大伤，全属性降低',

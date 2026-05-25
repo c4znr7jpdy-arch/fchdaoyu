@@ -1,8 +1,8 @@
-import { ItemDetailModal } from '@app/routes/game/inventory/components/ItemDetailModal';
-import { useCultivator } from '@app/lib/contexts/CultivatorContext';
-import type { ItemDetailPayload } from '@app/routes/game/inventory/components/itemDetailPayload';
 import type { Tier } from '@app/components/ui/InkBadge';
 import { InkBadge, tierColorMap } from '@app/components/ui/InkBadge';
+import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import { ItemDetailModal } from '@app/routes/game/inventory/components/ItemDetailModal';
+import type { ItemDetailPayload } from '@app/routes/game/inventory/components/itemDetailPayload';
 import { cn } from '@shared/lib/cn';
 import type {
   ItemShowcaseSnapshotMap,
@@ -61,7 +61,7 @@ function isItemShowcasePayload(
   );
 }
 
-export function parseShowcaseItem(payload: WorldChatItemShowcasePayload): {
+function parseShowcaseItem(payload: WorldChatItemShowcasePayload): {
   name: string;
   tier?: Tier;
   text?: string;

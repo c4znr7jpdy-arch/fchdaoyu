@@ -6,6 +6,7 @@ import {
   isBattleReplaySupported,
   resolveBattlePlaybackNames,
   resolvePlaybackStateForRecord,
+  resolveSelectedBattleUnit,
   useBattlePlaybackState,
 } from './useBattlePlaybackState';
 
@@ -103,5 +104,24 @@ describe('useBattlePlaybackState', () => {
       currentIndex: -1,
       isPlaying: false,
     });
+  });
+
+  it('drops selected unit details when the next record no longer contains that unit id', () => {
+    const firstRecord = simulateBattleV5(
+      createCultivator('player', '林玄'),
+      createCultivator('opponent', '赵青'),
+    );
+    const nextRecord = simulateBattleV5(
+      createCultivator('player-2', '苏夜'),
+      createCultivator('opponent-2', '韩川'),
+    );
+
+    const firstSnapshots = firstRecord.stateTimeline.frames[0]?.units ?? {};
+    const nextSnapshots = nextRecord.stateTimeline.frames[0]?.units ?? {};
+
+    expect(resolveSelectedBattleUnit('player', firstSnapshots)?.name).toBe(
+      '林玄',
+    );
+    expect(resolveSelectedBattleUnit('player', nextSnapshots)).toBeNull();
   });
 });

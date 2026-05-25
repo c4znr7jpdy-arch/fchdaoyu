@@ -1,13 +1,18 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { CompositionRuleSet } from '@shared/engine/creation-v2/rules/composition/CompositionRuleSet';
-import { DEFAULT_AFFIX_REGISTRY, flattenAffixMatcherTags } from '@shared/engine/creation-v2/affixes';
-import type { CompositionFacts } from '@shared/engine/creation-v2/rules/contracts/CompositionFacts';
-import type { AffixDefinition } from '@shared/engine/creation-v2/affixes/types';
-import type { RolledAffix } from '@shared/engine/creation-v2/types';
-import { CREATION_SKILL_DEFAULTS } from '@shared/engine/creation-v2/config/CreationBalance';
+import {
+  DEFAULT_AFFIX_REGISTRY,
+  flattenAffixMatcherTags,
+} from '@shared/engine/creation-v2/affixes';
 import { AffixEffectTranslator } from '@shared/engine/creation-v2/affixes/AffixEffectTranslator';
+import type { AffixDefinition } from '@shared/engine/creation-v2/affixes/types';
+import {
+  AttributeType,
+  ModifierType,
+} from '@shared/engine/creation-v2/contracts/battle';
+import { CompositionRuleSet } from '@shared/engine/creation-v2/rules/composition/CompositionRuleSet';
+import type { CompositionFacts } from '@shared/engine/creation-v2/rules/contracts/CompositionFacts';
+import type { RolledAffix } from '@shared/engine/creation-v2/types';
 import { REALM_STAGE_CAPS } from '@shared/types/constants';
-import { AttributeType, ModifierType } from '@shared/engine/creation-v2/contracts/battle';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 function toRolledAffix(def: AffixDefinition): RolledAffix {
   return {
@@ -30,7 +35,9 @@ function toRolledAffix(def: AffixDefinition): RolledAffix {
 
 function buildFacts(qualityOrder: number): CompositionFacts {
   const skillCore = DEFAULT_AFFIX_REGISTRY.queryById('skill-core-damage');
-  const quality = (['凡品', '灵品', '玄品', '真品', '地品', '天品', '仙品', '神品'] as const)[qualityOrder];
+  const quality = (
+    ['凡品', '灵品', '玄品', '真品', '地品', '天品', '仙品', '神品'] as const
+  )[qualityOrder];
 
   return {
     productType: 'skill',
@@ -69,7 +76,9 @@ function buildArtifactFacts(
   anchorRealm: '炼气' | '渡劫',
 ): CompositionFacts {
   const panelAtk = DEFAULT_AFFIX_REGISTRY.queryById('artifact-panel-atk');
-  const quality = (['凡品', '灵品', '玄品', '真品', '地品', '天品', '仙品', '神品'] as const)[qualityOrder];
+  const quality = (
+    ['凡品', '灵品', '玄品', '真品', '地品', '天品', '仙品', '神品'] as const
+  )[qualityOrder];
 
   return {
     productType: 'artifact',
@@ -139,7 +148,7 @@ describe('ScalingRules (mpCost and cooldown)', () => {
     // 神品 (Order 7): 伤害基础 2 + 补偿 7 = 9
     const decision7 = ruleSet.evaluate(buildFacts(7));
     expect((decision7.projectionPolicy as any).cooldown).toBe(9);
-    
+
     // 检查封顶逻辑 (假设基础 CD 很大)
     // 实际上我们可以通过修改 Facts 来模拟其他 coreType
   });
@@ -148,14 +157,16 @@ describe('ScalingRules (mpCost and cooldown)', () => {
     const healCore = DEFAULT_AFFIX_REGISTRY.queryById('skill-core-heal');
     const facts = buildFacts(7);
     if (healCore) facts.affixes = [toRolledAffix(healCore)];
-    
+
     // 神品 (Order 7) 治疗: 基础 3 + 补偿 7 = 10 -> 封顶 10
     const decision = ruleSet.evaluate(facts);
     expect((decision.projectionPolicy as any).cooldown).toBe(10);
   });
 
   it('self buff core 应投影为 self target 的主动技能', () => {
-    const buffCore = DEFAULT_AFFIX_REGISTRY.queryById('skill-core-fire-channeling');
+    const buffCore = DEFAULT_AFFIX_REGISTRY.queryById(
+      'skill-core-fire-channeling',
+    );
     const facts = buildFacts(0);
     if (buffCore) facts.affixes = [toRolledAffix(buffCore)];
 
@@ -172,10 +183,14 @@ describe('ScalingRules (mpCost and cooldown)', () => {
     const highAnchorDecision = ruleSet.evaluate(buildArtifactFacts(7, '渡劫'));
 
     const lowValue = (lowAnchorDecision.projectionPolicy as any).modifiers.find(
-      (m: any) => m.attrType === AttributeType.ATK && m.type === ModifierType.FIXED,
+      (m: any) =>
+        m.attrType === AttributeType.ATK && m.type === ModifierType.FIXED,
     )?.value;
-    const highValue = (highAnchorDecision.projectionPolicy as any).modifiers.find(
-      (m: any) => m.attrType === AttributeType.ATK && m.type === ModifierType.FIXED,
+    const highValue = (
+      highAnchorDecision.projectionPolicy as any
+    ).modifiers.find(
+      (m: any) =>
+        m.attrType === AttributeType.ATK && m.type === ModifierType.FIXED,
     )?.value;
 
     const def = DEFAULT_AFFIX_REGISTRY.queryById('artifact-panel-atk');
@@ -184,7 +199,6 @@ describe('ScalingRules (mpCost and cooldown)', () => {
     const template = def!.effectTemplate;
     expect(template.type).toBe('attribute_modifier');
     const baseByQuality = translator.resolveParam(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (template as any).params.value,
       7,
       1.0,

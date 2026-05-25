@@ -1,10 +1,10 @@
 import type { BattleRecord } from '@shared/types/battle';
 import type { ReactNode } from 'react';
+import type { BattlePlaybackState } from './useBattlePlaybackState';
 import { CombatActionLog } from './v5/CombatActionLog';
 import { CombatAttributeModal } from './v5/CombatAttributeModal';
 import { CombatControlBar } from './v5/CombatControlBar';
 import { CombatStatusHeader } from './v5/CombatStatusHeader';
-import type { BattlePlaybackState } from './useBattlePlaybackState';
 
 interface BattlePlaybackPanelProps {
   battleResult: BattleRecord | undefined;
@@ -30,10 +30,10 @@ export function BattlePlaybackPanel({
               player={playback.currentPlayerFrame}
               opponent={playback.currentOpponentFrame}
               onShowPlayerDetails={() =>
-                playback.setSelectedUnit(playback.currentPlayerFrame ?? null)
+                playback.openUnitDetails(playback.currentPlayerFrame ?? null)
               }
               onShowOpponentDetails={() =>
-                playback.setSelectedUnit(playback.currentOpponentFrame ?? null)
+                playback.openUnitDetails(playback.currentOpponentFrame ?? null)
               }
               controls={
                 <CombatControlBar
@@ -55,14 +55,14 @@ export function BattlePlaybackPanel({
             currentIndex={playback.currentIndex}
           />
         </div>
-      ) : (
-        unsupportedNotice ? <div className="mb-8">{unsupportedNotice}</div> : null
-      )}
+      ) : unsupportedNotice ? (
+        <div className="mb-8">{unsupportedNotice}</div>
+      ) : null}
 
       <CombatAttributeModal
         unit={playback.selectedUnit}
         isOpen={!!playback.selectedUnit}
-        onClose={() => playback.setSelectedUnit(null)}
+        onClose={playback.closeUnitDetails}
       />
     </>
   );

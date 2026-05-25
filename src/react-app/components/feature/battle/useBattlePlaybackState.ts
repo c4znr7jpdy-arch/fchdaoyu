@@ -1,6 +1,5 @@
 import type { UnitStateSnapshot } from '@shared/engine/battle-v5/systems/state/types';
 import type { BattleRecord } from '@shared/types/battle';
-import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useCombatPlayer } from './useCombatPlayer';
 
@@ -23,7 +22,15 @@ export interface BattlePlaybackState {
   isReplaySupported: boolean;
   isPlaybackFinished: boolean;
   selectedUnit: UnitStateSnapshot | null;
-  setSelectedUnit: Dispatch<SetStateAction<UnitStateSnapshot | null>>;
+  openUnitDetails: (unit: UnitStateSnapshot | null) => void;
+  closeUnitDetails: () => void;
+}
+
+export function resolveSelectedBattleUnit(
+  selectedUnitId: string | null,
+  unitSnapshots: Record<string, UnitStateSnapshot>,
+) {
+  return selectedUnitId ? (unitSnapshots[selectedUnitId] ?? null) : null;
 }
 
 export function isBattleReplaySupported(record: BattleRecord | undefined) {
@@ -60,7 +67,7 @@ export function resolveBattlePlaybackNames(record: BattleRecord | undefined) {
 export function useBattlePlaybackState(
   record: BattleRecord | undefined,
 ): BattlePlaybackState {
-  const [selectedUnit, setSelectedUnit] = useState<UnitStateSnapshot | null>(null);
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const {
     currentIndex,
     isPlaying,
@@ -86,14 +93,16 @@ export function useBattlePlaybackState(
     }
   }, [currentIndex, isPlaying, play, record, totalActions]);
 
-  useEffect(() => {
-    setSelectedUnit(null);
-  }, [record]);
-
-  const currentPlayerFrame = record?.player ? unitSnapshots[record.player] : undefined;
+  const currentPlayerFrame = record?.player
+    ? unitSnapshots[record.player]
+    : undefined;
   const currentOpponentFrame = record?.opponent
     ? unitSnapshots[record.opponent]
     : undefined;
+  const selectedUnit = useMemo(
+    () => resolveSelectedBattleUnit(selectedUnitId, unitSnapshots),
+    [selectedUnitId, unitSnapshots],
+  );
 
   return {
     currentIndex,
@@ -113,6 +122,7 @@ export function useBattlePlaybackState(
     isPlaybackFinished:
       replaySupported && totalActions > 0 && currentIndex >= totalActions - 1,
     selectedUnit,
-    setSelectedUnit,
+    openUnitDetails: (unit) => setSelectedUnitId(unit?.id ?? null),
+    closeUnitDetails: () => setSelectedUnitId(null),
   };
 }

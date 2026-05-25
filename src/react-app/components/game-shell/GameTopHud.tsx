@@ -73,7 +73,6 @@ export function GameTopHud({ snapshot }: { snapshot: GameHudSnapshot | null }) {
 
               <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-0.5 text-xs leading-3.5 md:gap-x-4 md:text-sm">
                 <div className="bg-ink/5 border-ink/15 flex min-w-0 gap-2 rounded border border-dashed p-1">
-                  <span className="text-battle-muted shrink-0">状态</span>
                   <span className="text-ink truncate">
                     {snapshot.statusText}
                   </span>

@@ -222,6 +222,18 @@ export const router = createBrowserRouter(
               )}
             />
             <Route
+              path="inn"
+              lazy={lazyRoute(() => import('@app/routes/game/inn/route'))}
+              handle={scene(
+                {
+                  id: 'inn',
+                  presentation: 'service',
+                  summary: '付灵石养伤住店，稳住道体再续行。',
+                },
+                '客栈',
+              )}
+            />
+            <Route
               path="tasks"
               lazy={lazyRoute(() => import('@app/routes/game/tasks/route'))}
               handle={scene(

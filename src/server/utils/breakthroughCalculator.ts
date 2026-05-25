@@ -160,12 +160,12 @@ export function calculateBreakthroughChance(
       baseChance *
         realmDifficulty *
         progressMultiplier *
-        insightMultiplier *
-        wisdomMultiplier *
-        demonPenalty +
-        fateBonus +
-        pillBonus +
-        toxicityPenalty,
+      insightMultiplier *
+      wisdomMultiplier *
+      demonPenalty +
+      fateBonus +
+      pillBonus +
+      -toxicityPenalty,
     ),
   );
 

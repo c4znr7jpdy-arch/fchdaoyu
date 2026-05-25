@@ -58,6 +58,12 @@ export const gameDockGroups: GameNavGroup[] = [
         expandedDockLabel: '🧘 修炼室',
       },
       {
+        id: 'inn',
+        sceneLabel: '客栈',
+        href: '/game/inn',
+        expandedDockLabel: '🛏️ 客栈',
+      },
+      {
         id: 'enlightenment',
         sceneLabel: '藏经阁',
         href: '/game/enlightenment',

@@ -255,7 +255,7 @@ async function assembleCultivatorFromRelations(
       cultivatorRecord.realm as Cultivator['realm'],
       cultivatorRecord.realm_stage as Cultivator['realm_stage'],
     ),
-    condition: ConditionService.normalizeCondition(
+    condition: ConditionService.tickNaturalRecovery(
       {
         name: cultivatorRecord.name,
         gender: (cultivatorRecord.gender as Cultivator['gender']) || undefined,
@@ -409,7 +409,7 @@ export function createMinimalCultivator(
       cultivatorRecord.realm as Cultivator['realm'],
       cultivatorRecord.realm_stage as Cultivator['realm_stage'],
     ),
-    condition: ConditionService.normalizeCondition(
+    condition: ConditionService.tickNaturalRecovery(
       {
         id: cultivatorRecord.id,
         name: cultivatorRecord.name,

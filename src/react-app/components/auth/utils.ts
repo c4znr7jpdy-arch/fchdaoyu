@@ -1,4 +1,4 @@
-import type { AuthActionError } from '@app/lib/auth/AuthContext';
+import type { AuthActionError } from '@app/lib/auth/authContext';
 
 export function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());

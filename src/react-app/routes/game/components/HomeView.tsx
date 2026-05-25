@@ -224,12 +224,6 @@ export function HomeView() {
       )
       .join('、');
     const parts = [
-      caveStatus && caveStatus.currentHp < caveStatus.maxHp
-        ? `${getResourceLabel('hp')} ${caveStatus.currentHp}/${caveStatus.maxHp}`
-        : null,
-      caveStatus && caveStatus.currentMp < caveStatus.maxMp
-        ? `${getResourceLabel('mp')} ${caveStatus.currentMp}/${caveStatus.maxMp}`
-        : null,
       caveStatus?.pillToxicityStage.key !== 'none'
         ? caveStatus.pillToxicityStage.label
         : null,

@@ -134,6 +134,7 @@ vi.mock('./AlchemyNarrativeEnricher', () => ({
 }));
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PillSpec } from '@shared/types/consumable';
 import { craftFromFormula } from './AlchemyFormulaService';
 
 describe('craftFromFormula narrative copy', () => {
@@ -156,6 +157,7 @@ describe('craftFromFormula narrative copy', () => {
           operations: [
             { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
             { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
+            { type: 'remove_status', status: 'minor_wound' },
           ],
           consumeRules: {
             scene: 'out_of_battle_only',
@@ -234,5 +236,28 @@ describe('craftFromFormula narrative copy', () => {
     expect(result.consumable.name).toBe('回春');
     expect(result.consumable.description).toContain('依《回春丹方》炉意炼成');
     expect(result.consumable.description).toContain('药力拟合');
+  });
+
+  it('normalizes healing wound removal by the current crafted quality', async () => {
+    generateFormulaBatchDescriptionMock.mockResolvedValueOnce(null);
+    executorState.cultivatorRow = {
+      ...executorState.cultivatorRow,
+      spirit_stones: 100000,
+    };
+    executorState.materialRows = [
+      {
+        ...executorState.materialRows[0],
+        rank: '天品',
+      },
+    ];
+
+    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+
+    expect(result.consumable.quality).toBe('天品');
+    expect(result.consumable.spec.kind).toBe('pill');
+    expect((result.consumable.spec as PillSpec).operations).toContainEqual({
+      type: 'remove_status',
+      status: 'near_death',
+    });
   });
 });

@@ -9,6 +9,7 @@ import {
   isAlchemyMaterialType,
   readMaterialAlchemyProfile,
 } from '@shared/lib/materialAlchemy';
+import { getHealingCuredStatus } from '@shared/lib/healingPill';
 import {
   getBreakthroughPillLabel,
   getNextMajorRealm,
@@ -322,7 +323,7 @@ function buildBaseOperations(
         { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
         {
           type: 'remove_status',
-          status: scalar > 1.8 ? 'major_wound' : 'minor_wound',
+          status: getHealingCuredStatus(quality),
         },
       ];
   }

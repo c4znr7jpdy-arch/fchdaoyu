@@ -4,10 +4,17 @@ import {
   CultivatorCurrentStatusSection,
   CultivatorTrackSection,
 } from './PersistentStatusesCard';
+import {
+  getPillToxicityEffectDetails,
+  getStatusEffectDetails,
+} from './persistentStatusDetails';
 
 const mockUseCultivator = vi.fn();
+const mockGetBreakthroughPenaltyPercent = vi.fn();
 const mockIsConditionStatusActive = vi.fn();
 const mockGetPillToxicityStage = vi.fn();
+const mockGetPillToxicityRecoveryMultiplier = vi.fn();
+const mockGetNaturalRecoveryEstimate = vi.fn();
 const mockGetConditionStatusTemplate = vi.fn();
 const mockGetAllTrackConfigs = vi.fn();
 
@@ -16,9 +23,15 @@ vi.mock('@app/lib/contexts/CultivatorContext', () => ({
 }));
 
 vi.mock('@shared/lib/condition', () => ({
+  getBreakthroughPenaltyPercent: (...args: unknown[]) =>
+    mockGetBreakthroughPenaltyPercent(...args),
   isConditionStatusActive: (...args: unknown[]) =>
     mockIsConditionStatusActive(...args),
   getPillToxicityStage: (...args: unknown[]) => mockGetPillToxicityStage(...args),
+  getPillToxicityRecoveryMultiplier: (...args: unknown[]) =>
+    mockGetPillToxicityRecoveryMultiplier(...args),
+  getNaturalRecoveryEstimate: (...args: unknown[]) =>
+    mockGetNaturalRecoveryEstimate(...args),
 }));
 
 vi.mock('@shared/lib/conditionStatusRegistry', () => ({
@@ -36,10 +49,19 @@ describe('PersistentStatusesCard sections', () => {
     vi.setSystemTime(new Date('2026-05-19T12:00:00.000Z'));
 
     mockIsConditionStatusActive.mockReturnValue(true);
+    mockGetBreakthroughPenaltyPercent.mockReturnValue(1.2);
     mockGetPillToxicityStage.mockReturnValue({ key: 'alert', label: '毒息未散' });
+    mockGetPillToxicityRecoveryMultiplier.mockReturnValue(0.933);
+    mockGetNaturalRecoveryEstimate.mockImplementation(
+      ({ resource }: { resource: 'hp' | 'mp' }) =>
+        resource === 'hp'
+          ? { perHour: 9.6, timeToFullMs: 4 * 3600 * 1000 + 10 * 60 * 1000, isFull: false }
+          : { perHour: 10.8, timeToFullMs: 112 * 60 * 1000, isFull: false },
+    );
     mockGetConditionStatusTemplate.mockReturnValue({
       name: '福缘护体',
       description: '护住经脉',
+      effectDetails: ['战斗时最大气血降低 10%', '自然恢复速度降低至 88%'],
       display: {
         icon: '✨',
         shortDesc: '经脉受护',
@@ -157,14 +179,20 @@ describe('PersistentStatusesCard sections', () => {
     expect(html).toContain('当前状态');
     expect(html).toContain('气血');
     expect(html).toContain('80 / 120');
+    expect(html).toContain('自然恢复每时约 9.6/小时');
+    expect(html).toContain('约 4时10分回满');
     expect(html).toContain('法力');
     expect(html).toContain('40 / 60');
+    expect(html).toContain('自然恢复约 10.8/小时');
+    expect(html).toContain('约 1时52分回满');
     expect(html).toContain('丹毒');
     expect(html).toContain('12');
     expect(html).toContain('毒息未散');
+    expect(html).toContain('恢复 93% · 破境压制 1.2%');
     expect(html).toContain('福缘护体');
     expect(html).toContain('30分');
     expect(html).toContain('2次');
+    expect(html).toContain('查看情况');
 
     expect(html).toContain('洗髓与炼体');
     expect(html).toContain('洗髓');
@@ -249,6 +277,13 @@ describe('PersistentStatusesCard sections', () => {
   });
 
   it('hides the current-status section when resources are full and no status remains', () => {
+    mockGetBreakthroughPenaltyPercent.mockReturnValue(0);
+    mockGetPillToxicityRecoveryMultiplier.mockReturnValue(1);
+    mockGetNaturalRecoveryEstimate.mockReturnValue({
+      perHour: 0,
+      timeToFullMs: 0,
+      isFull: true,
+    });
     mockUseCultivator.mockReturnValue({
       cultivator: {
         condition: {
@@ -299,5 +334,52 @@ describe('PersistentStatusesCard sections', () => {
     const html = renderToStaticMarkup(<CultivatorCurrentStatusSection />);
 
     expect(html).toBe('');
+  });
+
+  it('builds weakness effect details with the current stack penalty', () => {
+    const details = getStatusEffectDetails({
+      key: 'weakness',
+      stacks: 3,
+      source: 'battle',
+      duration: { kind: 'until_removed' },
+      createdAt: '2026-05-19T12:00:00.000Z',
+      updatedAt: '2026-05-19T12:00:00.000Z',
+    });
+
+    expect(details[0]).toContain('当前 3 层');
+    expect(details[0]).toContain('15%');
+  });
+
+  it('builds pill toxicity effect details from current derived penalties', () => {
+    const details = getPillToxicityEffectDetails({
+      version: 1,
+      resources: {
+        hp: { current: 80 },
+        mp: { current: 40 },
+      },
+      gauges: {
+        pillToxicity: 12,
+      },
+      tracks: {
+        tempering: {
+          vitality: { level: 0, progress: 0 },
+          spirit: { level: 0, progress: 0 },
+          wisdom: { level: 0, progress: 0 },
+          speed: { level: 0, progress: 0 },
+          willpower: { level: 0, progress: 0 },
+        },
+        marrowWash: { level: 0, progress: 0 },
+      },
+      counters: {
+        longTermPillUsesByRealm: {},
+      },
+      statuses: [],
+      timestamps: {},
+    });
+
+    expect(details[0]).toContain('毒息未散');
+    expect(details[1]).toContain('12');
+    expect(details[1]).toContain('93%');
+    expect(details[2]).toContain('1.2%');
   });
 });

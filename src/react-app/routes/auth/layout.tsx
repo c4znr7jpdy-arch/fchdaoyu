@@ -1,4 +1,4 @@
-import { AuthProvider } from '@app/lib/auth/AuthContext';
+import { AuthProvider } from '@app/lib/auth/authContext';
 import { guestOnlyLoader } from '@app/lib/router/loaders';
 import { Outlet } from 'react-router';
 
