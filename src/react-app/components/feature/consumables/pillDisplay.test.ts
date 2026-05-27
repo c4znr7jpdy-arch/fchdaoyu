@@ -27,7 +27,7 @@ describe('toPillDisplayModel', () => {
         ],
         consumeRules: {
           scene: 'out_of_battle_only',
-          countsTowardLongTermQuota: false,
+          quotaCategory: 'none',
         },
         alchemyMeta: {
           source: 'improvised',
@@ -56,7 +56,7 @@ describe('toPillDisplayModel', () => {
         ],
         consumeRules: {
           scene: 'out_of_battle_only',
-          countsTowardLongTermQuota: false,
+          quotaCategory: 'none',
         },
         alchemyMeta: {
           source: 'improvised',
@@ -80,7 +80,7 @@ describe('toPillDisplayModel', () => {
         operations: [{ type: 'change_gauge', gauge: 'pillToxicity', delta: -18 }],
         consumeRules: {
           scene: 'out_of_battle_only',
-          countsTowardLongTermQuota: false,
+          quotaCategory: 'none',
         },
         alchemyMeta: {
           source: 'improvised',
@@ -109,7 +109,7 @@ describe('toPillDisplayModel', () => {
         ],
         consumeRules: {
           scene: 'out_of_battle_only',
-          countsTowardLongTermQuota: true,
+          quotaCategory: 'long_term',
         },
         alchemyMeta: {
           source: 'formula',
@@ -143,7 +143,7 @@ describe('toPillDisplayModel', () => {
         ],
         consumeRules: {
           scene: 'out_of_battle_only',
-          countsTowardLongTermQuota: true,
+          quotaCategory: 'long_term',
         },
         alchemyMeta: {
           source: 'improvised',
@@ -165,7 +165,7 @@ describe('toPillDisplayModel', () => {
         ],
         consumeRules: {
           scene: 'out_of_battle_only',
-          countsTowardLongTermQuota: true,
+          quotaCategory: 'long_term',
         },
         alchemyMeta: {
           source: 'improvised',
@@ -180,5 +180,71 @@ describe('toPillDisplayModel', () => {
 
     expect(temperingModel.primaryEffect).toBe('推进炼体·体魄 +40');
     expect(marrowModel.primaryEffect).toBe('推进洗髓 +40');
+  });
+
+  it('formats cultivation pills with progress gain and a dedicated quota label', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'cultivation',
+        operations: [
+          {
+            type: 'gain_progress',
+            target: 'cultivation_exp',
+            value: 498,
+          },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          quotaCategory: 'cultivation',
+        },
+        alchemyMeta: {
+          source: 'improvised',
+          sourceMaterials: ['金霞芝'],
+          stability: 72,
+          toxicityRating: 18,
+          tags: ['cultivation'],
+        },
+      }),
+      { realm: '金丹' },
+    );
+
+    expect(model.primaryEffect).toBe('修为 +498');
+    expect(model.keywordLabels).toEqual(['修为', '服用上限 30 次', '丹毒 +9']);
+    expect(model.detailGroups[0].lines).toContain('修为 +498');
+  });
+
+  it('formats insight pills without any usage-limit label', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'insight',
+        operations: [
+          {
+            type: 'gain_progress',
+            target: 'comprehension_insight',
+            value: 8,
+          },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 5 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          quotaCategory: 'none',
+        },
+        alchemyMeta: {
+          source: 'improvised',
+          sourceMaterials: ['寒魄晶'],
+          stability: 70,
+          toxicityRating: 12,
+          tags: ['insight'],
+        },
+      }),
+      { realm: '金丹' },
+    );
+
+    expect(model.primaryEffect).toBe('道心感悟 +8');
+    expect(model.keywordLabels).toEqual(['感悟', '丹毒 +5']);
+    expect(model.detailGroups[1].lines).not.toContain('服用上限：30 次');
   });
 });

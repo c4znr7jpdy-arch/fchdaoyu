@@ -8,6 +8,7 @@ import {
 } from '@shared/types/constants';
 import {
   PILL_FAMILY_VALUES,
+  PILL_QUOTA_CATEGORY_VALUES,
   TALISMAN_SESSION_MODE_VALUES,
 } from '@shared/types/consumable';
 import redeemRewardPresetsRaw from './redeemRewardPresets.json';
@@ -53,6 +54,11 @@ const ConditionOperationSchema = z.discriminatedUnion('type', [
     track: z.string().min(1),
     value: z.number(),
   }),
+  z.object({
+    type: z.literal('gain_progress'),
+    target: z.enum(['cultivation_exp', 'comprehension_insight']),
+    value: z.number(),
+  }),
 ]);
 
 const PillSpecSchema = z.object({
@@ -61,7 +67,7 @@ const PillSpecSchema = z.object({
   operations: z.array(ConditionOperationSchema),
   consumeRules: z.object({
     scene: z.literal('out_of_battle_only'),
-    countsTowardLongTermQuota: z.boolean(),
+    quotaCategory: z.enum(PILL_QUOTA_CATEGORY_VALUES),
   }),
   alchemyMeta: z.object({
     source: z.enum(['improvised', 'formula']),

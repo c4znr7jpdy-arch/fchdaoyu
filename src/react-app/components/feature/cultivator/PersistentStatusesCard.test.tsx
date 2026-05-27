@@ -373,7 +373,7 @@ describe('PersistentStatusesCard sections', () => {
     expect(html).toContain('0 / 100');
   });
 
-  it('hides the current-status section when resources are full, no status remains, and cultivation progress is missing', () => {
+  it('keeps the current-status section visible for baseline hp/mp and toxicity tracking even without cultivation progress', () => {
     mockGetBreakthroughPenaltyPercent.mockReturnValue(0);
     mockGetPillToxicityRecoveryMultiplier.mockReturnValue(1);
     mockGetNaturalRecoveryEstimate.mockReturnValue({
@@ -430,7 +430,10 @@ describe('PersistentStatusesCard sections', () => {
 
     const html = renderToStaticMarkup(<CultivatorCurrentStatusSection />);
 
-    expect(html).toBe('');
+    expect(html).toContain('当前状态');
+    expect(html).toContain('气血');
+    expect(html).toContain('法力');
+    expect(html).toContain('丹毒');
   });
 
   it('builds weakness effect details with the current stack penalty', () => {
@@ -469,6 +472,7 @@ describe('PersistentStatusesCard sections', () => {
       },
       counters: {
         longTermPillUsesByRealm: {},
+      cultivationPillUsesByRealm: {},
       },
       statuses: [],
       timestamps: {},

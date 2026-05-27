@@ -28,7 +28,6 @@ import {
   updateCultivator,
 } from '../services/cultivatorService';
 import { ConditionService } from '../services/ConditionService';
-import { FateEngine } from '../services/FateEngine';
 import { TaskService } from '../services/TaskService';
 import { buildDungeonBattleInit } from './battleInit';
 import { checkDungeonLimit, consumeDungeonLimit } from './dungeonLimiter';
@@ -989,6 +988,10 @@ export class DungeonService {
           state.cultivatorId,
           state.mapNodeId,
         );
+        await TaskService.recordTaskEvent(
+          state.cultivatorId,
+          'dungeon_completed',
+        );
       } catch (taskError) {
         console.error('[DungeonSettlement] 同步任务进度失败:', taskError);
       }
@@ -1070,10 +1073,6 @@ export class DungeonService {
     const cultivator = cultivatorBundle.cultivator;
     const { finalAttributes, attrs } =
       getCultivatorDisplayAttributes(cultivator);
-    const fateWorldContext = FateEngine.evaluateWorldContext(
-      cultivator.pre_heaven_fates,
-    );
-
     return {
       id: cultivator.id,
       name: cultivator.name,
@@ -1098,9 +1097,6 @@ export class DungeonService {
       background: cultivator.background || '',
       inventory_summary:
         '玩家拥有储物袋。如有需要特定材料的操作，请使用模糊类型与品质要求。',
-      fate_bias_summary: fateWorldContext.summary,
-      fate_reward_bias: fateWorldContext.rewardTypeMultipliers,
-      fate_reward_score_multiplier: fateWorldContext.rewardScoreMultiplier,
     };
   }
 

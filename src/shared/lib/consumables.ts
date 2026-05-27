@@ -5,6 +5,7 @@ import type {
   ChangeGaugeOperation,
   ConditionOperation,
   ConsumableSpec,
+  GainProgressOperation,
   PillSpec,
   RemoveStatusOperation,
   RestoreResourceOperation,
@@ -65,6 +66,12 @@ export function isAdvanceTrackOperation(
   operation: ConditionOperation,
 ): operation is AdvanceTrackOperation {
   return operation.type === 'advance_track';
+}
+
+export function isGainProgressOperation(
+  operation: ConditionOperation,
+): operation is GainProgressOperation {
+  return operation.type === 'gain_progress';
 }
 
 export function assertConsumableSpec(

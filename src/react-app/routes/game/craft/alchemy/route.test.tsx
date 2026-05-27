@@ -7,19 +7,22 @@ import type {
 import type { Consumable } from '@shared/types/cultivator';
 import {
   AlchemyFormulaDiscoveryModal,
+  AlchemyGuideModal,
   AlchemyResultModal,
 } from './route';
 
 vi.mock('@app/components/layout', () => ({
   InkModal: ({
     isOpen,
+    title,
     children,
     footer,
   }: {
     isOpen: boolean;
+    title?: ReactNode;
     children: ReactNode;
     footer?: ReactNode;
-  }) => (isOpen ? <div>{children}{footer}</div> : null),
+  }) => (isOpen ? <div>{title}{children}{footer}</div> : null),
 }));
 
 const craftedPill: Consumable = {
@@ -38,7 +41,7 @@ const craftedPill: Consumable = {
     ],
     consumeRules: {
       scene: 'out_of_battle_only',
-      countsTowardLongTermQuota: false,
+      quotaCategory: 'none',
     },
     alchemyMeta: {
       source: 'improvised',
@@ -102,5 +105,18 @@ describe('alchemy result modals', () => {
     expect(html).toContain('留方记述');
     expect(html).toContain('保存丹方');
     expect(html).toContain('暂不保存');
+  });
+
+  it('renders the alchemy guide modal with three implicit guidance sections', () => {
+    const html = renderToStaticMarkup(
+      <AlchemyGuideModal isOpen onClose={() => undefined} />,
+    );
+
+    expect(html).toContain('炉理指引');
+    expect(html).toContain('药路趋向');
+    expect(html).toContain('材性偏向');
+    expect(html).toContain('炉火提醒');
+    expect(html).not.toContain('1.5');
+    expect(html).not.toContain('0.8');
   });
 });

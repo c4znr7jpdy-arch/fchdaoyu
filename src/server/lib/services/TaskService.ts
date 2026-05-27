@@ -8,6 +8,7 @@ import type { Consumable, CultivationProgress, Cultivator } from '@shared/types/
 import { QUALITY_ORDER, type Quality, type RealmType } from '@shared/types/constants';
 import type {
   TaskActionLink,
+  TaskEvent,
   TaskInstance,
   TaskInstanceMetadata,
   TaskObjectiveDefinition,
@@ -36,11 +37,17 @@ import {
   updateCultivatorTask,
 } from '@server/lib/repositories/taskRepository';
 import {
+  getDailyTaskDefinitions,
+  getTaskDefinition,
   getBreakthroughTaskDefinition,
   getBreakthroughTaskDefinitionByTransition,
   getTaskChallengeProfile,
   type BreakthroughTaskDefinition,
+  type DailyTaskDefinition,
+  type RuntimeTaskDefinition,
+  type TaskStageTemplate,
 } from './taskDefinitions';
+import { MailService } from './MailService';
 
 export interface TaskChallengeResult {
   task: TaskInstance;
@@ -64,6 +71,59 @@ interface TaskProgressContext {
   highestTechniqueQuality: Quality | null;
   breakthroughPillQuantities: Partial<Record<RealmType, number>>;
   genericBreakthroughPillQuantity: number;
+}
+
+const TASK_RESET_TIMEZONE = 'Asia/Shanghai';
+
+function getTaskResetKey(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TASK_RESET_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+
+function formatTaskRewardSummary(
+  definition: Pick<RuntimeTaskDefinition, 'rewardAttachments'>,
+): string[] {
+  return (definition.rewardAttachments ?? []).map((attachment) => {
+    switch (attachment.type) {
+      case 'spirit_stones':
+        return `${attachment.name} x${attachment.quantity}`;
+      default:
+        return `${attachment.name} x${attachment.quantity}`;
+    }
+  });
+}
+
+function createTaskMetadata(
+  definition: RuntimeTaskDefinition,
+  resetKey: string,
+): TaskInstanceMetadata {
+  const rewardSummary = formatTaskRewardSummary(definition);
+
+  if (definition.category === 'daily') {
+    return {
+      dailyKind: definition.dailyKind,
+      resetKey,
+      rewardSummary: rewardSummary.length > 0 ? rewardSummary : undefined,
+    };
+  }
+
+  return {
+    fromRealm: definition.fromRealm,
+    toRealm: definition.toRealm,
+    taskTheme: definition.taskTheme,
+  };
+}
+
+function buildDefaultObjectiveStates(
+  definition: RuntimeTaskDefinition,
+): TaskObjectiveState[] {
+  return definition.stages.flatMap((stage) =>
+    stage.objectives.map((objective) => createDefaultObjectiveState(objective.id)),
+  );
 }
 
 function getStatusName(statusKey: ConditionStatusKey): string {
@@ -471,12 +531,45 @@ function resolveObjectiveProgress(
         },
       };
     }
+    case 'event_count': {
+      const currentValue = Math.max(0, state?.progressValue ?? 0);
+      const completed = state?.completed === true || currentValue >= definition.threshold;
+      const nextState = completed
+        ? completeObjectiveState(
+            {
+              ...createDefaultObjectiveState(definition.id),
+              ...state,
+              objectiveId: definition.id,
+            },
+            Math.max(currentValue, definition.threshold),
+            nowIso,
+          )
+        : {
+            ...createDefaultObjectiveState(definition.id),
+            ...state,
+            objectiveId: definition.id,
+            progressValue: currentValue,
+            updatedAt: nowIso,
+          };
+
+      return {
+        objectiveState: nextState,
+        progress: {
+          id: definition.id,
+          kind: definition.kind,
+          title: definition.title,
+          description: definition.description,
+          completed,
+          progressText: `${Math.min(currentValue, definition.threshold)}/${definition.threshold}`,
+        },
+      };
+    }
   }
 }
 
 function resolveStageLinks(
   taskId: string,
-  stage: BreakthroughTaskDefinition['stages'][number],
+  stage: TaskStageTemplate,
 ): TaskActionLink[] {
   return stage.links.map((link) => {
     switch (link.kind) {
@@ -484,6 +577,8 @@ function resolveStageLinks(
         return { label: link.label, href: '/game/craft/alchemy' };
       case 'dungeon':
         return { label: link.label, href: '/game/dungeon' };
+      case 'ranking':
+        return { label: link.label, href: '/game/rankings' };
       case 'retreat':
         return { label: link.label, href: '/game/retreat' };
       case 'challenge':
@@ -497,7 +592,7 @@ function resolveStageLinks(
 
 function buildTaskSnapshot(
   record: CultivatorTaskRecord,
-  definition: BreakthroughTaskDefinition,
+  definition: RuntimeTaskDefinition,
   context: TaskProgressContext,
   nowIso: string,
 ): {
@@ -550,6 +645,7 @@ function buildTaskSnapshot(
           .filter((objective) => !objective.completed)
           .map((objective) => `${objective.title}：${objective.progressText}`)
       : [];
+  const rewardSummary = formatTaskRewardSummary(definition);
 
   return {
     snapshot: {
@@ -562,6 +658,13 @@ function buildTaskSnapshot(
       currentStageIndex: resolvedCurrentStageIndex,
       totalStages: definition.stages.length,
       missingRequirements,
+      dailyKind:
+        definition.category === 'daily' ? definition.dailyKind : undefined,
+      resetKey:
+        definition.category === 'daily'
+          ? (record.metadata as TaskInstanceMetadata | null | undefined)?.resetKey
+          : undefined,
+      rewardSummary: rewardSummary.length > 0 ? rewardSummary : undefined,
       stages: stageProgresses,
     },
     objectiveStates: nextStates,
@@ -607,14 +710,16 @@ function getCurrentMajorDefinition(
   );
 }
 
-async function ensureCurrentTaskRecord(
-  context: TaskProgressContext,
-): Promise<void> {
-  const definition = getCurrentMajorDefinition(context);
-  if (!definition) {
-    return;
-  }
+function isDailyTaskDefinition(
+  definition: RuntimeTaskDefinition,
+): definition is DailyTaskDefinition {
+  return definition.category === 'daily';
+}
 
+async function createTaskRecordIfMissing(
+  context: TaskProgressContext,
+  definition: RuntimeTaskDefinition,
+): Promise<void> {
   const existing = await findCultivatorTaskByDefinition(
     context.cultivatorId,
     definition.id,
@@ -623,6 +728,8 @@ async function ensureCurrentTaskRecord(
     return;
   }
 
+  const resetKey = getTaskResetKey();
+
   try {
     await createCultivatorTask({
       cultivatorId: context.cultivatorId,
@@ -630,14 +737,8 @@ async function ensureCurrentTaskRecord(
       category: definition.category,
       status: 'active',
       currentStage: definition.stages[0]?.id ?? null,
-      objectives: definition.stages.flatMap((stage) =>
-        stage.objectives.map((objective) => createDefaultObjectiveState(objective.id)),
-      ),
-      metadata: {
-        fromRealm: definition.fromRealm,
-        toRealm: definition.toRealm,
-        taskTheme: definition.taskTheme,
-      },
+      objectives: buildDefaultObjectiveStates(definition),
+      metadata: createTaskMetadata(definition, resetKey),
     });
   } catch (error) {
     if (
@@ -650,37 +751,104 @@ async function ensureCurrentTaskRecord(
   }
 }
 
+async function ensureCurrentTaskRecords(
+  context: TaskProgressContext,
+): Promise<void> {
+  const currentMajorDefinition = getCurrentMajorDefinition(context);
+  const definitions: RuntimeTaskDefinition[] = [
+    ...getDailyTaskDefinitions(),
+    ...(currentMajorDefinition ? [currentMajorDefinition] : []),
+  ];
+
+  for (const definition of definitions) {
+    await createTaskRecordIfMissing(context, definition);
+  }
+}
+
+async function resetRepeatableTaskRecordIfNeeded(
+  context: TaskProgressContext,
+  record: CultivatorTaskRecord,
+  definition: RuntimeTaskDefinition,
+): Promise<CultivatorTaskRecord> {
+  if (!isDailyTaskDefinition(definition) || definition.repeat !== 'daily') {
+    return record;
+  }
+
+  const currentResetKey = getTaskResetKey();
+  const metadata = (record.metadata as TaskInstanceMetadata | null | undefined) ?? {};
+
+  if (metadata.resetKey === currentResetKey) {
+    return record;
+  }
+
+  const nextObjectives = buildDefaultObjectiveStates(definition);
+  const nextMetadata = createTaskMetadata(definition, currentResetKey);
+
+  return (
+    (await updateCultivatorTask(record.id, context.cultivatorId, {
+      status: 'active',
+      currentStage: definition.stages[0]?.id ?? null,
+      objectives: nextObjectives,
+      metadata: nextMetadata,
+      completedAt: null,
+    })) ?? {
+      ...record,
+      status: 'active',
+      currentStage: definition.stages[0]?.id ?? null,
+      objectives: nextObjectives,
+      metadata: nextMetadata,
+      completedAt: null,
+    }
+  );
+}
+
 async function syncTaskRecord(
   context: TaskProgressContext,
   record: CultivatorTaskRecord,
 ): Promise<TaskInstance> {
-  const definition = getBreakthroughTaskDefinition(record.definitionId);
+  const definition = getTaskDefinition(record.definitionId);
   if (!definition) {
     throw new Error(`缺少任务定义：${record.definitionId}`);
   }
 
+  const preparedRecord = await resetRepeatableTaskRecordIfNeeded(
+    context,
+    record,
+    definition,
+  );
   const nowIso = new Date().toISOString();
-  const resolved = buildTaskSnapshot(record, definition, context, nowIso);
-  const serializedCurrent = serializeObjectiveStates(normalizeObjectiveStates(record.objectives));
+  const resolved = buildTaskSnapshot(preparedRecord, definition, context, nowIso);
+  const serializedCurrent = serializeObjectiveStates(
+    normalizeObjectiveStates(preparedRecord.objectives),
+  );
   const serializedNext = serializeObjectiveStates(resolved.objectiveStates);
   const needsUpdate =
     serializedCurrent !== serializedNext ||
-    record.status !== resolved.status ||
-    record.currentStage !== resolved.currentStage ||
-    (resolved.status === 'completed' && !record.completedAt);
+    preparedRecord.status !== resolved.status ||
+    preparedRecord.currentStage !== resolved.currentStage ||
+    (resolved.status === 'completed' && !preparedRecord.completedAt);
 
   const nextRecord =
     needsUpdate
-      ? (await updateCultivatorTask(record.id, context.cultivatorId, {
+      ? (await updateCultivatorTask(preparedRecord.id, context.cultivatorId, {
           status: resolved.status,
           currentStage: resolved.currentStage,
           objectives: resolved.objectiveStates,
           completedAt:
             resolved.status === 'completed'
-              ? record.completedAt ?? new Date(nowIso)
+              ? preparedRecord.completedAt ?? new Date(nowIso)
               : null,
-        })) ?? record
-      : record;
+        })) ?? {
+          ...preparedRecord,
+          status: resolved.status,
+          currentStage: resolved.currentStage,
+          objectives: resolved.objectiveStates,
+          completedAt:
+            resolved.status === 'completed'
+              ? preparedRecord.completedAt ?? new Date(nowIso)
+              : null,
+        }
+      : preparedRecord;
 
   return mapTaskInstance(nextRecord, resolved.snapshot);
 }
@@ -697,7 +865,7 @@ async function loadBundleOrThrow(cultivatorId: string): Promise<Cultivator> {
 async function syncCultivatorTasksWithContext(
   context: TaskProgressContext,
 ): Promise<TaskInstance[]> {
-  await ensureCurrentTaskRecord(context);
+  await ensureCurrentTaskRecords(context);
   const records = await listCultivatorTasks(context.cultivatorId);
   return Promise.all(records.map((record) => syncTaskRecord(context, record)));
 }
@@ -754,7 +922,7 @@ export const TaskService = {
     mapNodeId: string,
   ): Promise<TaskInstance[]> {
     const context = await loadTaskProgressContextOrThrow(cultivatorId);
-    await ensureCurrentTaskRecord(context);
+    await ensureCurrentTaskRecords(context);
     const records = await listCultivatorTasks(cultivatorId, { status: 'active' });
     const nowIso = new Date().toISOString();
 
@@ -812,13 +980,129 @@ export const TaskService = {
     return syncCultivatorTasksWithContext(context);
   },
 
+  async recordTaskEvent(
+    cultivatorId: string,
+    event: TaskEvent,
+  ): Promise<TaskInstance[]> {
+    const context = await loadTaskProgressContextOrThrow(cultivatorId);
+    await ensureCurrentTaskRecords(context);
+
+    const records = await listCultivatorTasks(cultivatorId);
+    const currentResetKey = getTaskResetKey();
+    let changedAny = false;
+
+    for (const originalRecord of records) {
+      const definition = getTaskDefinition(originalRecord.definitionId);
+      if (!definition || !isDailyTaskDefinition(definition)) {
+        continue;
+      }
+
+      let record = await resetRepeatableTaskRecordIfNeeded(
+        context,
+        originalRecord,
+        definition,
+      );
+      if (record.status !== 'active') {
+        continue;
+      }
+
+      const nextStates = normalizeObjectiveStates(record.objectives);
+      let changed = false;
+
+      for (const stage of definition.stages) {
+        for (const objective of stage.objectives) {
+          if (
+            objective.kind !== 'event_count' ||
+            objective.event !== event
+          ) {
+            continue;
+          }
+
+          const stateIndex = nextStates.findIndex(
+            (state) => state.objectiveId === objective.id,
+          );
+          const currentState =
+            stateIndex >= 0
+              ? nextStates[stateIndex]
+              : createDefaultObjectiveState(objective.id);
+
+          if (currentState.completed) {
+            continue;
+          }
+
+          const nextProgress = Math.min(
+            objective.threshold,
+            Math.max(0, currentState.progressValue ?? 0) + 1,
+          );
+          const completed = nextProgress >= objective.threshold;
+          const nextState = completed
+            ? completeObjectiveState(
+                {
+                  ...currentState,
+                  objectiveId: objective.id,
+                },
+                nextProgress,
+                new Date().toISOString(),
+              )
+            : {
+                ...createDefaultObjectiveState(objective.id),
+                ...currentState,
+                objectiveId: objective.id,
+                progressValue: nextProgress,
+                updatedAt: new Date().toISOString(),
+              };
+
+          if (stateIndex >= 0) {
+            nextStates[stateIndex] = nextState;
+          } else {
+            nextStates.push(nextState);
+          }
+          changed = true;
+        }
+      }
+
+      if (!changed) {
+        continue;
+      }
+
+      const nextMetadata = createTaskMetadata(definition, currentResetKey);
+      record =
+        (await updateCultivatorTask(record.id, cultivatorId, {
+          objectives: nextStates,
+          metadata: nextMetadata,
+        })) ?? {
+          ...record,
+          objectives: nextStates,
+          metadata: nextMetadata,
+        };
+      const task = await syncTaskRecord(context, record);
+      changedAny = true;
+
+      if (task.status === 'completed' && (definition.rewardAttachments?.length ?? 0) > 0) {
+        await MailService.sendMail(
+          cultivatorId,
+          `【今日日常】${task.snapshot.title}`,
+          `道友已办妥“${task.snapshot.title}”，这份薄礼已由传音玉简送达。`,
+          definition.rewardAttachments,
+          'reward',
+        );
+      }
+    }
+
+    if (!changedAny) {
+      return this.listCultivatorTasks(cultivatorId);
+    }
+
+    return this.listCultivatorTasks(cultivatorId);
+  },
+
   async runTaskChallenge(
     cultivatorId: string,
     taskId: string,
   ): Promise<TaskChallengeResult> {
     const cultivator = await loadBundleOrThrow(cultivatorId);
     const context = createTaskProgressContextFromCultivator(cultivator);
-    await ensureCurrentTaskRecord(context);
+    await ensureCurrentTaskRecords(context);
     const record = await findCultivatorTaskById(cultivatorId, taskId);
     if (!record) {
       throw new Error('任务不存在');

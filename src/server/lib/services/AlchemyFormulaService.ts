@@ -4,6 +4,16 @@ import {
   getNextMajorRealm,
 } from '@shared/lib/breakthroughPill';
 import {
+  buildCultivationGain,
+  buildInsightGain,
+  scaleProgressGain,
+} from '@shared/lib/alchemyProgress';
+import {
+  evaluateFateContext,
+  getAlchemySpiritStoneMultiplier,
+  scaleFateAdjustedValue,
+} from '@shared/lib/fates';
+import {
   getMaterialAlchemyTagFamily,
   getMaterialAlchemyTagLabel,
   getTrackPathAlchemyTag,
@@ -19,7 +29,11 @@ import {
   type Quality,
   type RealmType,
 } from '@shared/types/constants';
-import type { MaterialDetails, Consumable } from '@shared/types/cultivator';
+import type {
+  MaterialDetails,
+  Consumable,
+  PreHeavenFate,
+} from '@shared/types/cultivator';
 import type {
   AlchemyFormula,
   AlchemyFormulaDiscoveryCandidate,
@@ -43,7 +57,10 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 import { AlchemyServiceError } from './AlchemyServiceError';
 import { AlchemyNarrativeEnricher } from './AlchemyNarrativeEnricher';
 import { mapConsumableRow, serializeConsumableSpec } from './consumablePersistence';
-import { addConsumableToInventory } from './cultivatorService';
+import {
+  addConsumableToInventory,
+  getCultivatorByIdUnsafe,
+} from './cultivatorService';
 
 const DISCOVERY_TTL_SECONDS = 600;
 const FORMULA_LOCK_TTL_SECONDS = 30;
@@ -236,6 +253,10 @@ function buildFallbackFormulaRecordDescription(
   const directionText =
     formula.family === 'tempering'
       ? '缓推肉身淬炼之势'
+      : formula.family === 'cultivation'
+        ? '积蓄修为，温养道基'
+        : formula.family === 'insight'
+          ? '澄明心识，引动悟机'
       : formula.family === 'marrow_wash'
         ? '引药力洗筋伐髓'
         : '收束药性归于一脉';
@@ -280,6 +301,8 @@ function getRequiredTagsForFamily(
     case 'healing':
     case 'mana':
     case 'detox':
+    case 'cultivation':
+    case 'insight':
     case 'breakthrough':
     case 'marrow_wash':
       return [spec.family];
@@ -578,10 +601,22 @@ function scaleFormulaOperations(
   operations: ConditionOperation[],
   fitMultiplier: number,
   quality: Quality,
+  realm: RealmType,
 ): ConditionOperation[] {
   return operations.map((operation) => {
     if (operation.type === 'restore_resource') {
       return scaleRestoreOperationValue(operation, fitMultiplier);
+    }
+
+    if (operation.type === 'gain_progress') {
+      const baseValue =
+        operation.target === 'cultivation_exp'
+          ? buildCultivationGain(realm, quality)
+          : buildInsightGain(quality);
+      return {
+        ...operation,
+        value: scaleProgressGain(baseValue, fitMultiplier),
+      };
     }
 
     if (
@@ -864,6 +899,7 @@ export async function previewFormulaCraft(
   formulaId: string,
   materialIds: string[],
   availableSpiritStones: number,
+  fates: PreHeavenFate[] = [],
 ): Promise<FormulaPreviewResult> {
   const formula = await loadCultivatorFormula(cultivatorId, formulaId);
   const rows = sortRowsByRequestedIds(
@@ -902,7 +938,10 @@ export async function previewFormulaCraft(
   const highestMaterialRank = calculateHighestMaterialRank(
     rows as Array<{ rank: Quality }>,
   );
-  const spiritStones = calculateCraftCost(highestMaterialRank, 'spiritStone');
+  const spiritStones = scaleFateAdjustedValue(
+    calculateCraftCost(highestMaterialRank, 'spiritStone'),
+    getAlchemySpiritStoneMultiplier(evaluateFateContext(fates)),
+  );
 
   return {
     cost: { spiritStones },
@@ -924,7 +963,7 @@ export async function craftFromFormula(
   }
 
   try {
-    const [formula, selectedMaterials, cultivator] = await Promise.all([
+    const [formula, selectedMaterials, cultivator, fullCultivator] = await Promise.all([
       loadCultivatorFormula(cultivatorId, formulaId),
       loadOwnedMaterials(cultivatorId, materialIds),
       getExecutor()
@@ -933,6 +972,7 @@ export async function craftFromFormula(
         .where(eq(cultivators.id, cultivatorId))
         .limit(1)
         .then((rows) => rows[0]),
+      getCultivatorByIdUnsafe(cultivatorId),
     ]);
 
     if (!cultivator) {
@@ -951,7 +991,12 @@ export async function craftFromFormula(
     const highestMaterialRank = calculateHighestMaterialRank(
       selectedMaterials as Array<{ rank: Quality }>,
     );
-    const cost = calculateCraftCost(highestMaterialRank, 'spiritStone');
+    const cost = scaleFateAdjustedValue(
+      calculateCraftCost(highestMaterialRank, 'spiritStone'),
+      getAlchemySpiritStoneMultiplier(
+        evaluateFateContext(fullCultivator?.cultivator.pre_heaven_fates ?? []),
+      ),
+    );
     if ((cultivator.spirit_stones ?? 0) < cost) {
       throw new AlchemyServiceError(`灵石不足，需要 ${cost} 枚`);
     }
@@ -967,6 +1012,7 @@ export async function craftFromFormula(
         formula.blueprint.operations,
         fitMultiplier,
         highestMaterialRank,
+        cultivator.realm as RealmType,
       ),
       consumeRules: formula.blueprint.consumeRules,
       alchemyMeta: {

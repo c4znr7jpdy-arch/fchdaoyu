@@ -29,6 +29,7 @@ import {
   getCultivatorByIdUnsafe,
 } from '@server/lib/services/cultivatorService';
 import { simulateBattleV5 } from '@server/lib/services/simulateBattleV5';
+import { TaskService } from '@server/lib/services/TaskService';
 import {
   EquipmentSlot,
   QUALITY_VALUES,
@@ -429,6 +430,14 @@ challengeRouter.post('/challenge-battle/v5', requireActiveCultivator(), async (c
       opponentCultivatorId: targetId,
       battleResult,
     });
+    try {
+      await TaskService.recordTaskEvent(
+        cultivatorId,
+        'ranking_challenge_battled',
+      );
+    } catch (taskError) {
+      console.error('挑战战斗后同步任务失败:', taskError);
+    }
 
     return c.json({
       type: 'battle_result',

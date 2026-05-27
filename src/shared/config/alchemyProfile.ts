@@ -57,6 +57,8 @@ export const MATERIAL_ALCHEMY_TAG_LABELS: Record<
   healing: '疗伤',
   mana: '回元',
   detox: '解毒',
+  cultivation: '修为',
+  insight: '感悟',
   breakthrough: '破境',
   tempering_vitality: '炼体·体魄',
   tempering_spirit: '炼体·灵力',

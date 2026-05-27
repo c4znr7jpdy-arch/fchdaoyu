@@ -128,7 +128,7 @@ function createFormula(
       ],
       consumeRules: {
         scene: 'out_of_battle_only',
-        countsTowardLongTermQuota: false,
+        quotaCategory: 'none',
       },
       targetStability: 72,
       targetToxicity: 6,
@@ -158,7 +158,7 @@ function createConsumable(): Consumable & { spec: PillSpec } {
       ],
       consumeRules: {
         scene: 'out_of_battle_only',
-        countsTowardLongTermQuota: false,
+        quotaCategory: 'none',
       },
       alchemyMeta: {
         source: 'improvised',
@@ -344,7 +344,7 @@ describe('AlchemyFormulaService', () => {
         ],
         consumeRules: {
           scene: 'out_of_battle_only',
-          countsTowardLongTermQuota: false,
+          quotaCategory: 'none',
         },
         targetStability: 78,
         targetToxicity: 6,
@@ -417,7 +417,7 @@ describe('AlchemyFormulaService', () => {
           ],
           consumeRules: {
             scene: 'out_of_battle_only',
-            countsTowardLongTermQuota: false,
+            quotaCategory: 'none',
           },
           targetStability: 78,
           targetToxicity: 6,

@@ -1,12 +1,19 @@
 import { enemyGenerator } from '@shared/engine/enemyGenerator';
 import type { Cultivator } from '@shared/types/cultivator';
 import type {
+  TaskDailyKind,
   TaskDefinition,
   TaskInstanceMetadata,
   TaskStageDefinition,
 } from '@shared/types/task';
 
-type TaskLinkKind = 'alchemy' | 'dungeon' | 'retreat' | 'challenge' | 'tasks';
+type TaskLinkKind =
+  | 'alchemy'
+  | 'dungeon'
+  | 'retreat'
+  | 'challenge'
+  | 'tasks'
+  | 'ranking';
 
 export interface TaskStageTemplate extends TaskStageDefinition {
   links: Array<{
@@ -15,10 +22,25 @@ export interface TaskStageTemplate extends TaskStageDefinition {
   }>;
 }
 
-export interface BreakthroughTaskDefinition extends Omit<TaskDefinition, 'stages'> {
+export interface BreakthroughTaskDefinition
+  extends Omit<TaskDefinition, 'stages' | 'category' | 'fromRealm' | 'toRealm'> {
+  category: 'breakthrough_major';
+  fromRealm: NonNullable<TaskDefinition['fromRealm']>;
+  toRealm: NonNullable<TaskDefinition['toRealm']>;
   taskTheme: TaskInstanceMetadata['taskTheme'];
   stages: TaskStageTemplate[];
 }
+
+export interface DailyTaskDefinition
+  extends Omit<TaskDefinition, 'stages' | 'category' | 'dailyKind' | 'repeat'> {
+  category: 'daily';
+  repeat: 'daily';
+  dailyKind: TaskDailyKind;
+  rewardAttachments: NonNullable<TaskDefinition['rewardAttachments']>;
+  stages: TaskStageTemplate[];
+}
+
+export type RuntimeTaskDefinition = BreakthroughTaskDefinition | DailyTaskDefinition;
 
 export interface TaskChallengeProfile {
   id: string;
@@ -146,7 +168,7 @@ const challengeProfiles: TaskChallengeProfile[] = [
   },
 ];
 
-const definitions: BreakthroughTaskDefinition[] = [
+const breakthroughDefinitions: BreakthroughTaskDefinition[] = [
   {
     id: 'major_breakthrough_炼气_筑基',
     category: 'breakthrough_major',
@@ -625,13 +647,128 @@ const definitions: BreakthroughTaskDefinition[] = [
   },
 ];
 
+const dailyDefinitions: DailyTaskDefinition[] = [
+  {
+    id: 'daily_alchemy_once',
+    category: 'daily',
+    repeat: 'daily',
+    dailyKind: 'alchemy',
+    title: '丹炉留痕',
+    summary: '今日开炉一次，让炉火与药意都别生疏。',
+    rewardAttachments: [
+      {
+        type: 'spirit_stones',
+        name: '灵石',
+        quantity: 300,
+      },
+    ],
+    stages: [
+      {
+        id: 'daily-alchemy-stage',
+        title: '炼丹一次',
+        description: '去炼丹房开炉一次，无论丹成何品，先把今日火候续上。',
+        completionText: '丹炉已开，今日火候未断。',
+        links: [{ label: '去炼丹房', kind: 'alchemy' }],
+        objectives: [
+          {
+            id: 'daily-alchemy-objective',
+            kind: 'event_count',
+            title: '完成 1 次炼丹',
+            description: '成功完成一次炼丹即可。',
+            event: 'alchemy_crafted',
+            threshold: 1,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'daily_dungeon_once',
+    category: 'daily',
+    repeat: 'daily',
+    dailyKind: 'dungeon',
+    title: '云游一程',
+    summary: '去外界走一遭，别让道心只困在洞府里。',
+    rewardAttachments: [
+      {
+        type: 'spirit_stones',
+        name: '灵石',
+        quantity: 500,
+      },
+    ],
+    stages: [
+      {
+        id: 'daily-dungeon-stage',
+        title: '完成探秘一次',
+        description: '完成一次云游探秘结算，把今日见闻带回卷宗。',
+        completionText: '外出一程，今日见闻已添一笔。',
+        links: [{ label: '去云游探秘', kind: 'dungeon' }],
+        objectives: [
+          {
+            id: 'daily-dungeon-objective',
+            kind: 'event_count',
+            title: '完成 1 次探秘',
+            description: '完成一次探秘结算即可。',
+            event: 'dungeon_completed',
+            threshold: 1,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'daily_ranking_once',
+    category: 'daily',
+    repeat: 'daily',
+    dailyKind: 'ranking',
+    title: '试手天骄',
+    summary: '与榜上修士交一次手，试试今日锋芒还在不在。',
+    rewardAttachments: [
+      {
+        type: 'spirit_stones',
+        name: '灵石',
+        quantity: 400,
+      },
+    ],
+    stages: [
+      {
+        id: 'daily-ranking-stage',
+        title: '完成天骄挑战',
+        description: '去天骄榜打一场，胜负都算今日磨剑。',
+        completionText: '已与榜上修士交手，今日锋芒未钝。',
+        links: [{ label: '去天骄榜', kind: 'ranking' }],
+        objectives: [
+          {
+            id: 'daily-ranking-objective',
+            kind: 'event_count',
+            title: '完成 1 次天骄挑战',
+            description: '完成一次天骄挑战战斗即可。',
+            event: 'ranking_challenge_battled',
+            threshold: 1,
+          },
+        ],
+      },
+    ],
+  },
+];
+
+const definitions: RuntimeTaskDefinition[] = [
+  ...breakthroughDefinitions,
+  ...dailyDefinitions,
+];
+
 const definitionMap = new Map(definitions.map((definition) => [definition.id, definition]));
 const challengeProfileMap = new Map(
   challengeProfiles.map((profile) => [profile.id, profile]),
 );
 
-export function getBreakthroughTaskDefinition(definitionId: string) {
+export function getTaskDefinition(definitionId: string) {
   return definitionMap.get(definitionId) ?? null;
+}
+
+export function getBreakthroughTaskDefinition(definitionId: string) {
+  const definition = definitionMap.get(definitionId);
+  return definition?.category === 'breakthrough_major' ? definition : null;
 }
 
 export function getBreakthroughTaskDefinitionByTransition(
@@ -639,11 +776,15 @@ export function getBreakthroughTaskDefinitionByTransition(
   toRealm: BreakthroughTaskDefinition['toRealm'],
 ) {
   return (
-    definitions.find(
+    breakthroughDefinitions.find(
       (definition) =>
         definition.fromRealm === fromRealm && definition.toRealm === toRealm,
     ) ?? null
   );
+}
+
+export function getDailyTaskDefinitions() {
+  return dailyDefinitions;
 }
 
 export function getTaskChallengeProfile(challengeId: string) {

@@ -14,7 +14,6 @@ import {
   isConditionStatusActive,
 } from '@shared/lib/condition';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
-import { getResourceLabel } from '@shared/lib/resourceText';
 import { getAllTrackConfigs } from '@shared/lib/trackConfigRegistry';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 

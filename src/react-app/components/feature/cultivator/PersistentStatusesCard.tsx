@@ -9,6 +9,7 @@ import {
   getPillToxicityStage,
   isConditionStatusActive,
 } from '@shared/lib/condition';
+import { evaluateFateContext } from '@shared/lib/fates';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { getResourceLabel, getResourceText } from '@shared/lib/resourceText';
 import { getAllTrackConfigs } from '@shared/lib/trackConfigRegistry';
@@ -113,12 +114,17 @@ function usePersistentStatusState() {
     0,
     Math.floor(cultivator.condition?.gauges.pillToxicity ?? 0),
   );
+  const fateContext = evaluateFateContext(cultivator.pre_heaven_fates ?? []);
   const pillToxicityStage = getPillToxicityStage(cultivator.condition);
   const pillToxicityRecoveryEfficiency = Math.round(
-    getPillToxicityRecoveryMultiplier(cultivator.condition) * 100,
+    getPillToxicityRecoveryMultiplier(
+      cultivator.condition,
+      fateContext.toxicityPenaltyMultiplier,
+    ) * 100,
   );
   const breakthroughPenaltyPercent = getBreakthroughPenaltyPercent(
     cultivator.condition,
+    fateContext.toxicityPenaltyMultiplier,
   );
   const trackConfigs = getAllTrackConfigs().sort(
     (left, right) =>
@@ -148,6 +154,8 @@ function usePersistentStatusState() {
     current: currentHp,
     max: maxHp,
     conditionInput: cultivator.condition,
+    toxicityPenaltyMultiplier: fateContext.toxicityPenaltyMultiplier,
+    naturalRecoveryMultiplier: fateContext.naturalRecoveryMultiplier,
     now: new Date(now),
   });
   const mpRecovery = getNaturalRecoveryEstimate({
@@ -155,6 +163,8 @@ function usePersistentStatusState() {
     current: currentMp,
     max: maxMp,
     conditionInput: cultivator.condition,
+    toxicityPenaltyMultiplier: fateContext.toxicityPenaltyMultiplier,
+    naturalRecoveryMultiplier: fateContext.naturalRecoveryMultiplier,
     now: new Date(now),
   });
 
@@ -297,11 +307,12 @@ export function CultivatorCurrentStatusSection() {
             content: (
               <div className="space-y-3 text-sm leading-7">
                 <div className="space-y-1">
-                  {getPillToxicityEffectDetails(state.cultivator.condition).map(
-                    (detail) => (
-                      <p key={detail}>{detail}</p>
-                    ),
-                  )}
+                  {getPillToxicityEffectDetails(
+                    state.cultivator.condition,
+                    state.cultivator.pre_heaven_fates,
+                  ).map((detail) => (
+                    <p key={detail}>{detail}</p>
+                  ))}
                 </div>
               </div>
             ),

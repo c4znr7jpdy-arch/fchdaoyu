@@ -102,6 +102,7 @@ function createCultivator(overrides?: Partial<Cultivator>): Cultivator {
       },
       counters: {
         longTermPillUsesByRealm: {},
+      cultivationPillUsesByRealm: {},
       },
       statuses: [],
       timestamps: {

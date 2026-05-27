@@ -81,48 +81,51 @@ export interface BreakthroughHistoryEntry {
 }
 
 // 先天命格 / 气运
-export type FateEffectScope =
-  | 'creation'
-  | 'cultivation'
-  | 'breakthrough'
-  | 'world';
+export type FateEffectScope = 'daily' | 'drawback';
 
 export type FateEffectPolarity = 'boon' | 'burden';
 
 export type FateEffectType =
-  | 'creation_tag_bias'
-  | 'cultivation_exp_multiplier'
-  | 'insight_gain_multiplier'
+  | 'retreat_exp_multiplier'
+  | 'retreat_insight_multiplier'
   | 'breakthrough_bonus'
-  | 'reward_type_bias'
-  | 'reward_score_multiplier'
-  | 'encounter_hint';
+  | 'natural_recovery_multiplier'
+  | 'toxicity_penalty_multiplier'
+  | 'alchemy_spirit_stone_multiplier'
+  | 'refine_spirit_stone_multiplier'
+  | 'enlightenment_insight_multiplier'
+  | 'inn_cultivation_loss_multiplier'
+  | 'system_spirit_stone_multiplier';
 
-export type FateEffectExtreme = 'mild' | 'strong' | 'extreme';
+export interface FateEffectRollMeta {
+  qualityAnchor: Quality;
+  minValue: number;
+  maxValue: number;
+  rolledPercentile: number;
+  roundingStep: number;
+}
 
 export interface FateEffectEntry {
   id: string;
-  fragmentId: string;
+  effectId: string;
   scope: FateEffectScope;
   polarity: FateEffectPolarity;
   effectType: FateEffectType;
   value: number;
-  tags?: string[];
-  rewardTypes?: string[];
   label: string;
   description: string;
-  extreme: FateEffectExtreme;
+  rollMeta: FateEffectRollMeta;
 }
+
+export type FateGenerationCategory = 'single_positive' | 'dual_sided';
 
 export interface FateGenerationModel {
   version: string;
+  rollVersion: string;
   quality: Quality;
-  fragmentIds: string[];
+  effectIds: string[];
   compositionHash: string;
-  primaryDomains: FateEffectScope[];
-  qualityTemplateId: string;
-  coreKey: string;
-  rollStrategy?: 'fully_random' | 'root_restricted';
+  category: FateGenerationCategory;
 }
 
 export interface FateNamingMetadata {
@@ -136,7 +139,6 @@ export interface PreHeavenFate {
   name: string;
   quality?: Quality;
   description?: string;
-  tags?: string[];
   effects?: FateEffectEntry[];
   generationModel?: FateGenerationModel;
   namingMetadata?: FateNamingMetadata;

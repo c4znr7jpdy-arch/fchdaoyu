@@ -49,7 +49,7 @@ describe('alchemy formulas router', () => {
           operations: [],
           consumeRules: {
             scene: 'out_of_battle_only',
-            countsTowardLongTermQuota: false,
+            quotaCategory: 'none',
           },
           targetStability: 70,
           targetToxicity: 4,
@@ -98,7 +98,7 @@ describe('alchemy formulas router', () => {
           operations: [],
           consumeRules: {
             scene: 'out_of_battle_only',
-            countsTowardLongTermQuota: false,
+            quotaCategory: 'none',
           },
           targetStability: 70,
           targetToxicity: 4,

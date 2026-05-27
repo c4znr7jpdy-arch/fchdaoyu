@@ -39,9 +39,9 @@ const ORE_TEMPERING_TAG_BY_ELEMENT: Record<
 };
 
 const HERB_TAGS_BY_ELEMENT: Record<ElementType, MaterialAlchemyEffectTag[]> = {
-  金: ['mana'],
+  金: ['mana', 'cultivation'],
   木: ['healing'],
-  水: ['mana'],
+  水: ['mana', 'cultivation'],
   火: ['breakthrough'],
   土: ['healing'],
   风: ['mana', 'detox'],
@@ -61,9 +61,9 @@ const MONSTER_TAGS_BY_ELEMENT: Record<ElementType, MaterialAlchemyEffectTag[]> =
 };
 
 const TCDB_TAGS_BY_ELEMENT: Record<ElementType, MaterialAlchemyEffectTag[]> = {
-  金: ['mana'],
+  金: ['mana', 'cultivation'],
   木: ['marrow_wash'],
-  水: ['mana'],
+  水: ['mana', 'cultivation'],
   火: ['breakthrough'],
   土: ['marrow_wash'],
   风: ['healing', 'mana'],
@@ -77,9 +77,14 @@ const AUX_TAGS_BY_ELEMENT: Record<ElementType, MaterialAlchemyEffectTag[]> = {
   水: ['detox', 'mana'],
   火: ['detox', 'breakthrough'],
   土: ['detox', 'healing'],
-  风: ['detox', 'mana'],
+  风: ['detox', 'mana', 'insight'],
   雷: ['detox', 'breakthrough'],
-  冰: ['detox', 'detox'],
+  冰: ['detox', 'insight'],
+};
+
+const ORE_EXTRA_TAGS_BY_ELEMENT: Partial<Record<ElementType, MaterialAlchemyEffectTag[]>> = {
+  水: ['insight'],
+  冰: ['insight'],
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -104,7 +109,10 @@ function resolveEffectTags(
     case 'herb':
       return HERB_TAGS_BY_ELEMENT[element];
     case 'ore':
-      return [ORE_TEMPERING_TAG_BY_ELEMENT[element]];
+      return dedupeTags([
+        ORE_TEMPERING_TAG_BY_ELEMENT[element],
+        ...(ORE_EXTRA_TAGS_BY_ELEMENT[element] ?? []),
+      ]);
     case 'monster':
       return MONSTER_TAGS_BY_ELEMENT[element];
     case 'tcdb':
@@ -183,6 +191,8 @@ export function getMaterialAlchemyTagFamily(
     case 'healing':
     case 'mana':
     case 'detox':
+    case 'cultivation':
+    case 'insight':
     case 'breakthrough':
     case 'marrow_wash':
       return tag;

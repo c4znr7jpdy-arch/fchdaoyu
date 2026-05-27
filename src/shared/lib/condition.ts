@@ -98,6 +98,7 @@ export function getNaturalRecoveryStatusMultiplier(
         },
         counters: {
           longTermPillUsesByRealm: {},
+          cultivationPillUsesByRealm: {},
         },
         statuses: [],
         timestamps: {},
@@ -115,9 +116,19 @@ export function getNaturalRecoveryEstimate(options: {
   current: number;
   max: number;
   conditionInput: CultivatorCondition | undefined;
+  toxicityPenaltyMultiplier?: number;
+  naturalRecoveryMultiplier?: number;
   now?: Date;
 }): NaturalRecoveryEstimate {
-  const { resource, current, max, conditionInput, now = new Date() } = options;
+  const {
+    resource,
+    current,
+    max,
+    conditionInput,
+    toxicityPenaltyMultiplier = 1,
+    naturalRecoveryMultiplier = 1,
+    now = new Date(),
+  } = options;
   const safeCurrent = Math.max(0, current);
   const safeMax = Math.max(0, max);
 
@@ -129,7 +140,10 @@ export function getNaturalRecoveryEstimate(options: {
     };
   }
 
-  const toxicityMultiplier = getPillToxicityRecoveryMultiplier(conditionInput);
+  const toxicityMultiplier = getPillToxicityRecoveryMultiplier(
+    conditionInput,
+    toxicityPenaltyMultiplier,
+  );
   const statusMultiplier = getNaturalRecoveryStatusMultiplier(
     conditionInput,
     now,
@@ -138,7 +152,12 @@ export function getNaturalRecoveryEstimate(options: {
     resource === 'hp'
       ? NATURAL_RECOVERY_CONFIG.hpPerHour
       : NATURAL_RECOVERY_CONFIG.mpPerHour;
-  const perHour = safeMax * basePerHour * toxicityMultiplier * statusMultiplier;
+  const perHour =
+    safeMax *
+    basePerHour *
+    toxicityMultiplier *
+    statusMultiplier *
+    Math.max(0, naturalRecoveryMultiplier);
 
   if (perHour <= 0) {
     return {
@@ -159,11 +178,13 @@ export function getNaturalRecoveryEstimate(options: {
 
 export function getPillToxicityRecoveryMultiplier(
   conditionInput: CultivatorCondition | undefined,
+  toxicityPenaltyMultiplier = 1,
 ): number {
   return clamp(
     1 -
-      Math.max(0, conditionInput?.gauges.pillToxicity ?? 0) /
-        NATURAL_RECOVERY_CONFIG.toxicityPenaltyDivisor,
+      (Math.max(0, conditionInput?.gauges.pillToxicity ?? 0) /
+        NATURAL_RECOVERY_CONFIG.toxicityPenaltyDivisor) *
+        Math.max(0, toxicityPenaltyMultiplier),
     0.3,
     1,
   );
@@ -171,18 +192,24 @@ export function getPillToxicityRecoveryMultiplier(
 
 export function getBreakthroughPenalty(
   conditionInput: CultivatorCondition | undefined,
+  toxicityPenaltyMultiplier = 1,
 ): number {
   const pillToxicity = Math.max(
     0,
     conditionInput?.gauges.pillToxicity ?? 0,
   );
-  return clamp(pillToxicity / 1000, 0, 0.18);
+  return clamp(pillToxicity / 1000 * Math.max(0, toxicityPenaltyMultiplier), 0, 0.18);
 }
 
 export function getBreakthroughPenaltyPercent(
   conditionInput: CultivatorCondition | undefined,
+  toxicityPenaltyMultiplier = 1,
 ): number {
-  return Number((getBreakthroughPenalty(conditionInput) * 100).toFixed(1));
+  return Number(
+    (
+      getBreakthroughPenalty(conditionInput, toxicityPenaltyMultiplier) * 100
+    ).toFixed(1),
+  );
 }
 
 export function getPillToxicityStage(

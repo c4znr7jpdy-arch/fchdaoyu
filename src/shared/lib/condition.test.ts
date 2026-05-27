@@ -29,6 +29,7 @@ function createCondition(): CultivatorCondition {
     },
     counters: {
       longTermPillUsesByRealm: {},
+      cultivationPillUsesByRealm: {},
     },
     statuses: [],
     timestamps: {

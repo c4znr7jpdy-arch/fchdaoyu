@@ -4,7 +4,7 @@ import {
   type RealmType,
 } from '@shared/types/constants';
 import {
-  evaluateFateGrowthContext,
+  evaluateFateContext,
 } from '@shared/lib/fates';
 import { hasActiveConditionStatus } from '@shared/lib/condition';
 import type {
@@ -125,7 +125,7 @@ export function performCultivation(
 
   // 记录闭关前修为
   const exp_before = progress.cultivation_exp;
-  const fateGrowthContext = evaluateFateGrowthContext(
+  const fateContext = evaluateFateContext(
     cultivator.pre_heaven_fates ?? [],
   );
 
@@ -135,13 +135,13 @@ export function performCultivation(
   const finalExpGain = Math.max(
     0,
     Math.floor(
-      expResult.exp_gained * fateGrowthContext.cultivationExpMultiplier,
+      expResult.exp_gained * fateContext.retreatExpMultiplier,
     ),
   );
   const finalInsightGain = Math.max(
     0,
     Math.floor(
-      expResult.insight_gained * fateGrowthContext.insightGainMultiplier,
+      expResult.insight_gained * fateContext.retreatInsightMultiplier,
     ),
   );
 

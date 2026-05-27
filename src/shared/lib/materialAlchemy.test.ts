@@ -26,9 +26,19 @@ describe('buildMaterialAlchemyProfile', () => {
     expect(profile.effectTags).toEqual(['mana', 'detox']);
   });
 
+  it('lets herb gold materials accumulate cultivation direction', () => {
+    const profile = buildMaterialAlchemyProfile('herb', '真品', '金');
+    expect(profile.effectTags).toEqual(['mana', 'cultivation']);
+  });
+
   it('maps ore thunder materials to willpower tempering', () => {
     const profile = buildMaterialAlchemyProfile('ore', '真品', '雷');
     expect(profile.effectTags).toEqual(['tempering_willpower']);
+  });
+
+  it('lets ore ice materials carry insight direction alongside tempering', () => {
+    const profile = buildMaterialAlchemyProfile('ore', '真品', '冰');
+    expect(profile.effectTags).toEqual(['tempering_wisdom', 'insight']);
   });
 
   it('maps monster wood materials to spirit tempering', () => {
@@ -41,8 +51,8 @@ describe('buildMaterialAlchemyProfile', () => {
     expect(profile.effectTags).toEqual(['healing', 'mana']);
   });
 
-  it('keeps aux ice materials as detox-only', () => {
+  it('lets aux ice materials carry both detox and insight direction', () => {
     const profile = buildMaterialAlchemyProfile('aux', '真品', '冰');
-    expect(profile.effectTags).toEqual(['detox']);
+    expect(profile.effectTags).toEqual(['detox', 'insight']);
   });
 });

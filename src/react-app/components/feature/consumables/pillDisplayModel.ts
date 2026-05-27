@@ -4,7 +4,7 @@ import {
   getPillUsageKeywordLabel,
   getPillUsageRuleText,
 } from '@shared/lib/pillUsageText';
-import { getResourceLabel } from '@shared/lib/resourceText';
+import { getResourceLabel, getResourceText } from '@shared/lib/resourceText';
 import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
 import type { ConditionStatusKey } from '@shared/types/condition';
 import type { RealmType } from '@shared/types/constants';
@@ -62,6 +62,17 @@ function getGaugeChangeText(delta: number): string {
   return `丹毒 ${delta > 0 ? '+' : ''}${delta}`;
 }
 
+function getProgressTargetLabel(
+  target: Extract<
+    ConditionOperation,
+    { type: 'gain_progress' }
+  >['target'],
+): string {
+  return target === 'cultivation_exp'
+    ? getResourceText('cultivation_exp')
+    : '道心感悟';
+}
+
 function getBreakthroughPurposeLabel(spec: PillSpec): string | null {
   return (
     spec.alchemyMeta.breakthroughLabel ??
@@ -79,6 +90,10 @@ export function getPillFamilyLabel(family: PillFamily): string {
       return '回元';
     case 'detox':
       return '解毒';
+    case 'cultivation':
+      return '修为';
+    case 'insight':
+      return '感悟';
     case 'breakthrough':
       return '破境';
     case 'tempering':
@@ -96,6 +111,8 @@ export function describePillOperation(operation: ConditionOperation): string {
       return getRestoreEffectText(operation);
     case 'change_gauge':
       return getGaugeChangeText(operation.delta);
+    case 'gain_progress':
+      return `${getProgressTargetLabel(operation.target)} +${operation.value}`;
     case 'remove_status':
       return `化解「${getStatusName(operation.status)}」`;
     case 'add_status':
@@ -153,6 +170,18 @@ function buildPrimaryEffect(spec: PillSpec): string {
       );
       return detox ? getGaugeChangeText(detox.delta) : '调理丹毒';
     }
+    case 'cultivation':
+    case 'insight': {
+      const gain = spec.operations.find(
+        (
+          operation,
+        ): operation is Extract<ConditionOperation, { type: 'gain_progress' }> =>
+          operation.type === 'gain_progress',
+      );
+      return gain
+        ? `${getProgressTargetLabel(gain.target)} +${gain.value}`
+        : `${getPillFamilyLabel(spec.family)}药效`;
+    }
     case 'breakthrough': {
       const status = spec.operations.find(
         (
@@ -191,7 +220,7 @@ function buildKeywordLabels(spec: PillSpec, realm?: RealmType): string[] {
     getPillFamilyLabel(spec.family),
     spec.family === 'breakthrough' ? getBreakthroughPurposeLabel(spec) : null,
     getPillUsageKeywordLabel(
-      spec.consumeRules.countsTowardLongTermQuota,
+      spec.consumeRules.quotaCategory,
       realm,
     ),
   ].filter((label): label is string => Boolean(label));
@@ -229,7 +258,7 @@ function buildCostAndRuleLines(spec: PillSpec, realm?: RealmType): string[] {
 
   lines.push('仅可在场外服用');
   const usageRuleText = getPillUsageRuleText(
-    spec.consumeRules.countsTowardLongTermQuota,
+    spec.consumeRules.quotaCategory,
     realm,
   );
   if (usageRuleText) {

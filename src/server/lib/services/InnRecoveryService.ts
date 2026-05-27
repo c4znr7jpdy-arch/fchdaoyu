@@ -1,13 +1,16 @@
 import {
+  calculateInnRecoverySpiritStoneCost,
   calculateInnRecoveryLossAmount,
   rollInnRecoveryLossPercent,
 } from '@shared/config/innRecovery';
 import { createDefaultCultivationProgress } from '@server/utils/cultivationUtils';
+import { evaluateFateContext, getInnSpiritStoneMultiplier } from '@shared/lib/fates';
 import { ConditionService } from './ConditionService';
 import type { CultivatorCondition } from '@shared/types/condition';
 import type { CultivationProgress, Cultivator } from '@shared/types/cultivator';
 
 export interface InnRecoveryResult {
+  spiritStoneCost: number;
   nextCondition: CultivatorCondition;
   nextCultivationProgress: CultivationProgress;
   cultivationLossPercent: number;
@@ -29,11 +32,16 @@ export const InnRecoveryService = {
     const cultivationProgress =
       cultivator.cultivation_progress ??
       createDefaultCultivationProgress(cultivator.realm, cultivator.realm_stage);
+    const fateContext = evaluateFateContext(cultivator.pre_heaven_fates ?? []);
     const { maxHp, maxMp } = ConditionService.getMaxResources(cultivator);
     const cultivationLossPercent = rollInnRecoveryLossPercent(rng);
     const cultivationLossAmount = calculateInnRecoveryLossAmount(
       cultivationProgress.cultivation_exp,
       cultivationLossPercent,
+      fateContext.innCultivationLossMultiplier,
+    );
+    const spiritStoneCost = calculateInnRecoverySpiritStoneCost(
+      getInnSpiritStoneMultiplier(fateContext),
     );
 
     const nextCondition = ConditionService.normalizeCondition(
@@ -54,6 +62,7 @@ export const InnRecoveryService = {
     );
 
     return {
+      spiritStoneCost,
       nextCondition,
       nextCultivationProgress: {
         ...cultivationProgress,

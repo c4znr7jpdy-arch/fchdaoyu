@@ -17,6 +17,7 @@ import {
   previewFormulaCraft,
 } from '@server/lib/services/AlchemyFormulaService';
 import { TaskService } from '@server/lib/services/TaskService';
+import { getCultivatorById } from '@server/lib/services/cultivatorService';
 import {
   requireActiveCultivator,
 } from '@server/lib/hono/middleware';
@@ -69,12 +70,15 @@ const pendingRouter = new Hono<AppEnv>();
 const confirmRouter = new Hono<AppEnv>();
 
 router.get('/', requireActiveCultivator(), async (c) => {
+  const user = c.get('user');
   const cultivator = c.get('cultivator');
-  if (!cultivator) {
+  if (!user || !cultivator) {
     return c.json({ error: '当前没有活跃角色' }, 404);
   }
 
   try {
+    const fullCultivator = await getCultivatorById(user.id, cultivator.id);
+    const fateList = fullCultivator?.pre_heaven_fates ?? [];
     const materialIdsParam = c.req.query('materialIds');
     const craftType = c.req.query('craftType');
     const alchemyMode = c.req.query('alchemyMode') ?? 'improvised';
@@ -105,12 +109,14 @@ router.get('/', requireActiveCultivator(), async (c) => {
               formulaId,
               materialIds,
               cultivator.spirit_stones || 0,
+              fateList,
             );
           })()
         : await previewAlchemySelection(
             cultivator.id,
             cultivator.spirit_stones || 0,
             materialIds,
+            fateList,
           );
 
       return c.json({
@@ -139,10 +145,18 @@ router.get('/', requireActiveCultivator(), async (c) => {
         materialIds,
         craftType,
       );
-      cost = estimateCost(preview.materials as Array<{ rank: Quality }>, craftType);
+      cost = estimateCost(
+        preview.materials as Array<{ rank: Quality }>,
+        craftType,
+        fateList,
+      );
       validation = preview.validation;
     } else {
-      cost = estimateCost([{ rank: '凡品' }], craftType);
+      cost = estimateCost(
+        [{ rank: '凡品' }],
+        craftType,
+        fateList,
+      );
     }
 
     if (cost.spiritStones !== undefined) {
@@ -223,7 +237,7 @@ router.post('/', requireActiveCultivator(), async (c) => {
             userPrompt,
           });
       try {
-        await TaskService.syncCultivatorTasks(cultivator.id);
+        await TaskService.recordTaskEvent(cultivator.id, 'alchemy_crafted');
       } catch (syncError) {
         console.error('炼丹后同步任务失败:', syncError);
       }

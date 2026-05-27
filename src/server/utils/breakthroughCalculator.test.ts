@@ -66,6 +66,7 @@ function createCultivator(pillToxicity: number): Cultivator {
       },
       counters: {
         longTermPillUsesByRealm: {},
+      cultivationPillUsesByRealm: {},
       },
       statuses: [],
       timestamps: {},

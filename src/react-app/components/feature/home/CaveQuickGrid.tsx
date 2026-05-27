@@ -11,6 +11,7 @@ const CAVE_AREAS: CaveQuickArea[] = [
   { title: '🔥 炼器室', href: '/game/craft/refine' },
   { title: '📚 藏经阁', href: '/game/enlightenment' },
   { title: '⛰️ 外出云游', href: '/game/dungeon' },
+  { title: '🪞 蜃楼幻境', href: '/game/tower' },
   { title: '🔔 传音玉简', href: '/game/mail' },
   { title: '👊 练功房', href: '/game/training-room' },
   { title: '🪞 储物袋', href: '/game/inventory' },

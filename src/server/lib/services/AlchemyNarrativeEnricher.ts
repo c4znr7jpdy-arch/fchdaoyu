@@ -2,7 +2,7 @@ import { renderPrompt } from '@server/lib/prompts';
 import { object } from '@server/utils/aiClient';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { getMaterialAlchemyTagLabel } from '@shared/lib/materialAlchemy';
-import { getResourceLabel } from '@shared/lib/resourceText';
+import { getResourceLabel, getResourceText } from '@shared/lib/resourceText';
 import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
 import type {
   ConditionTrackPath,
@@ -29,6 +29,10 @@ function getPillFamilyLabel(family: PillFamily): string {
       return '回元丹';
     case 'detox':
       return '解毒丹';
+    case 'cultivation':
+      return '养元丹';
+    case 'insight':
+      return '悟心丹';
     case 'breakthrough':
       return '破境丹';
     case 'tempering':
@@ -52,6 +56,12 @@ function describeOperation(operation: ConditionOperation): string {
         : `恢复${getResourceLabel(operation.resource)} ${operation.value}`;
     case 'change_gauge':
       return `丹毒 ${operation.delta > 0 ? '+' : ''}${operation.delta}`;
+    case 'gain_progress':
+      return `${
+        operation.target === 'cultivation_exp'
+          ? getResourceText('cultivation_exp')
+          : '道心感悟'
+      } +${operation.value}`;
     case 'remove_status':
       return `化解「${getStatusName(operation.status)}」`;
     case 'add_status':

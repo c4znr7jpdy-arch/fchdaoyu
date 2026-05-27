@@ -14,10 +14,6 @@ import {
   RECYCLE_PRICE_FACTOR_CAP,
 } from '@shared/config/marketConfig';
 import {
-  getMarketAppraisalPrompt,
-  getMarketAppraisalUserPrompt,
-} from '@shared/engine/market/appraisal/prompts';
-import {
   BASE_PRICES,
   TYPE_MULTIPLIERS,
 } from '@shared/engine/material/creation/config';
@@ -31,6 +27,7 @@ import { redis } from '@server/lib/redis';
 import { parseRedisJson } from '@server/lib/redis/json';
 import { QUALITY_ORDER, type Quality } from '@shared/types/constants';
 import type { Artifact, Material } from '@shared/types/cultivator';
+import { getMaterialTypeLabel } from '@shared/types/dictionaries';
 import type {
   HighTierAppraisal,
   SellConfirmResponse,
@@ -39,7 +36,6 @@ import type {
   SellPreviewItem,
   SellPreviewResponse,
 } from '@shared/types/market';
-import { text } from '@server/utils/aiClient';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   getArtifactQualityFromProduct,
@@ -49,6 +45,19 @@ import {
 
 const SELL_SESSION_PREFIX = 'market:sell:session:';
 const SELL_LOCK_PREFIX = 'market:sell:lock:';
+const APPRAISAL_RATING_STEPS: HighTierAppraisal['rating'][] = ['C', 'B', 'A', 'S'];
+const HIGH_TIER_MATERIAL_BASE_RATING = {
+  真品: 'C',
+  地品: 'B',
+  天品: 'A',
+  仙品: 'S',
+  神品: 'S',
+} as const satisfies Record<
+  '真品' | '地品' | '天品' | '仙品' | '神品',
+  HighTierAppraisal['rating']
+>;
+
+type HighTierMaterialRank = keyof typeof HIGH_TIER_MATERIAL_BASE_RATING;
 
 function isLowTier(quality: Quality): boolean {
   return (
@@ -281,28 +290,109 @@ export function buildArtifactHighTierAppraisal(
   };
 }
 
-export function buildFallbackAppraisal(material: Material): HighTierAppraisal {
-  return {
-    rating: 'C',
-    comment: `此物虽有灵韵，却难见本源神华。以当前品相观之，尚可作炼材辅佐之用，难称绝珍，回收估值当以稳妥为先。(${material.name})`,
-    keywords: ['普通', '稳妥'],
-  };
+function shiftAppraisalRating(
+  rating: HighTierAppraisal['rating'],
+  delta: number,
+): HighTierAppraisal['rating'] {
+  const index = APPRAISAL_RATING_STEPS.indexOf(rating);
+  return APPRAISAL_RATING_STEPS[
+    clamp(index + delta, 0, APPRAISAL_RATING_STEPS.length - 1)
+  ];
 }
 
-async function appraiseHighTierMaterial(
-  material: Material,
-): Promise<HighTierAppraisal> {
-  try {
-    const result = await text(
-      getMarketAppraisalPrompt(),
-      getMarketAppraisalUserPrompt(material),
-      true,
-    );
-    return JSON.parse(result.text) as HighTierAppraisal;
-  } catch (error) {
-    console.warn('high-tier material appraisal failed, fallback used:', error);
-    return buildFallbackAppraisal(material);
+function getMaterialKeywordSource(
+  material: Pick<Material, 'name' | 'description' | 'details'>,
+): string {
+  return [
+    material.name,
+    material.description || '',
+    JSON.stringify(material.details || {}),
+  ].join(' ');
+}
+
+function extractMaterialAppraisalKeywords(
+  material: Pick<Material, 'name' | 'description' | 'details'>,
+): string[] {
+  const keywordSource = getMaterialKeywordSource(material);
+  return Object.entries(APPRAISAL_KEYWORD_WEIGHTS)
+    .filter(([token]) => keywordSource.includes(token))
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .map(([token]) => token)
+    .slice(0, 4);
+}
+
+function getMaterialAppraisalAdjustment(keywords: string[]): number {
+  let positiveScore = 0;
+  let negativeScore = 0;
+
+  for (const keyword of keywords) {
+    const weight = APPRAISAL_KEYWORD_WEIGHTS[keyword] ?? 0;
+    if (weight > 0) positiveScore += weight;
+    if (weight < 0) negativeScore += Math.abs(weight);
   }
+
+  if (positiveScore >= 0.05 && positiveScore > negativeScore) return 1;
+  if (negativeScore >= 0.04 && negativeScore > positiveScore) return -1;
+  return 0;
+}
+
+function getMaterialAppraisalFeatureText(keywords: string[]): string {
+  const positiveKeywords = keywords.filter(
+    (keyword) => (APPRAISAL_KEYWORD_WEIGHTS[keyword] ?? 0) > 0,
+  );
+  const negativeKeywords = keywords.filter(
+    (keyword) => (APPRAISAL_KEYWORD_WEIGHTS[keyword] ?? 0) < 0,
+  );
+
+  if (positiveKeywords.length > 0 && positiveKeywords.length >= negativeKeywords.length) {
+    return `尤见${positiveKeywords.slice(0, 2).join('、')}之象`;
+  }
+  if (negativeKeywords.length > 0) {
+    return `惜有${negativeKeywords.slice(0, 2).join('、')}之痕`;
+  }
+  return '气机收束，异象未尽显';
+}
+
+function getMaterialRankTone(rank: HighTierMaterialRank): string {
+  switch (rank) {
+    case '真品':
+      return '已脱凡材，可入稳价之列';
+    case '地品':
+      return '底蕴稳固，足作上乘炼材';
+    case '天品':
+      return '灵机昂藏，已有高阶宝材气象';
+    case '仙品':
+      return '仙蕴昭然，难得一见';
+    case '神品':
+      return '神华内敛，非寻常坊市所能久留';
+  }
+}
+
+export function buildMaterialHighTierAppraisal(
+  material: Pick<
+    Material,
+    'name' | 'type' | 'rank' | 'element' | 'description' | 'details'
+  >,
+): HighTierAppraisal {
+  const rank =
+    material.rank in HIGH_TIER_MATERIAL_BASE_RATING
+      ? (material.rank as HighTierMaterialRank)
+      : '真品';
+  const keywords = extractMaterialAppraisalKeywords(material);
+  const rating = shiftAppraisalRating(
+    HIGH_TIER_MATERIAL_BASE_RATING[rank],
+    getMaterialAppraisalAdjustment(keywords),
+  );
+  const typeLabel = getMaterialTypeLabel(material.type);
+  const elementText = material.element ? `${material.element}灵息流转` : '灵息内敛';
+  const featureText = getMaterialAppraisalFeatureText(keywords);
+  const comment = `此${rank}${typeLabel}「${material.name}」${elementText}，${featureText}。按坊市旧例称量，${getMaterialRankTone(rank)}，今可定为${rating}级回收。`;
+
+  return {
+    rating,
+    comment,
+    keywords,
+  };
 }
 
 function normalizeItemIds(itemIds: string[]): string[] {
@@ -438,7 +528,7 @@ async function previewMaterialSell(
   if (highTier.length === 1) {
     const material = highTier[0];
     mode = 'high_single';
-    appraisal = await appraiseHighTierMaterial(material);
+    appraisal = buildMaterialHighTierAppraisal(material);
     const unitPrice = calculateHighTierUnitPrice(material, appraisal);
     items = [
       {

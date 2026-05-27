@@ -47,9 +47,7 @@ router.post('/', requireUser(), async (c) => {
     remainingRerolls = rerollCheck.remaining;
   }
 
-  const fates = await FateEngine.generateCandidatePool(cultivator, {
-    strategy: 'root_restricted',
-  });
+  const fates = await FateEngine.generateCandidatePool(cultivator);
   await saveTempFates(tempId, fates);
 
   return c.json({

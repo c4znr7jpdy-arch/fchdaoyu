@@ -147,10 +147,9 @@ export class RewardFactory {
     mapRealm: RealmType,
     tier: string,
     dangerScore: number, // 新增：危险分数 0-100
-    playerInfo?: PlayerInfo,
   ): ResourceOperation[] {
     return blueprints.map((bp) =>
-      this.materializeOne(bp, mapRealm, tier, dangerScore, playerInfo),
+      this.materializeOne(bp, mapRealm, tier, dangerScore),
     );
   }
 
@@ -185,7 +184,6 @@ export class RewardFactory {
       mapRealm,
       tier,
       dangerScore,
-      playerInfo,
     );
 
     // 合并返回
@@ -200,7 +198,6 @@ export class RewardFactory {
     mapRealm: RealmType,
     tier: string,
     dangerScore: number,
-    playerInfo?: PlayerInfo,
   ): ResourceOperation {
     const config = REALM_REWARD_CONFIG[mapRealm] || REALM_REWARD_CONFIG['筑基'];
     const multiplier = TIER_MULTIPLIER[tier] || TIER_MULTIPLIER['C'];
@@ -212,7 +209,6 @@ export class RewardFactory {
       dangerBonus,
       mapRealm,
       tier,
-      playerInfo,
     );
   }
 
@@ -228,7 +224,6 @@ export class RewardFactory {
     dangerBonus: number,
     mapRealm: RealmType,
     tier: string,
-    playerInfo?: PlayerInfo,
   ): ResourceOperation {
     // 获取或推断元素
     const element = bp.element || this.inferElement(bp.description || '');
@@ -236,17 +231,12 @@ export class RewardFactory {
       bp.material_type,
       bp.description || '',
     );
-    const rewardTypeBias = playerInfo?.fate_reward_bias?.[materialType] ?? 1;
-    const rewardScoreMultiplier =
-      playerInfo?.fate_reward_score_multiplier ?? 1;
-    const biasedRewardScore = (bp.reward_score ?? 50) * rewardScoreMultiplier * rewardTypeBias;
-
     // 计算品质（使用新的评分公式）
     const quality = this.rollMaterialQuality(
       mapRealm,
       tier,
       dangerBonus * 200, // 转换回 0-100 的危险分数
-      biasedRewardScore,
+      bp.reward_score ?? 50,
     );
 
     // 计算价格（带危险分数加成）

@@ -190,9 +190,6 @@ export const PlayerInfoSchema = z.object({
     maxHp: z.number(),
     maxMp: z.number(),
   }),
-  fate_bias_summary: z.string().optional(),
-  fate_reward_bias: z.record(z.string(), z.number()).optional(),
-  fate_reward_score_multiplier: z.number().optional(),
 });
 
 export type PlayerInfo = z.infer<typeof PlayerInfoSchema>;

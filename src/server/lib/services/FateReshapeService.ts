@@ -194,9 +194,7 @@ export const FateReshapeService = {
         throw new FateReshapeServiceError(400, '缺少天机逆命符，无法开启命格重塑');
       }
 
-      const currentCandidates = await FateEngine.generateCandidatePool(cultivator, {
-        strategy: 'root_restricted',
-      });
+      const currentCandidates = await FateEngine.generateCandidatePool(cultivator);
       const createdAt = Date.now();
       const session: FateReshapeSessionStore = {
         sessionId: crypto.randomUUID(),
@@ -247,9 +245,6 @@ export const FateReshapeService = {
 
       const currentCandidates = await FateEngine.generateCandidatePool(
         bundle.cultivator,
-        {
-          strategy: 'root_restricted',
-        },
       );
 
       const nextSession: FateReshapeSessionStore = {

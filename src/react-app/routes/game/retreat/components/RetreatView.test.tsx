@@ -1,6 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('@app/components/providers/InkUIProvider', () => ({
+  useInkUI: vi.fn(),
+}));
+
 vi.mock('../hooks/useRetreatViewModel', () => ({
   useRetreatViewModel: vi.fn(),
 }));
@@ -35,9 +39,11 @@ vi.mock('./RetreatResultSection', () => ({
 }));
 
 import { useLifespanStatus } from '@app/components/feature/cultivator/LifespanStatusCard';
+import { useInkUI } from '@app/components/providers/InkUIProvider';
 import { useRetreatViewModel } from '../hooks/useRetreatViewModel';
-import { RetreatView } from './RetreatView';
+import { BreakthroughHelpContent, RetreatView } from './RetreatView';
 
+const mockedUseInkUI = vi.mocked(useInkUI);
 const mockedUseRetreatViewModel = vi.mocked(useRetreatViewModel);
 const mockedUseLifespanStatus = vi.mocked(useLifespanStatus);
 
@@ -86,6 +92,9 @@ function createBaseViewModel() {
 
 describe('RetreatView', () => {
   it('renders a focused retreat scene without the old side rail and chance panel', () => {
+    mockedUseInkUI.mockReturnValue({
+      openDialog: vi.fn(),
+    } as any);
     mockedUseRetreatViewModel.mockReturnValue(createBaseViewModel() as any);
     mockedUseLifespanStatus.mockReturnValue({
       status: {
@@ -101,6 +110,7 @@ describe('RetreatView', () => {
     expect(html).toContain('闭关修炼');
     expect(html).toContain('尝试突破');
     expect(html).toContain('当前筹算');
+    expect(html).toContain('查看说明');
     expect(html).toContain('今日尚余 7 年寿元可用');
     expect(html).toContain('成功率较高，值得一试。');
     expect(html).not.toContain('静室案头');
@@ -111,6 +121,9 @@ describe('RetreatView', () => {
   });
 
   it('shows only a compact blocking summary when a major breakthrough is not ready', () => {
+    mockedUseInkUI.mockReturnValue({
+      openDialog: vi.fn(),
+    } as any);
     mockedUseRetreatViewModel.mockReturnValue({
       ...createBaseViewModel(),
       cultivator: {
@@ -153,5 +166,24 @@ describe('RetreatView', () => {
     expect(html).not.toContain('尝试突破');
     expect(html).not.toContain('返回静室');
     expect(html).not.toContain('仍在筹备');
+  });
+
+  it('explains the three breakthrough types and their thresholds in the help dialog content', () => {
+    const html = renderToStaticMarkup(
+      <BreakthroughHelpContent
+        breakthroughType="normal"
+        canBreakthrough
+        isMajorBreakthrough
+        majorBreakthroughBlocked
+      />,
+    );
+
+    expect(html).toContain('强行突破');
+    expect(html).toContain('修为达到 60% 后即可尝试');
+    expect(html).toContain('常规突破');
+    expect(html).toContain('修为达到 80% 后即可尝试');
+    expect(html).toContain('圆满突破');
+    expect(html).toContain('修为达到 100%，且道心感悟至少达到 50');
+    expect(html).toContain('跨大境界突破');
   });
 });

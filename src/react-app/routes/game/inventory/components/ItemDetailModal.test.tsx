@@ -32,7 +32,7 @@ const breakthroughPill: Consumable = {
     ],
     consumeRules: {
       scene: 'out_of_battle_only',
-      countsTowardLongTermQuota: true,
+      quotaCategory: 'long_term',
     },
     alchemyMeta: {
       source: 'formula',
@@ -42,6 +42,35 @@ const breakthroughPill: Consumable = {
       stability: 82,
       toxicityRating: 36,
       tags: ['breakthrough'],
+    },
+  },
+};
+
+const insightPill: Consumable = {
+  id: 'pill-insight',
+  name: '悟心丹',
+  type: '丹药',
+  quality: '天品',
+  quantity: 1,
+  description: '丹成评述：寒意沉静，服下后杂念自散。',
+  spec: {
+    kind: 'pill',
+    family: 'insight',
+    operations: [
+      { type: 'gain_progress', target: 'comprehension_insight', value: 8 },
+      { type: 'change_gauge', gauge: 'pillToxicity', delta: 5 },
+    ],
+    consumeRules: {
+      scene: 'out_of_battle_only',
+      quotaCategory: 'none',
+    },
+    alchemyMeta: {
+      source: 'improvised',
+      sourceMaterials: ['寒魄晶'],
+      dominantElement: '冰',
+      stability: 80,
+      toxicityRating: 12,
+      tags: ['insight'],
     },
   },
 };
@@ -68,5 +97,22 @@ describe('ItemDetailModal', () => {
     expect(html).not.toContain('breakthrough_focus');
     expect(html.indexOf('核心药效')).toBeLessThan(html.indexOf('丹成评述'));
     expect(html.split('获得「破境凝神」').length - 1).toBe(1);
+  });
+
+  it('renders insight pills from structured effects instead of raw family description', () => {
+    const html = renderToStaticMarkup(
+      <ItemDetailModal
+        isOpen
+        onClose={() => undefined}
+        item={{ kind: 'consumable', item: insightPill }}
+        viewerRealm="金丹"
+      />,
+    );
+
+    expect(html).toContain('道心感悟 +8');
+    expect(html).toContain('感悟');
+    expect(html).toContain('丹成评述');
+    expect(html).not.toContain('服用上限：10 次');
+    expect(html).not.toContain('旧说明');
   });
 });

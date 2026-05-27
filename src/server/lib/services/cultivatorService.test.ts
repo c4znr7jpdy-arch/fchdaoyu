@@ -79,6 +79,7 @@ function createCondition() {
     },
     counters: {
       longTermPillUsesByRealm: {},
+      cultivationPillUsesByRealm: {},
     },
     statuses: [],
     timestamps: {
@@ -151,7 +152,7 @@ describe('getCultivatorByIdUnsafe', () => {
             ],
             consumeRules: {
               scene: 'out_of_battle_only',
-              countsTowardLongTermQuota: true,
+              quotaCategory: 'long_term',
             },
             alchemyMeta: {
               source: 'improvised',

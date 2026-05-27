@@ -3,11 +3,13 @@ import {
   getPillToxicityRecoveryMultiplier,
   getPillToxicityStage,
 } from '@shared/lib/condition';
+import { evaluateFateContext } from '@shared/lib/fates';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import type {
   ConditionStatusInstance,
   CultivatorCondition,
 } from '@shared/types/condition';
+import type { PreHeavenFate } from '@shared/types/cultivator';
 
 export function getStatusEffectDetails(
   status: ConditionStatusInstance,
@@ -31,11 +33,19 @@ export function getStatusEffectDetails(
 
 export function getPillToxicityEffectDetails(
   conditionInput: CultivatorCondition | undefined,
+  fates: PreHeavenFate[] = [],
 ): string[] {
+  const fateContext = evaluateFateContext(fates);
   const recoveryEfficiency = Math.round(
-    getPillToxicityRecoveryMultiplier(conditionInput) * 100,
+    getPillToxicityRecoveryMultiplier(
+      conditionInput,
+      fateContext.toxicityPenaltyMultiplier,
+    ) * 100,
   );
-  const breakthroughPenalty = getBreakthroughPenaltyPercent(conditionInput);
+  const breakthroughPenalty = getBreakthroughPenaltyPercent(
+    conditionInput,
+    fateContext.toxicityPenaltyMultiplier,
+  );
   const stage = getPillToxicityStage(conditionInput).label;
   const currentToxicity = Math.max(0, conditionInput?.gauges.pillToxicity ?? 0);
 

@@ -1,7 +1,17 @@
-import type { Cultivator, PreHeavenFate } from '@shared/types/cultivator';
-import { FATE_QUALITY_TEMPLATES } from './FateConfig';
-import { FateEngine } from './FateEngine';
+import { describe, expect, it } from 'vitest';
+import type { Cultivator } from '@shared/types/cultivator';
 import { QUALITY_ORDER } from '@shared/types/constants';
+import { FateEngine } from './FateEngine';
+
+process.env.DISABLE_LLM_NAMING = 'true';
+
+function createSeededRng(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
 
 const buildCultivator = (
   overrides: Partial<Cultivator> = {},
@@ -40,163 +50,104 @@ const buildCultivator = (
   },
   max_skills: 4,
   spirit_stones: 0,
-  prompt: '寒门剑修，想走极致锋锐之道',
+  prompt: '寒门修士，想稳扎稳打地闭关冲关',
   ...overrides,
 });
 
 describe('FateEngine', () => {
-  const previousDisable = process.env.NEXT_PUBLIC_DISABLE_LLM_NAMING;
-
-  beforeAll(() => {
-    process.env.NEXT_PUBLIC_DISABLE_LLM_NAMING = 'true';
-  });
-
-  afterAll(() => {
-    process.env.NEXT_PUBLIC_DISABLE_LLM_NAMING = previousDisable;
-  });
-
-  it('root_restricted 下无金灵根不会抽到剑修核心命格', async () => {
-    const pool = await FateEngine.generateCandidatePool(
-      buildCultivator({
-        spiritual_roots: [{ element: '木', strength: 88, grade: '真灵根' }],
-        prompt: '草木之气浓厚，想走丹药与温养一路',
-      }),
-      { rng: () => 0, strategy: 'root_restricted' },
-    );
-
-    expect(pool).toHaveLength(6);
-    expect(
-      pool.some(
-        (fate) => fate.generationModel?.coreKey === 'core_sword_bone',
-      ),
-    ).toBe(false);
-  });
-
-  it('fully_random 下同条件仍可抽到被灵根限制的核心命格', async () => {
-    const pool = await FateEngine.generateCandidatePool(
-      buildCultivator({
-        spiritual_roots: [{ element: '木', strength: 88, grade: '真灵根' }],
-        prompt: '草木修士',
-      }),
-      { rng: () => 0, strategy: 'fully_random' },
-    );
-
-    expect(
-      pool.some(
-        (fate) => fate.generationModel?.coreKey === 'core_sword_bone',
-      ),
-    ).toBe(true);
-  });
-
-  it('各品质命格遵守 boon/burden/rare 模板数量', async () => {
+  it('generates six candidates and keeps only three selected fates', async () => {
     const pool = await FateEngine.generateCandidatePool(buildCultivator(), {
-      rng: () => 0,
-      strategy: 'root_restricted',
+      rng: createSeededRng(7),
     });
 
-    for (const fate of pool) {
-      const quality = fate.quality ?? '凡品';
-      const template = FATE_QUALITY_TEMPLATES[quality];
-      const effects = fate.effects ?? [];
-      const boonCount = effects.filter((effect) => effect.polarity === 'boon').length;
-      const burdenCount = effects.filter((effect) => effect.polarity === 'burden').length;
-      const rareCount = effects.filter((effect) =>
-        effect.fragmentId.startsWith('rare_'),
-      ).length;
+    expect(pool).toHaveLength(6);
+    expect(FateEngine.getSelectedFates(pool)).toHaveLength(3);
+  });
 
-      expect(boonCount).toBe(template.boonCount + rareCount);
-      expect(burdenCount).toBe(template.burdenCount);
-      if (!template.rareOptional) {
-        expect(rareCount).toBe(template.rareCount);
+  it('uses the new single-effect model and allows at most one dual-sided fate per roll', async () => {
+    const pool = await FateEngine.generateCandidatePool(buildCultivator(), {
+      rng: createSeededRng(19),
+    });
+
+    const dualSided = pool.filter(
+      (fate) => fate.generationModel?.category === 'dual_sided',
+    );
+    expect(dualSided.length).toBeLessThanOrEqual(1);
+
+    for (const fate of pool) {
+      const effects = fate.effects ?? [];
+      if (fate.generationModel?.category === 'dual_sided') {
+        expect(fate.quality).toBeTruthy();
+        expect(
+          QUALITY_ORDER[fate.quality ?? '凡品'],
+        ).toBeGreaterThanOrEqual(QUALITY_ORDER['天品']);
+        expect(effects).toHaveLength(2);
+        expect(effects[0]?.polarity).toBe('boon');
+        expect(effects[1]?.polarity).toBe('burden');
+        expect(effects[0]?.effectId).not.toBe(effects[1]?.effectId);
       } else {
-        expect(rareCount).toBeLessThanOrEqual(template.rareCount);
+        expect(effects).toHaveLength(1);
+        expect(effects[0]?.polarity).toBe('boon');
       }
+
+      expect(fate.name).toMatch(/^[\u4e00-\u9fff]{4,5}$/);
     }
   });
 
-  it('高品质命格不会被强制扩成三域全覆盖', async () => {
+  it('rolls persisted values inside the quality range and does not emit removed effect types', async () => {
     const pool = await FateEngine.generateCandidatePool(buildCultivator(), {
-      rng: () => 0,
-      strategy: 'root_restricted',
+      rng: createSeededRng(31),
     });
-    const highQualityFates = pool.filter(
-      (fate) =>
-        QUALITY_ORDER[fate.quality ?? '凡品'] >= QUALITY_ORDER['天品'],
-    );
-
-    expect(highQualityFates.length).toBeGreaterThan(0);
-    expect(
-      highQualityFates.every((fate) => {
-        const positiveScopes = new Set(
-          (fate.effects ?? [])
-            .filter((effect) => effect.polarity === 'boon')
-            .map((effect) => effect.scope),
-        );
-        return positiveScopes.size <= 2;
-      }),
-    ).toBe(true);
-  });
-
-  it('从 effects 聚合正负造物偏置', () => {
-    const context = FateEngine.evaluateCreationContext([
-      {
-        name: '剑锋命',
-        effects: [
-          {
-            id: '1',
-            fragmentId: 'boon_blade_resonance',
-            scope: 'creation',
-            polarity: 'boon',
-            effectType: 'creation_tag_bias',
-            value: 0.6,
-            tags: ['Material.Semantic.Blade'],
-            label: '造物更易引出【锋刃】词缀（强）',
-            description: '造物更易引出【锋刃】词缀（强）',
-            extreme: 'strong',
-          },
-          {
-            id: '2',
-            fragmentId: 'burden_avoid_sustain',
-            scope: 'creation',
-            polarity: 'burden',
-            effectType: 'creation_tag_bias',
-            value: 0.4,
-            tags: ['Material.Semantic.Sustain'],
-            label: '造物更难圆融【疗养】词缀（强）',
-            description: '造物更难圆融【疗养】词缀（强）',
-            extreme: 'strong',
-          },
-        ],
-      } as PreHeavenFate,
-      {
-        name: '丹心骨',
-        effects: [
-          {
-            id: '3',
-            fragmentId: 'boon_alchemy_resonance',
-            scope: 'creation',
-            polarity: 'boon',
-            effectType: 'creation_tag_bias',
-            value: 0.55,
-            tags: ['Material.Semantic.Alchemy'],
-            label: '造物更易引出【丹道】词缀（强）',
-            description: '造物更易引出【丹道】词缀（强）',
-            extreme: 'strong',
-          },
-        ],
-      } as PreHeavenFate,
+    const allowedEffectTypes = new Set([
+      'retreat_exp_multiplier',
+      'retreat_insight_multiplier',
+      'breakthrough_bonus',
+      'natural_recovery_multiplier',
+      'toxicity_penalty_multiplier',
+      'alchemy_spirit_stone_multiplier',
+      'refine_spirit_stone_multiplier',
+      'enlightenment_insight_multiplier',
+      'inn_cultivation_loss_multiplier',
+      'system_spirit_stone_multiplier',
     ]);
 
-    expect(context.positiveTagBiases.map((bias) => bias.tag)).toContain(
-      'Material.Semantic.Blade',
-    );
-    expect(context.positiveTagBiases.map((bias) => bias.tag)).toContain(
-      'Material.Semantic.Alchemy',
-    );
-    expect(context.negativeTagBiases.map((bias) => bias.tag)).toContain(
-      'Material.Semantic.Sustain',
-    );
-    expect(context.summary).toContain('剑锋命');
-    expect(context.summary).toContain('丹心骨');
+    for (const effect of pool.flatMap((fate) => fate.effects ?? [])) {
+      expect(effect.value).toBeGreaterThanOrEqual(effect.rollMeta.minValue);
+      expect(effect.value).toBeLessThanOrEqual(effect.rollMeta.maxValue);
+      expect(allowedEffectTypes.has(effect.effectType)).toBe(true);
+    }
+  });
+
+  it('uses prompt keywords as light weighting rather than hard restrictions', async () => {
+    let neutralPreferredCount = 0;
+    let alchemyPreferredCount = 0;
+
+    for (let seed = 1; seed <= 24; seed += 1) {
+      const neutralPool = await FateEngine.generateCandidatePool(
+        buildCultivator({ prompt: '寻常散修' }),
+        { rng: createSeededRng(seed) },
+      );
+      const alchemyPool = await FateEngine.generateCandidatePool(
+        buildCultivator({ prompt: '偏爱炼丹、调息、化解丹毒' }),
+        { rng: createSeededRng(seed) },
+      );
+
+      neutralPreferredCount += neutralPool
+        .flatMap((fate) => fate.effects ?? [])
+        .filter((effect) =>
+          ['alchemy-cost-reduction', 'toxicity-mitigation'].includes(
+            effect.effectId,
+          ),
+        ).length;
+      alchemyPreferredCount += alchemyPool
+        .flatMap((fate) => fate.effects ?? [])
+        .filter((effect) =>
+          ['alchemy-cost-reduction', 'toxicity-mitigation'].includes(
+            effect.effectId,
+          ),
+        ).length;
+    }
+
+    expect(alchemyPreferredCount).toBeGreaterThan(neutralPreferredCount);
   });
 });

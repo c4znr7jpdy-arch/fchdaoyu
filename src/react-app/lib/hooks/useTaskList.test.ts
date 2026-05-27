@@ -8,20 +8,32 @@ import {
 function createTask(id: string): TaskInstance {
   return {
     id,
-    templateId: `template-${id}`,
-    category: 'major_breakthrough',
-    title: `${id}-task`,
-    description: `${id}-description`,
+    definitionId: `definition-${id}`,
+    category: 'daily',
     status: 'active',
-    cultivatorId: 'cultivator-1',
+    currentStage: 'daily-stage',
+    objectives: [],
+    metadata: {
+      dailyKind: 'alchemy',
+      resetKey: '2026-05-26',
+      rewardSummary: ['灵石 x300'],
+    },
     createdAt: '2026-05-25T00:00:00.000Z',
     updatedAt: '2026-05-25T00:00:00.000Z',
-    metadata: {
-      fromRealm: '炼气',
-      toRealm: '筑基',
+    completedAt: null,
+    snapshot: {
+      title: `${id}-task`,
+      summary: `${id}-summary`,
+      isCompleted: false,
+      currentStageId: 'daily-stage',
+      currentStageIndex: 0,
+      totalStages: 1,
+      missingRequirements: [],
+      dailyKind: 'alchemy',
+      resetKey: '2026-05-26',
+      rewardSummary: ['灵石 x300'],
+      stages: [],
     },
-    objectives: [],
-    rewards: [],
   };
 }
 

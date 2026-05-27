@@ -67,6 +67,7 @@ export const ConsumableUseEngine = {
           wisdom: Math.round(nextCultivator.attributes.wisdom),
           speed: Math.round(nextCultivator.attributes.speed),
           willpower: Math.round(nextCultivator.attributes.willpower),
+          cultivation_progress: nextCultivator.cultivation_progress ?? null,
           condition: nextCultivator.condition ?? {},
         })
         .where(eq(schema.cultivators.id, cultivatorId));

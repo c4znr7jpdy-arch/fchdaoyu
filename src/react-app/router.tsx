@@ -211,6 +211,17 @@ export const router = createBrowserRouter(
               )}
             />
             <Route
+              path="tower"
+              lazy={lazyRoute(() => import('@app/routes/game/tower/route'))}
+              handle={scene(
+                {
+                  id: 'tower',
+                  summary: '蜃气每周聚作一境。先应眼前幻影，再看名号能留到第几重。',
+                },
+                '蜃楼幻境',
+              )}
+            />
+            <Route
               path="retreat"
               lazy={lazyRoute(() => import('@app/routes/game/retreat/route'))}
               handle={scene(

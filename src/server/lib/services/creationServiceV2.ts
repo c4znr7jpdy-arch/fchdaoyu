@@ -21,16 +21,20 @@ import {
   calculateCraftCost,
   calculateHighestMaterialRank,
 } from '@shared/engine/creation-v2/CraftCostCalculator';
+import {
+  evaluateFateContext,
+  getRefineSpiritStoneMultiplier,
+  scaleFateAdjustedValue,
+} from '@shared/lib/fates';
 import { getExecutor } from '@server/lib/drizzle/db';
 import { cultivators, materials } from '@server/lib/drizzle/schema';
 import { redis } from '@server/lib/redis';
 import { parseRedisJson } from '@server/lib/redis/json';
 import * as creationProductRepository from '@server/lib/repositories/creationProductRepository';
 import type { EquipmentSlot, Quality, RealmStage, RealmType } from '@shared/types/constants';
-import type { Material } from '@shared/types/cultivator';
+import type { Material, PreHeavenFate } from '@shared/types/cultivator';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { getCultivatorByIdUnsafe } from './cultivatorService';
-import { FateEngine } from './FateEngine';
 
 const MAX_GONGFA = 5;
 
@@ -320,17 +324,9 @@ export async function processCreation(
     }
 
     const fullCultivator = await getCultivatorByIdUnsafe(cultivatorId);
-    const fateCreationContext = FateEngine.evaluateCreationContext(
+    const fateContext = evaluateFateContext(
       fullCultivator?.cultivator.pre_heaven_fates ?? [],
     );
-    const enrichedUserPrompt = [
-      userPrompt?.trim(),
-      fateCreationContext.summary
-        ? `命格偏置：${fateCreationContext.summary}`
-        : undefined,
-    ]
-      .filter(Boolean)
-      .join('；');
 
     // 4. 计算资源消耗
     const highestMaterialRank = calculateHighestMaterialRank(
@@ -338,7 +334,13 @@ export async function processCreation(
     );
     const resourceType =
       productType === 'artifact' ? 'spiritStone' : 'comprehension';
-    const costAmount = calculateCraftCost(highestMaterialRank, resourceType);
+    const baseCostAmount = calculateCraftCost(highestMaterialRank, resourceType);
+    const costAmount = scaleFateAdjustedValue(
+      baseCostAmount,
+      resourceType === 'spiritStone'
+        ? getRefineSpiritStoneMultiplier(fateContext)
+        : fateContext.enlightenmentInsightMultiplier,
+    );
 
     // 校验资源是否充足
     if (resourceType === 'spiritStone') {
@@ -398,13 +400,7 @@ export async function processCreation(
       realmStage: cultivator.realm_stage as RealmStage,
       productType,
       materials: engineMaterials,
-      ...(fateCreationContext.positiveTagBiases.length > 0
-        ? { contextPositiveTagBiases: fateCreationContext.positiveTagBiases }
-        : {}),
-      ...(fateCreationContext.negativeTagBiases.length > 0
-        ? { contextNegativeTagBiases: fateCreationContext.negativeTagBiases }
-        : {}),
-      ...(enrichedUserPrompt ? { userPrompt: enrichedUserPrompt } : {}),
+      ...(userPrompt?.trim() ? { userPrompt: userPrompt.trim() } : {}),
       ...(effectiveRequestedSlot
         ? { requestedSlot: effectiveRequestedSlot }
         : {}),
@@ -616,14 +612,26 @@ function extractAffixSummary(
 export function estimateCost(
   selectedMaterials: Array<{ rank: Quality }>,
   craftType: string,
+  fates: PreHeavenFate[] = [],
 ): { spiritStones?: number; comprehension?: number } {
   const productType = getCreationProductTypeFromCraftType(craftType);
   if (!productType) return {};
 
   const highestMaterialRank = calculateHighestMaterialRank(selectedMaterials);
+  const fateContext = evaluateFateContext(fates);
   if (productType === 'artifact') {
-    return { spiritStones: calculateCraftCost(highestMaterialRank, 'spiritStone') };
+    return {
+      spiritStones: scaleFateAdjustedValue(
+        calculateCraftCost(highestMaterialRank, 'spiritStone'),
+        getRefineSpiritStoneMultiplier(fateContext),
+      ),
+    };
   }
 
-  return { comprehension: calculateCraftCost(highestMaterialRank, 'comprehension') };
+  return {
+    comprehension: scaleFateAdjustedValue(
+      calculateCraftCost(highestMaterialRank, 'comprehension'),
+      fateContext.enlightenmentInsightMultiplier,
+    ),
+  };
 }

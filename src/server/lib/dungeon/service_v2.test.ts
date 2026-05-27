@@ -153,6 +153,7 @@ describe('DungeonService.createBattleSession', () => {
           },
           counters: {
             longTermPillUsesByRealm: {},
+      cultivationPillUsesByRealm: {},
           },
           statuses: [],
           timestamps: {
@@ -221,6 +222,7 @@ describe('DungeonService.createBattleSession', () => {
             },
             counters: {
               longTermPillUsesByRealm: {},
+      cultivationPillUsesByRealm: {},
             },
             statuses: [],
             timestamps: {

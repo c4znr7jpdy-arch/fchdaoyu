@@ -87,9 +87,6 @@ async function assembleCultivatorFromRelations(
         name: f.name,
         quality: f.quality as Quality,
         description: f.description || undefined,
-        tags:
-          ((f.details as Record<string, unknown> | null)?.tags as string[]) ||
-          undefined,
         effects:
           ((f.details as Record<string, unknown> | null)?.effects as
             | PreHeavenFate['effects']
@@ -317,7 +314,6 @@ function buildPreHeavenFateInsertValues(
     quality: fate.quality || null,
     registryKey: null,
     details: {
-      tags: fate.tags ?? [],
       effects: fate.effects ?? [],
       generationModel: fate.generationModel ?? null,
       namingMetadata: fate.namingMetadata ?? null,

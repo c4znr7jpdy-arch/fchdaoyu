@@ -244,7 +244,7 @@ export function MaterialsTab({
       )}
       <GameSceneInset className="px-3 py-2.5">
         <p className="text-ink-secondary text-sm leading-7">
-          材料收购功能已迁至坊市鉴宝司。若要继续流转，可从下方 dock 进入交易分流。
+          材料收购功能已迁至坊市鉴宝司。
         </p>
       </GameSceneInset>
     </div>

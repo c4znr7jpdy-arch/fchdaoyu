@@ -1,9 +1,19 @@
 import type { ConditionStatusKey } from './condition';
 import type { Quality, RealmType } from './constants';
+import type { MailAttachment } from './mail';
 
-export type TaskCategory = 'breakthrough_major';
+export type TaskCategory = 'breakthrough_major' | 'daily';
 
 export type TaskStatus = 'active' | 'completed';
+
+export type TaskRepeat = 'daily';
+
+export type TaskDailyKind = 'alchemy' | 'dungeon' | 'ranking';
+
+export type TaskEvent =
+  | 'alchemy_crafted'
+  | 'dungeon_completed'
+  | 'ranking_challenge_battled';
 
 export type TaskObjectiveKind =
   | 'craft_breakthrough_pill'
@@ -11,7 +21,8 @@ export type TaskObjectiveKind =
   | 'technique_quality_at_least'
   | 'status_active'
   | 'complete_dungeon'
-  | 'win_task_challenge';
+  | 'win_task_challenge'
+  | 'event_count';
 
 export interface TaskActionLink {
   label: string;
@@ -65,13 +76,21 @@ export interface WinTaskChallengeObjectiveDefinition
   challengeId: string;
 }
 
+export interface EventCountObjectiveDefinition
+  extends TaskObjectiveDefinitionBase {
+  kind: 'event_count';
+  event: TaskEvent;
+  threshold: number;
+}
+
 export type TaskObjectiveDefinition =
   | CraftBreakthroughPillObjectiveDefinition
   | InsightAtLeastObjectiveDefinition
   | TechniqueQualityAtLeastObjectiveDefinition
   | StatusActiveObjectiveDefinition
   | CompleteDungeonObjectiveDefinition
-  | WinTaskChallengeObjectiveDefinition;
+  | WinTaskChallengeObjectiveDefinition
+  | EventCountObjectiveDefinition;
 
 export interface TaskStageDefinition {
   id: string;
@@ -86,8 +105,11 @@ export interface TaskDefinition {
   category: TaskCategory;
   title: string;
   summary: string;
-  fromRealm: RealmType;
-  toRealm: RealmType;
+  fromRealm?: RealmType;
+  toRealm?: RealmType;
+  repeat?: TaskRepeat;
+  dailyKind?: TaskDailyKind;
+  rewardAttachments?: MailAttachment[];
   stages: TaskStageDefinition[];
 }
 
@@ -100,14 +122,17 @@ export interface TaskObjectiveState {
 }
 
 export interface TaskInstanceMetadata {
-  fromRealm: RealmType;
-  toRealm: RealmType;
-  taskTheme:
+  fromRealm?: RealmType;
+  toRealm?: RealmType;
+  taskTheme?:
     | 'foundation'
     | 'core'
     | 'heart_demon'
     | 'tribulation'
     | 'law_insight';
+  dailyKind?: TaskDailyKind;
+  resetKey?: string;
+  rewardSummary?: string[];
 }
 
 export interface TaskObjectiveProgress {
@@ -133,13 +158,16 @@ export interface TaskStageProgress {
 export interface TaskProgressSnapshot {
   title: string;
   summary: string;
-  fromRealm: RealmType;
-  toRealm: RealmType;
+  fromRealm?: RealmType;
+  toRealm?: RealmType;
   isCompleted: boolean;
   currentStageId: string | null;
   currentStageIndex: number;
   totalStages: number;
   missingRequirements: string[];
+  dailyKind?: TaskDailyKind;
+  resetKey?: string;
+  rewardSummary?: string[];
   stages: TaskStageProgress[];
 }
 

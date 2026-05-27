@@ -1,19 +1,9 @@
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { Hono } from 'hono';
-
-const {
-  previewAlchemySelectionMock,
-  previewFormulaCraftMock,
-  processAlchemyCraftMock,
-  craftFromFormulaMock,
-} = vi.hoisted(() => ({
-  previewAlchemySelectionMock: vi.fn(),
-  previewFormulaCraftMock: vi.fn(),
-  processAlchemyCraftMock: vi.fn(),
-  craftFromFormulaMock: vi.fn(),
-}));
 
 vi.mock('@server/lib/hono/middleware', () => ({
   requireActiveCultivator: () => async (context: any, next: () => Promise<void>) => {
+    context.set('user', { id: 'user-1' });
     context.set('cultivator', {
       id: 'cultivator-1',
       spirit_stones: 50000,
@@ -48,16 +38,43 @@ vi.mock('@server/lib/services/alchemyServiceV2', () => ({
       this.status = status;
     }
   },
-  previewAlchemySelection: previewAlchemySelectionMock,
-  processAlchemyCraft: processAlchemyCraftMock,
+  previewAlchemySelection: vi.fn(),
+  processAlchemyCraft: vi.fn(),
 }));
 
 vi.mock('@server/lib/services/AlchemyFormulaService', () => ({
-  craftFromFormula: craftFromFormulaMock,
-  previewFormulaCraft: previewFormulaCraftMock,
+  craftFromFormula: vi.fn(),
+  previewFormulaCraft: vi.fn(),
 }));
 
+vi.mock('@server/lib/services/TaskService', () => ({
+  TaskService: {
+    recordTaskEvent: vi.fn(),
+  },
+}));
+
+vi.mock('@server/lib/services/cultivatorService', () => ({
+  getCultivatorById: vi.fn(),
+}));
+
+import {
+  previewAlchemySelection,
+  processAlchemyCraft,
+} from '@server/lib/services/alchemyServiceV2';
+import {
+  craftFromFormula,
+  previewFormulaCraft,
+} from '@server/lib/services/AlchemyFormulaService';
+import { getCultivatorById } from '@server/lib/services/cultivatorService';
+import { TaskService } from '@server/lib/services/TaskService';
 import craftRouter from './craft.router';
+
+const previewAlchemySelectionMock = previewAlchemySelection as unknown as Mock;
+const previewFormulaCraftMock = previewFormulaCraft as unknown as Mock;
+const processAlchemyCraftMock = processAlchemyCraft as unknown as Mock;
+const craftFromFormulaMock = craftFromFormula as unknown as Mock;
+const getCultivatorByIdMock = getCultivatorById as unknown as Mock;
+const recordTaskEventMock = TaskService.recordTaskEvent as unknown as Mock;
 
 function createApp() {
   return new Hono().route('/api/craft', craftRouter);
@@ -66,6 +83,11 @@ function createApp() {
 describe('craft router alchemy routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getCultivatorByIdMock.mockResolvedValue({
+      id: 'cultivator-1',
+      pre_heaven_fates: [],
+    } as any);
+    recordTaskEventMock.mockResolvedValue([]);
   });
 
   it('restores alchemy preview via GET /api/craft', async () => {
@@ -98,6 +120,7 @@ describe('craft router alchemy routes', () => {
       'cultivator-1',
       50000,
       ['m1', 'm2'],
+      [],
     );
   });
 
@@ -152,6 +175,7 @@ describe('craft router alchemy routes', () => {
       '11111111-1111-4111-8111-111111111111',
       ['m1', 'm2'],
       50000,
+      [],
     );
   });
 
@@ -173,7 +197,7 @@ describe('craft router alchemy routes', () => {
           ],
           consumeRules: {
             scene: 'out_of_battle_only',
-            countsTowardLongTermQuota: false,
+            quotaCategory: 'none',
           },
           alchemyMeta: {
             source: 'improvised',
@@ -183,14 +207,14 @@ describe('craft router alchemy routes', () => {
             tags: ['healing'],
           },
         },
-        formulaDiscovery: {
-          token: '11111111-1111-1111-1111-111111111111',
-          name: '青木疗伤丹丹方',
-          description: '此方偏于生机温养，主走木性回春之路。',
-          family: 'healing',
-          discoveryRemark: '炉中药脉渐趋成环，这一路回春炉意已可留存。',
-          patternSummary: '主药性：疗伤；炉位：1 种材料',
-        },
+      },
+      formulaDiscovery: {
+        token: '11111111-1111-1111-1111-111111111111',
+        name: '青木疗伤丹丹方',
+        description: '此方偏于生机温养，主走木性回春之路。',
+        family: 'healing',
+        discoveryRemark: '炉中药脉渐趋成环，这一路回春炉意已可留存。',
+        patternSummary: '主药性：疗伤；炉位：1 种材料',
       },
     });
 
@@ -224,6 +248,10 @@ describe('craft router alchemy routes', () => {
       materialQuantities: { m1: 2 },
       userPrompt: '疗伤为主',
     });
+    expect(recordTaskEventMock).toHaveBeenCalledWith(
+      'cultivator-1',
+      'alchemy_crafted',
+    );
   });
 
   it('routes formula crafting via POST /api/craft', async () => {
@@ -242,7 +270,7 @@ describe('craft router alchemy routes', () => {
           ],
           consumeRules: {
             scene: 'out_of_battle_only',
-            countsTowardLongTermQuota: false,
+            quotaCategory: 'none',
           },
           alchemyMeta: {
             source: 'formula',
@@ -299,6 +327,10 @@ describe('craft router alchemy routes', () => {
       '11111111-1111-4111-8111-111111111111',
       ['m1'],
       { m1: 2 },
+    );
+    expect(recordTaskEventMock).toHaveBeenCalledWith(
+      'cultivator-1',
+      'alchemy_crafted',
     );
   });
 });

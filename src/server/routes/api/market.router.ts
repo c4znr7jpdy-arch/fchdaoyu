@@ -71,6 +71,37 @@ const SellSchema = z.discriminatedUnion('phase', [PreviewSchema, ConfirmSchema])
 
 const router = new Hono<AppEnv>();
 
+router.post('/sell', requireActiveCultivator(), async (c) => {
+  const cultivator = c.get('cultivator');
+  if (!cultivator) {
+    return c.json({ error: '当前没有活跃角色' }, 404);
+  }
+
+  try {
+    const parsed = SellSchema.parse(await c.req.json());
+
+    if (parsed.phase === 'preview') {
+      const itemType = parsed.itemType || 'material';
+      const itemIds = parsed.itemIds || parsed.materialIds || [];
+      const result = await previewSell({ id: cultivator.id }, itemIds, itemType);
+      return c.json(result);
+    }
+
+    const result = await confirmSell(cultivator.id, parsed.sessionId);
+    return c.json(result);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return c.json({ error: error.issues[0]?.message || '参数格式错误' }, 400);
+    }
+    if (error instanceof MarketRecycleError) {
+      return jsonWithStatus(c, { error: error.message }, error.status);
+    }
+
+    console.error('market sell api error:', error);
+    return c.json({ error: '回收失败，请稍后再试' }, 500);
+  }
+});
+
 router.get('/:nodeId', requireActiveCultivator(), async (c) => {
   const cultivator = c.get('cultivator');
   if (!cultivator) {
@@ -171,37 +202,6 @@ router.post('/:nodeId/buy', requireActiveCultivator(), async (c) => {
 
     console.error('Market buy API error:', error);
     return c.json({ error: '购买失败' }, 500);
-  }
-});
-
-router.post('/sell', requireActiveCultivator(), async (c) => {
-  const cultivator = c.get('cultivator');
-  if (!cultivator) {
-    return c.json({ error: '当前没有活跃角色' }, 404);
-  }
-
-  try {
-    const parsed = SellSchema.parse(await c.req.json());
-
-    if (parsed.phase === 'preview') {
-      const itemType = parsed.itemType || 'material';
-      const itemIds = parsed.itemIds || parsed.materialIds || [];
-      const result = await previewSell({ id: cultivator.id }, itemIds, itemType);
-      return c.json(result);
-    }
-
-    const result = await confirmSell(cultivator.id, parsed.sessionId);
-    return c.json(result);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return c.json({ error: error.issues[0]?.message || '参数格式错误' }, 400);
-    }
-    if (error instanceof MarketRecycleError) {
-      return jsonWithStatus(c, { error: error.message }, error.status);
-    }
-
-    console.error('market sell api error:', error);
-    return c.json({ error: '回收失败，请稍后再试' }, 500);
   }
 });
 

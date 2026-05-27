@@ -4,6 +4,7 @@ import {
   GameSceneNote,
   GameSceneSection,
 } from '@app/components/game-shell';
+import { useInkUI } from '@app/components/providers/InkUIProvider';
 import { InkBadge, InkButton, InkInput, InkNotice } from '@app/components/ui';
 
 import { useRetreatViewModel } from '../hooks/useRetreatViewModel';
@@ -27,6 +28,74 @@ function BreakthroughLabel({
         : '强行突破';
 
   return <InkBadge tier={tone}>{text}</InkBadge>;
+}
+
+function getBreakthroughTypeText(type: 'forced' | 'normal' | 'perfect' | null) {
+  if (type === 'perfect') return '圆满突破';
+  if (type === 'normal') return '常规突破';
+  if (type === 'forced') return '强行突破';
+  return null;
+}
+
+export function BreakthroughHelpContent({
+  breakthroughType,
+  canBreakthrough,
+  isMajorBreakthrough,
+  majorBreakthroughBlocked,
+}: {
+  breakthroughType: 'forced' | 'normal' | 'perfect' | null;
+  canBreakthrough: boolean;
+  isMajorBreakthrough: boolean;
+  majorBreakthroughBlocked: boolean;
+}) {
+  const currentTypeText = getBreakthroughTypeText(breakthroughType);
+
+  return (
+    <div className="space-y-4 text-sm leading-7">
+      <p className="text-ink-secondary">
+        {!canBreakthrough
+          ? '你当前修为尚未到 60%，还不能正式尝试突破。此时静室更适合继续闭关积累。'
+          : isMajorBreakthrough && majorBreakthroughBlocked
+            ? `你当前的火候已摸到「${currentTypeText ?? '突破'}」，但这是跨大境界冲关，仍需先补齐破境前置。`
+            : currentTypeText
+              ? `你当前的眼下火候是「${currentTypeText}」。若决定冲关，确认时再看那一刻的成败推演。`
+              : '突破火候会随着修为与感悟变化，决定你此刻适合怎样起手。'}
+      </p>
+
+      <div className="space-y-3">
+        <div>
+          <p className="text-ink font-medium">强行突破</p>
+          <p className="text-ink-secondary">
+            修为达到 60%
+            后即可尝试。此时只是勉强摸到门槛，适合在寿元紧迫或不得不赌一把时起手，风险最高。
+          </p>
+        </div>
+
+        <div>
+          <p className="text-ink font-medium">常规突破</p>
+          <p className="text-ink-secondary">
+            修为达到 80%
+            后即可尝试。根基比强行突破更稳，通常是大多数修士会考虑出手的火候。
+          </p>
+        </div>
+
+        <div>
+          <p className="text-ink font-medium">圆满突破</p>
+          <p className="text-ink-secondary">
+            修为达到 100%，且道心感悟至少达到 50
+            时方可成形。此时火候最足，往往是最稳妥的破关时机。
+          </p>
+        </div>
+      </div>
+
+      <p className="text-ink-secondary">
+        无论哪一种火候，真正的成功率与失败代价都以确认时的推演为准。
+        {isMajorBreakthrough
+          ? '若是跨大境界突破，还需先完成当前破境卷宗，静室才会放开正式冲关。'
+          : ''}
+      </p>
+    </div>
+  );
 }
 
 function RetreatSummaryEntry({
@@ -102,6 +171,7 @@ function getRetreatGuidanceText({
 }
 
 export function RetreatView() {
+  const { openDialog } = useInkUI();
   const {
     cultivator,
     isLoading,
@@ -165,6 +235,21 @@ export function RetreatView() {
   });
   const missingRequirements =
     currentMajorTask?.snapshot.missingRequirements.slice(0, 2) ?? [];
+  const openBreakthroughHelp = () => {
+    openDialog({
+      title: '突破火候说明',
+      content: (
+        <BreakthroughHelpContent
+          breakthroughType={cultivationProgress?.breakthroughType ?? null}
+          canBreakthrough={Boolean(cultivationProgress?.canBreakthrough)}
+          isMajorBreakthrough={isMajorBreakthrough}
+          majorBreakthroughBlocked={majorBreakthroughBlocked}
+        />
+      ),
+      confirmLabel: '知晓了',
+      cancelLabel: null,
+    });
+  };
 
   return (
     <GameSceneFrame
@@ -194,6 +279,9 @@ export function RetreatView() {
                 />
               ) : null}
               <span className="text-ink-secondary">{guidanceText}</span>
+              <InkButton onClick={openBreakthroughHelp} variant="ghost">
+                查看说明
+              </InkButton>
             </div>
           </div>
 

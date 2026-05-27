@@ -1,5 +1,5 @@
 import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
-import type { Consumable } from '@shared/types/cultivator';
+import type { Consumable, CultivationProgress } from '@shared/types/cultivator';
 import type {
   ConditionStatusDuration,
   ConditionStatusInstance,
@@ -10,13 +10,18 @@ import type {
 import type { ConditionOperation, PillSpec } from '@shared/types/consumable';
 import type { Cultivator } from '@shared/types/cultivator';
 import { isPillConsumable } from '@shared/lib/consumables';
-import { getPillUsageLimitReachedText } from '@shared/lib/pillUsageText';
+import {
+  getCultivationPillUsageLimit,
+  getPillUsageLimitReachedText,
+} from '@shared/lib/pillUsageText';
 import { REALM_PILL_USAGE_LIMITS } from '@shared/config/consumableSystem';
 import { ConditionService } from './ConditionService';
+import { getOrInitCultivationProgress } from '@server/utils/cultivationUtils';
 
 const EXECUTION_ORDER: ConditionOperation['type'][] = [
   'restore_resource',
   'change_gauge',
+  'gain_progress',
   'remove_status',
   'add_status',
   'advance_track',
@@ -240,6 +245,40 @@ function applyAddStatusOperation(
   };
 }
 
+function applyGainProgressOperation(
+  cultivator: Cultivator,
+  operation: Extract<ConditionOperation, { type: 'gain_progress' }>,
+): Cultivator {
+  const progress = getOrInitCultivationProgress(
+    (cultivator.cultivation_progress ?? {}) as CultivationProgress,
+    cultivator.realm,
+    cultivator.realm_stage,
+  );
+
+  const nextProgress =
+    operation.target === 'cultivation_exp'
+      ? {
+          ...progress,
+          cultivation_exp: Math.min(
+            progress.exp_cap,
+            progress.cultivation_exp + Math.max(0, Math.floor(operation.value)),
+          ),
+        }
+      : {
+          ...progress,
+          comprehension_insight: Math.max(
+            0,
+            Math.min(
+              100,
+              progress.comprehension_insight + Math.max(0, Math.floor(operation.value)),
+            ),
+          ),
+        };
+
+  cultivator.cultivation_progress = nextProgress;
+  return cultivator;
+}
+
 function sortOperations(operations: ConditionOperation[]): ConditionOperation[] {
   return [...operations].sort(
     (left, right) =>
@@ -293,12 +332,12 @@ export const PillOperationExecutor = {
     );
     const trackLevelUps: TrackLevelUpResult[] = [];
 
-    if (consumable.spec.consumeRules.countsTowardLongTermQuota) {
+    if (consumable.spec.consumeRules.quotaCategory === 'long_term') {
       const used =
         nextCondition.counters.longTermPillUsesByRealm[nextCultivator.realm] ?? 0;
       const limit = REALM_PILL_USAGE_LIMITS[nextCultivator.realm];
       if (used >= limit) {
-        throw new Error(getPillUsageLimitReachedText(used, limit));
+        throw new Error(getPillUsageLimitReachedText('long_term', used, limit));
       }
       nextCondition = {
         ...nextCondition,
@@ -306,6 +345,25 @@ export const PillOperationExecutor = {
           ...nextCondition.counters,
           longTermPillUsesByRealm: {
             ...nextCondition.counters.longTermPillUsesByRealm,
+            [nextCultivator.realm]: used + 1,
+          },
+        },
+      };
+    }
+
+    if (consumable.spec.consumeRules.quotaCategory === 'cultivation') {
+      const used =
+        nextCondition.counters.cultivationPillUsesByRealm[nextCultivator.realm] ?? 0;
+      const limit = getCultivationPillUsageLimit(nextCultivator.realm);
+      if (used >= limit) {
+        throw new Error(getPillUsageLimitReachedText('cultivation', used, limit));
+      }
+      nextCondition = {
+        ...nextCondition,
+        counters: {
+          ...nextCondition.counters,
+          cultivationPillUsesByRealm: {
+            ...nextCondition.counters.cultivationPillUsesByRealm,
             [nextCultivator.realm]: used + 1,
           },
         },
@@ -333,6 +391,9 @@ export const PillOperationExecutor = {
               ),
             },
           };
+          break;
+        case 'gain_progress':
+          applyGainProgressOperation(nextCultivator, operation);
           break;
         case 'remove_status':
           nextCondition = applyRemoveStatusOperation(nextCondition, operation);

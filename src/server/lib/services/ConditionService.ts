@@ -8,8 +8,8 @@ import {
   isConditionStatusActive,
   NATURAL_RECOVERY_CONFIG,
 } from '@shared/lib/condition';
+import { evaluateFateContext } from '@shared/lib/fates';
 import {
-  getConditionStatusTemplate,
   isConditionStatusKey,
 } from '@shared/lib/conditionStatusRegistry';
 import type {
@@ -228,6 +228,7 @@ function buildDefaultCondition(
     },
     counters: {
       longTermPillUsesByRealm: {},
+      cultivationPillUsesByRealm: {},
     },
     statuses: [],
     timestamps: {
@@ -315,6 +316,9 @@ export const ConditionService = {
         longTermPillUsesByRealm:
           raw?.counters?.longTermPillUsesByRealm ??
           defaults.counters.longTermPillUsesByRealm,
+        cultivationPillUsesByRealm:
+          raw?.counters?.cultivationPillUsesByRealm ??
+          defaults.counters.cultivationPillUsesByRealm,
       },
       statuses: pruneInactiveStatuses(
         normalizeStatuses(raw?.statuses, now),
@@ -369,9 +373,16 @@ export const ConditionService = {
       };
     }
 
-    const toxicityMultiplier = getPillToxicityRecoveryMultiplier(condition);
+    const fateContext = evaluateFateContext(cultivator.pre_heaven_fates ?? []);
+    const toxicityMultiplier = getPillToxicityRecoveryMultiplier(
+      condition,
+      fateContext.toxicityPenaltyMultiplier,
+    );
     const statusMultiplier = getNaturalRecoveryStatusMultiplier(condition, now);
-    const recoveryFactor = toxicityMultiplier * statusMultiplier;
+    const recoveryFactor =
+      toxicityMultiplier *
+      statusMultiplier *
+      fateContext.naturalRecoveryMultiplier;
     const hpRecover = Math.floor(
       maxHp * NATURAL_RECOVERY_CONFIG.hpPerHour * elapsedHours * recoveryFactor,
     );
@@ -551,7 +562,13 @@ export const ConditionService = {
     };
   },
 
-  getBreakthroughPenalty(conditionInput: CultivatorCondition | undefined): number {
-    return getBreakthroughPenalty(conditionInput);
+  getBreakthroughPenalty(
+    cultivator: Cultivator,
+    conditionInput: CultivatorCondition | undefined,
+  ): number {
+    return getBreakthroughPenalty(
+      conditionInput,
+      evaluateFateContext(cultivator.pre_heaven_fates ?? []).toxicityPenaltyMultiplier,
+    );
   },
 };

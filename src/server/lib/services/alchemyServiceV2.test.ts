@@ -14,6 +14,10 @@ vi.mock('./cultivatorService', () => ({
 }));
 
 import type { MaterialAlchemyProfile } from '@shared/types/consumable';
+import {
+  buildCultivationGain,
+  buildInsightGain,
+} from '@shared/lib/alchemyProgress';
 import type { PreparedAlchemyIngredient } from './alchemyServiceV2';
 import { synthesizeAlchemy } from './alchemyServiceV2';
 
@@ -69,6 +73,7 @@ describe('synthesizeAlchemy', () => {
         focusMode: 'balanced',
       },
       '真品',
+      '金丹',
     );
 
     expect(result.family).toBe('hybrid');
@@ -95,6 +100,7 @@ describe('synthesizeAlchemy', () => {
         focusMode: 'focused',
       },
       '真品',
+      '金丹',
     );
 
     expect(result.family).toBe('tempering');
@@ -145,6 +151,7 @@ describe('synthesizeAlchemy', () => {
         focusMode: 'risky',
       },
       '真品',
+      '金丹',
     );
 
     expect(result.family).toBe('healing');
@@ -184,6 +191,7 @@ describe('synthesizeAlchemy', () => {
         requestedElementBias: '水',
       },
       '真品',
+      '金丹',
     );
 
     expect(result.dominantElement).toBe('水');
@@ -205,6 +213,7 @@ describe('synthesizeAlchemy', () => {
         focusMode: 'focused',
       },
       '天品',
+      '金丹',
     );
 
     expect(result.family).toBe('healing');
@@ -212,6 +221,90 @@ describe('synthesizeAlchemy', () => {
       { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.252 },
       { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
       { type: 'remove_status', status: 'near_death' },
+    ]);
+  });
+
+  it('routes cultivation-tag ingredients into cultivation pills with progress gain', () => {
+    const result = synthesizeAlchemy(
+      [
+        createIngredient({
+          id: 'm1',
+          name: '金霞芝',
+          element: '金',
+          type: 'herb',
+          profile: createProfile(['cultivation']),
+        }),
+      ],
+      {
+        targetTags: ['cultivation'],
+        focusMode: 'focused',
+      },
+      '真品',
+      '筑基',
+    );
+
+    expect(result.family).toBe('cultivation');
+    expect(result.operations).toEqual([
+      {
+        type: 'gain_progress',
+        target: 'cultivation_exp',
+        value: buildCultivationGain('筑基', '真品'),
+      },
+      { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
+    ]);
+  });
+
+  it('applies low-stability penalties to insight-pill progress gain', () => {
+    const result = synthesizeAlchemy(
+      [
+        createIngredient({
+          id: 'm1',
+          name: '寒魄晶',
+          element: '冰',
+          type: 'ore',
+          profile: createProfile(['insight'], {
+            stability: 20,
+            toxicity: 7,
+          }),
+        }),
+        createIngredient({
+          id: 'm2',
+          name: '浮风露',
+          element: '风',
+          type: 'aux',
+          profile: createProfile(['insight'], {
+            stability: 20,
+            toxicity: 5,
+          }),
+        }),
+        createIngredient({
+          id: 'm3',
+          name: '裂火藤',
+          element: '火',
+          type: 'herb',
+          profile: createProfile(['breakthrough'], {
+            stability: 20,
+            toxicity: 8,
+          }),
+        }),
+      ],
+      {
+        targetTags: ['insight'],
+        focusMode: 'focused',
+      },
+      '真品',
+      '金丹',
+    );
+
+    expect(result.family).toBe('insight');
+    expect(result.stability).toBe(15);
+    expect(result.operations).toEqual([
+      {
+        type: 'gain_progress',
+        target: 'comprehension_insight',
+        value: Math.floor(buildInsightGain('真品') * 0.8),
+      },
+      { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
     ]);
   });
 });

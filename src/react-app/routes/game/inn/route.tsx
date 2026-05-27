@@ -3,11 +3,12 @@ import { useInkUI } from '@app/components/providers/InkUIProvider';
 import { InkButton, InkCard, InkNotice } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import {
-  INN_RECOVERY_SPIRIT_STONE_COST,
+  calculateInnRecoverySpiritStoneCost,
   calculateInnRecoveryLossRange,
 } from '@shared/config/innRecovery';
 import { isConditionStatusActive } from '@shared/lib/condition';
-import { useMemo, useState } from 'react';
+import { evaluateFateContext, getInnSpiritStoneMultiplier } from '@shared/lib/fates';
+import { useState } from 'react';
 
 type InnRecoveryResponse = {
   success: boolean;
@@ -26,35 +27,42 @@ export default function InnRecoveryPage() {
   const { openDialog, pushToast } = useInkUI();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const state = useMemo(() => {
-    if (!cultivator) return null;
+  const state = cultivator
+    ? (() => {
+        const fateContext = evaluateFateContext(cultivator.pre_heaven_fates ?? []);
+        const spiritStoneCost = calculateInnRecoverySpiritStoneCost(
+          getInnSpiritStoneMultiplier(fateContext),
+        );
 
-    const maxHp = Math.max(1, Math.floor(finalAttributes?.maxHp ?? 1));
-    const maxMp = Math.max(1, Math.floor(finalAttributes?.maxMp ?? 1));
-    const currentHp = Math.max(
-      0,
-      Math.floor(cultivator.condition?.resources.hp.current ?? maxHp),
-    );
-    const currentMp = Math.max(
-      0,
-      Math.floor(cultivator.condition?.resources.mp.current ?? maxMp),
-    );
-    const activeStatusCount = (cultivator.condition?.statuses ?? []).filter(
-      (status) => isConditionStatusActive(status),
-    ).length;
-    const cultivationLossRange = calculateInnRecoveryLossRange(
-      cultivator.cultivation_progress?.cultivation_exp ?? 0,
-    );
+        const maxHp = Math.max(1, Math.floor(finalAttributes?.maxHp ?? 1));
+        const maxMp = Math.max(1, Math.floor(finalAttributes?.maxMp ?? 1));
+        const currentHp = Math.max(
+          0,
+          Math.floor(cultivator.condition?.resources.hp.current ?? maxHp),
+        );
+        const currentMp = Math.max(
+          0,
+          Math.floor(cultivator.condition?.resources.mp.current ?? maxMp),
+        );
+        const activeStatusCount = (cultivator.condition?.statuses ?? []).filter(
+          (status) => isConditionStatusActive(status),
+        ).length;
+        const cultivationLossRange = calculateInnRecoveryLossRange(
+          cultivator.cultivation_progress?.cultivation_exp ?? 0,
+          fateContext.innCultivationLossMultiplier,
+        );
 
-    return {
-      maxHp,
-      maxMp,
-      currentHp,
-      currentMp,
-      activeStatusCount,
-      cultivationLossRange,
-    };
-  }, [cultivator, finalAttributes]);
+        return {
+          spiritStoneCost,
+          maxHp,
+          maxMp,
+          currentHp,
+          currentMp,
+          activeStatusCount,
+          cultivationLossRange,
+        };
+      })()
+    : null;
 
   if (isLoading && !cultivator) {
     return (
@@ -81,7 +89,7 @@ export default function InnRecoveryPage() {
     state.currentMp < state.maxMp ||
     state.activeStatusCount > 0;
   const hasEnoughSpiritStones =
-    cultivator.spirit_stones >= INN_RECOVERY_SPIRIT_STONE_COST;
+    cultivator.spirit_stones >= state.spiritStoneCost;
   const canConfirmRecovery =
     needsRecovery && hasEnoughSpiritStones && !isSubmitting;
 
@@ -122,7 +130,7 @@ export default function InnRecoveryPage() {
       content: (
         <div className="space-y-2 text-sm leading-7">
           <p>
-            掌柜会收下 {INN_RECOVERY_SPIRIT_STONE_COST}{' '}
+            掌柜会收下 {state.spiritStoneCost}{' '}
             灵石，替你备好静房与药汤。
           </p>
           <p>这一夜过去，你的气血与法力都会恢复，身上所有状态也会一并散去。</p>
@@ -130,7 +138,7 @@ export default function InnRecoveryPage() {
           <p>丹毒不会在这间客栈里化开，若有余毒，仍需另寻办法。</p>
         </div>
       ),
-      confirmLabel: `付 ${INN_RECOVERY_SPIRIT_STONE_COST} 灵石住店`,
+      confirmLabel: `付 ${state.spiritStoneCost} 灵石住店`,
       cancelLabel: '再想想',
       onConfirm: handleRecovery,
     });

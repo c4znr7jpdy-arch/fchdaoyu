@@ -30,88 +30,96 @@ export function BreakthroughTaskCard({
   task: TaskInstance;
   className?: string;
 }) {
-  const currentStage = task.snapshot.stages.find((stage) => stage.current);
+  const currentStage = task.snapshot.stages.find((stage) => stage.current) ?? null;
+  const fromRealm = task.snapshot.fromRealm ?? task.metadata.fromRealm ?? null;
+  const toRealm = task.snapshot.toRealm ?? task.metadata.toRealm ?? null;
+  const transitionText =
+    fromRealm && toRealm ? `${fromRealm} → ${toRealm}` : task.snapshot.title;
+
+  if (task.status === 'completed' || !currentStage) {
+    return (
+      <div
+        className={cn(
+          'space-y-4 border border-dashed border-ink/8 bg-[rgba(248,243,230,0.6)] p-4',
+          className,
+        )}
+      >
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-base font-semibold tracking-[0.04em] text-ink">
+              可回静室冲关
+            </p>
+            <StatusPill text="前置已成" tone="ready" />
+          </div>
+          <p className="text-sm leading-7 text-ink-secondary">
+            这一份破境卷宗已经办妥，现在可以回静室正式冲击
+            {toRealm ?? '下一重境界'}。
+          </p>
+        </div>
+
+        <div className="space-y-1 text-xs text-ink-secondary">
+          <p>{task.snapshot.title}</p>
+          <p>{transitionText}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <InkButton href="/game/retreat">回静室冲关</InkButton>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       className={cn(
-        'border-ink/10 bg-[rgba(248,243,230,0.82)] space-y-4 border border-dashed p-4',
+        'space-y-4 border border-dashed border-ink/10 bg-[rgba(248,243,230,0.82)] p-4',
         className,
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold tracking-[0.08em] text-ink">
-              {task.snapshot.title}
-            </p>
-            <StatusPill
-              text={task.status === 'completed' ? '前置已成' : '仍在筹备'}
-              tone={task.status === 'completed' ? 'ready' : 'pending'}
-            />
-          </div>
-          <p className="text-xs text-ink-secondary">
-            {task.snapshot.fromRealm} → {task.snapshot.toRealm}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-base font-semibold tracking-[0.04em] text-ink">
+            {currentStage.title}
           </p>
+          <StatusPill text="仍在筹备" tone="pending" />
+        </div>
+        <p className="text-sm leading-7 text-ink-secondary">
+          {currentStage.description}
+        </p>
+        <div className="space-y-1 text-xs text-ink-secondary">
+          <p>{task.snapshot.title}</p>
+          <p>{transitionText}</p>
         </div>
       </div>
 
-      <p className="text-sm leading-7 text-ink-secondary">{task.snapshot.summary}</p>
+      <div className="space-y-2 text-sm leading-7">
+        {currentStage.objectives.map((objective) => (
+          <div key={objective.id} className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-ink">{objective.title}</p>
+              <p className="text-xs leading-6 text-ink-secondary">
+                {objective.progressText}
+              </p>
+            </div>
+            <span
+              className={cn(
+                'shrink-0 text-xs',
+                objective.completed ? 'text-emerald-700' : 'text-ink-secondary',
+              )}
+            >
+              {objective.completed ? '已成' : '待办'}
+            </span>
+          </div>
+        ))}
+      </div>
 
-      {currentStage ? (
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm font-medium text-ink">{currentStage.title}</p>
-            <p className="text-xs leading-6 text-ink-secondary">
-              {currentStage.description}
-            </p>
-          </div>
-
-          <div className="space-y-2 text-sm leading-7">
-            {currentStage.objectives.map((objective) => (
-              <div
-                key={objective.id}
-                className="border-ink/10 flex items-start justify-between gap-3 border-b border-dashed pb-2 last:border-b-0 last:pb-0"
-              >
-                <div className="min-w-0">
-                  <p className="text-ink">{objective.title}</p>
-                  <p className="text-xs text-ink-secondary">
-                    {objective.progressText}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    'shrink-0 text-xs',
-                    objective.completed ? 'text-emerald-700' : 'text-amber-900',
-                  )}
-                >
-                  {objective.completed ? '已成' : '未成'}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {currentStage.links.map((link) => (
-              <InkButton key={`${task.id}:${link.href}:${link.label}`} href={link.href}>
-                {link.label}
-              </InkButton>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-emerald-800">前置条件已全部满足</p>
-          <p className="text-xs leading-6 text-ink-secondary">
-            现在可以回静室正式冲击 {task.snapshot.toRealm}。
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <InkButton href="/game/retreat" variant="primary">
-              返回静室
-            </InkButton>
-          </div>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2">
+        {currentStage.links.map((link) => (
+          <InkButton key={`${task.id}:${link.href}:${link.label}`} href={link.href}>
+            {link.label}
+          </InkButton>
+        ))}
+      </div>
     </div>
   );
 }

@@ -1,24 +1,23 @@
 import { renderPrompt } from '@server/lib/prompts';
 import { object } from '@server/utils/aiClient';
-import type { ElementType, Quality } from '@shared/types/constants';
+import type { Quality } from '@shared/types/constants';
 import z from 'zod';
 
 export interface FateNamingFacts {
   quality: Quality;
-  coreLabel: string;
-  auraSummary: string;
-  tags: string[];
-  mainRoots: ElementType[];
-  effectLines: string[];
-  fallbackName: string;
+  primaryEffectLabel: string;
+  burdenEffectLabel?: string;
+  isDualSided: boolean;
   fallbackDescription: string;
 }
 
 const fateNamingSchema = z.object({
   fates: z.array(
     z.object({
-      name: z.string().describe('符合修仙气质的命格名称'),
-      description: z.string().describe('与词条效果相符的命格描述'),
+      name: z
+        .string()
+        .describe('符合修仙气质的命格名称，严格为 4-5 个汉字'),
+      description: z.string().describe('与效果相符的命格描述'),
       styleInsight: z.string().optional().describe('命名风格洞察'),
     }),
   ),
@@ -42,7 +41,12 @@ export class FateNamingEnricher {
   }
 
   private static resolveDefaultEnabled(): boolean {
-    if (process.env.DISABLE_LLM_NAMING === 'true') return false;
+    if (
+      process.env.DISABLE_LLM_NAMING === 'true' ||
+      process.env.NEXT_PUBLIC_DISABLE_LLM_NAMING === 'true'
+    ) {
+      return false;
+    }
     if (process.env.ENABLE_LLM_NAMING === 'false') return false;
     return true;
   }
@@ -59,12 +63,9 @@ export class FateNamingEnricher {
         {
           candidates: facts.map((fact) => ({
             quality: fact.quality,
-            coreLabel: fact.coreLabel,
-            auraSummary: fact.auraSummary,
-            tags: fact.tags,
-            mainRoots: fact.mainRoots,
-            effectLines: fact.effectLines,
-            fallbackName: fact.fallbackName,
+            primaryEffectLabel: fact.primaryEffectLabel,
+            burdenEffectLabel: fact.burdenEffectLabel,
+            isDualSided: fact.isDualSided,
             fallbackDescription: fact.fallbackDescription,
           })),
         },

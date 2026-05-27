@@ -5,6 +5,8 @@ export const PILL_FAMILY_VALUES = [
   'healing',
   'mana',
   'detox',
+  'cultivation',
+  'insight',
   'breakthrough',
   'tempering',
   'marrow_wash',
@@ -12,6 +14,14 @@ export const PILL_FAMILY_VALUES = [
 ] as const;
 
 export type PillFamily = (typeof PILL_FAMILY_VALUES)[number];
+
+export const PILL_QUOTA_CATEGORY_VALUES = [
+  'none',
+  'long_term',
+  'cultivation',
+] as const;
+
+export type PillQuotaCategory = (typeof PILL_QUOTA_CATEGORY_VALUES)[number];
 
 export const ALCHEMY_MODE_VALUES = [
   'improvised',
@@ -22,7 +32,7 @@ export type AlchemyMode = (typeof ALCHEMY_MODE_VALUES)[number];
 
 export interface PillConsumeRules {
   scene: 'out_of_battle_only';
-  countsTowardLongTermQuota: boolean;
+  quotaCategory: PillQuotaCategory;
 }
 
 export type PillAlchemyMeta =
@@ -83,12 +93,19 @@ export interface AdvanceTrackOperation {
   value: number;
 }
 
+export interface GainProgressOperation {
+  type: 'gain_progress';
+  target: 'cultivation_exp' | 'comprehension_insight';
+  value: number;
+}
+
 export type ConditionOperation =
   | RestoreResourceOperation
   | ChangeGaugeOperation
   | AddStatusOperation
   | RemoveStatusOperation
-  | AdvanceTrackOperation;
+  | AdvanceTrackOperation
+  | GainProgressOperation;
 
 export interface PillSpec {
   kind: 'pill';
@@ -132,6 +149,8 @@ export const MATERIAL_ALCHEMY_EFFECT_TAG_VALUES = [
   'healing',
   'mana',
   'detox',
+  'cultivation',
+  'insight',
   'breakthrough',
   'tempering_vitality',
   'tempering_spirit',

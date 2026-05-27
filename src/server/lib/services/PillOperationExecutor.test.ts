@@ -55,7 +55,7 @@ function createHealingPill(): Consumable {
       ],
       consumeRules: {
         scene: 'out_of_battle_only',
-        countsTowardLongTermQuota: false,
+        quotaCategory: 'none',
       },
       alchemyMeta: {
         source: 'improvised',
@@ -64,6 +64,70 @@ function createHealingPill(): Consumable {
         stability: 72,
         toxicityRating: 8,
         tags: ['healing'],
+      },
+    },
+  };
+}
+
+function createCultivationPill(): Consumable {
+  return {
+    id: 'pill-cultivation',
+    name: '养元丹',
+    type: '丹药',
+    quality: '真品',
+    quantity: 1,
+    description: '积修养元。',
+    spec: {
+      kind: 'pill',
+      family: 'cultivation',
+      operations: [
+        { type: 'gain_progress', target: 'cultivation_exp', value: 48 },
+      ],
+      consumeRules: {
+        scene: 'out_of_battle_only',
+        quotaCategory: 'cultivation',
+      },
+      alchemyMeta: {
+        source: 'improvised',
+        sourceMaterials: ['金霞芝'],
+        dominantElement: '金',
+        stability: 72,
+        toxicityRating: 9,
+        tags: ['cultivation'],
+      },
+    },
+  };
+}
+
+function createInsightPill(): Consumable {
+  return {
+    id: 'pill-insight',
+    name: '悟心丹',
+    type: '丹药',
+    quality: '真品',
+    quantity: 1,
+    description: '启悟明心。',
+    spec: {
+      kind: 'pill',
+      family: 'insight',
+      operations: [
+        {
+          type: 'gain_progress',
+          target: 'comprehension_insight',
+          value: 12,
+        },
+      ],
+      consumeRules: {
+        scene: 'out_of_battle_only',
+        quotaCategory: 'none',
+      },
+      alchemyMeta: {
+        source: 'improvised',
+        sourceMaterials: ['寒魄晶'],
+        dominantElement: '冰',
+        stability: 76,
+        toxicityRating: 5,
+        tags: ['insight'],
       },
     },
   };
@@ -95,5 +159,59 @@ describe('PillOperationExecutor', () => {
       1 + Math.floor(maxHp * 0.2),
     );
     expect(result.cultivator.condition?.resources.hp.current).toBeLessThan(maxHp);
+  });
+
+  it('applies cultivation pills to cultivation progress and independent quota counters', () => {
+    const cultivator = createCultivator();
+    cultivator.cultivation_progress = {
+      cultivation_exp: 12,
+      exp_cap: 100,
+      comprehension_insight: 30,
+      breakthrough_failures: 0,
+      bottleneck_state: false,
+      inner_demon: false,
+      deviation_risk: 0,
+    };
+
+    const result = PillOperationExecutor.execute(
+      cultivator,
+      createCultivationPill(),
+      new Date('2026-05-25T12:00:00.000Z'),
+    );
+
+    expect(result.cultivator.cultivation_progress?.cultivation_exp).toBe(60);
+    expect(
+      result.cultivator.condition?.counters.cultivationPillUsesByRealm.筑基,
+    ).toBe(1);
+    expect(
+      result.cultivator.condition?.counters.longTermPillUsesByRealm.筑基 ?? 0,
+    ).toBe(0);
+  });
+
+  it('caps insight gain at 100 without consuming any quota entry', () => {
+    const cultivator = createCultivator();
+    cultivator.cultivation_progress = {
+      cultivation_exp: 20,
+      exp_cap: 100,
+      comprehension_insight: 95,
+      breakthrough_failures: 0,
+      bottleneck_state: false,
+      inner_demon: false,
+      deviation_risk: 0,
+    };
+
+    const result = PillOperationExecutor.execute(
+      cultivator,
+      createInsightPill(),
+      new Date('2026-05-25T12:00:00.000Z'),
+    );
+
+    expect(result.cultivator.cultivation_progress?.comprehension_insight).toBe(100);
+    expect(
+      result.cultivator.condition?.counters.cultivationPillUsesByRealm.筑基 ?? 0,
+    ).toBe(0);
+    expect(
+      result.cultivator.condition?.counters.longTermPillUsesByRealm.筑基 ?? 0,
+    ).toBe(0);
   });
 });

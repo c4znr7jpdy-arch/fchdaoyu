@@ -6,10 +6,6 @@ import {
   getCharacterGenerationUserPrompt,
 } from '@shared/engine/cultivator/creation/prompts';
 import {
-  getMarketAppraisalPrompt,
-  getMarketAppraisalUserPrompt,
-} from '@shared/engine/market/appraisal/prompts';
-import {
   getMaterialGenerationPrompt,
   getMaterialGenerationUserPrompt,
 } from '@shared/engine/material/creation/prompts';
@@ -93,22 +89,6 @@ describe('prompt integrations', () => {
     expect(user).toContain('【待生成列表】');
     expect(user).toContain('1.');
     expect(user).toContain('指定属性：木');
-  });
-
-  it('renders market appraisal prompt payload', () => {
-    expect(getMarketAppraisalPrompt()).toContain('坊市大掌柜');
-
-    const user = getMarketAppraisalUserPrompt({
-      name: '玄铁',
-      type: 'ore',
-      rank: '真品',
-      element: '金',
-      quantity: 3,
-      description: '寒气逼人',
-      details: { vein: 'north' },
-    } as never);
-    expect(user).toContain('name: 玄铁');
-    expect(user).toContain('"vein":"north"');
   });
 
   it('renders character generation prompt payload', () => {

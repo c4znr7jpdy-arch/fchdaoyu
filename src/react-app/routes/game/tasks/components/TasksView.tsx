@@ -1,9 +1,6 @@
 import { BreakthroughTaskCard } from '@app/components/feature/tasks/BreakthroughTaskCard';
-import {
-  GameSceneAsideSection,
-  GameSceneFrame,
-  GameSceneSection,
-} from '@app/components/game-shell';
+import { DailyTaskCard } from '@app/components/feature/tasks/DailyTaskCard';
+import { GameSceneFrame, GameSceneSection } from '@app/components/game-shell';
 import { InkNotice } from '@app/components/ui';
 import { useTaskList } from '@app/lib/hooks/useTaskList';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
@@ -28,64 +25,71 @@ export function TasksView() {
     );
   }
 
-  const activeTasks = tasks.filter((task) => task.status === 'active');
-  const completedTasks = tasks.filter((task) => task.status === 'completed');
+  const dailyTasks = tasks
+    .filter((task) => task.category === 'daily')
+    .sort((left, right) => {
+      if (left.status === right.status) {
+        return left.createdAt.localeCompare(right.createdAt);
+      }
+
+      return left.status === 'active' ? -1 : 1;
+    });
+  const activeBreakthroughTasks = tasks.filter(
+    (task) => task.category === 'breakthrough_major' && task.status === 'active',
+  );
+  const completedBreakthroughTasks = tasks.filter(
+    (task) =>
+      task.category === 'breakthrough_major' && task.status === 'completed',
+  );
 
   return (
     <GameSceneFrame
       title="任务中心"
-      aside={
-        <>
-          <GameSceneAsideSection title="卷宗摘要">
-            <div className="space-y-2 text-sm leading-7">
-              <p>进行中：{activeTasks.length}</p>
-              <p>已完成：{completedTasks.length}</p>
-              <p className="text-ink-secondary">
-                首版只收录破境相关任务，用来承接大境界突破的前置条件。
-              </p>
-            </div>
-          </GameSceneAsideSection>
-
-          <GameSceneAsideSection title="行事准则">
-            <div className="space-y-2 text-sm leading-7">
-              <p>大境界突破不再只看修为条。</p>
-              <p>先把前置做完，再回静室冲关。</p>
-            </div>
-          </GameSceneAsideSection>
-        </>
-      }
+      description="今日日常与破境卷宗都归在此处。先把手头差事理顺，再看是否该回静室叩关。"
     >
-      <GameSceneSection title="进行中">
+      <GameSceneSection title="今日日常">
         {loading ? (
-          <p className="text-sm text-ink-secondary">正在推演当前任务……</p>
+          <p className="text-sm text-ink-secondary">正在整理今日差事……</p>
         ) : error ? (
           <InkNotice>{error}</InkNotice>
-        ) : activeTasks.length === 0 ? (
+        ) : dailyTasks.length === 0 ? (
           <p className="text-sm leading-7 text-ink-secondary">
-            当前没有进行中的破境任务。若已临大境界圆满，回静室或稍后刷新即可生成。
+            今日差事尚未排定，稍后再来翻卷即可。
           </p>
         ) : (
           <div className="space-y-4">
-            {activeTasks.map((task) => (
-              <BreakthroughTaskCard key={task.id} task={task} />
+            {dailyTasks.map((task) => (
+              <DailyTaskCard key={task.id} task={task} />
             ))}
           </div>
         )}
       </GameSceneSection>
 
-      <GameSceneSection title="已完成">
-        {completedTasks.length === 0 ? (
-          <p className="text-sm leading-7 text-ink-secondary">
-            还没有归档完成的破境任务。
-          </p>
-        ) : (
+      {!loading && !error ? (
+        <GameSceneSection title="破境卷宗">
+          {activeBreakthroughTasks.length === 0 ? (
+            <p className="text-sm leading-7 text-ink-secondary">
+              眼前没有待办的破境卷宗。若已临大境界圆满，回静室或稍后刷新即可整理新卷。
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {activeBreakthroughTasks.map((task) => (
+                <BreakthroughTaskCard key={task.id} task={task} />
+              ))}
+            </div>
+          )}
+        </GameSceneSection>
+      ) : null}
+
+      {!loading && !error && completedBreakthroughTasks.length > 0 ? (
+        <GameSceneSection title="已归卷宗">
           <div className="space-y-4">
-            {completedTasks.map((task) => (
+            {completedBreakthroughTasks.map((task) => (
               <BreakthroughTaskCard key={task.id} task={task} />
             ))}
           </div>
-        )}
-      </GameSceneSection>
+        </GameSceneSection>
+      ) : null}
     </GameSceneFrame>
   );
 }

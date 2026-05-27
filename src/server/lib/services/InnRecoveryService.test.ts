@@ -74,6 +74,7 @@ describe('InnRecoveryService', () => {
         longTermPillUsesByRealm: {
           筑基: 2,
         },
+        cultivationPillUsesByRealm: {},
       },
       statuses: [
         {
@@ -141,5 +142,61 @@ describe('InnRecoveryService', () => {
     expect(result.cultivationLossPercent).toBe(10);
     expect(result.cultivationLossAmount).toBe(0);
     expect(result.nextCultivationProgress.cultivation_exp).toBe(3);
+  });
+
+  it('applies fate-based inn loss reduction and system spirit stone surcharge', () => {
+    const cultivator = createCultivator();
+    cultivator.pre_heaven_fates = [
+      {
+        name: '丹心厚骨',
+        effects: [
+          {
+            id: 'inn-loss',
+            effectId: 'inn-loss-reduction',
+            scope: 'daily',
+            polarity: 'boon',
+            effectType: 'inn_cultivation_loss_multiplier',
+            value: 0.85,
+            label: '住店修为损耗 -15%',
+            description: '住店修为损耗降低。',
+            rollMeta: {
+              qualityAnchor: '凡品',
+              minValue: 0.85,
+              maxValue: 0.85,
+              rolledPercentile: 0.5,
+              roundingStep: 0.01,
+            },
+          },
+          {
+            id: 'system-surcharge',
+            effectId: 'system-spirit-stone-surcharge',
+            scope: 'drawback',
+            polarity: 'burden',
+            effectType: 'system_spirit_stone_multiplier',
+            value: 1.08,
+            label: '系统养成灵石消耗 +8%',
+            description: '系统养成灵石消耗上升。',
+            rollMeta: {
+              qualityAnchor: '天品',
+              minValue: 1.08,
+              maxValue: 1.08,
+              rolledPercentile: 0.5,
+              roundingStep: 0.01,
+            },
+          },
+        ],
+      },
+    ];
+
+    const result = InnRecoveryService.buildRecoveryResult(
+      cultivator,
+      new Date('2026-05-25T00:00:00.000Z'),
+      () => 0,
+    );
+
+    expect(result.spiritStoneCost).toBe(5400);
+    expect(result.cultivationLossPercent).toBe(5);
+    expect(result.cultivationLossAmount).toBe(42);
+    expect(result.nextCultivationProgress.cultivation_exp).toBe(945);
   });
 });

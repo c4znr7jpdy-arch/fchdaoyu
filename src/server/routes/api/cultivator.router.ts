@@ -57,7 +57,6 @@ import {
 import { stream_text } from '@server/utils/aiClient';
 import { createBreakthroughStory } from '@server/utils/storyService';
 import { getRedeemPresetById } from '@shared/config/redeemRewardPresets';
-import { INN_RECOVERY_SPIRIT_STONE_COST } from '@shared/config/innRecovery';
 import {
   attemptBreakthrough,
   performCultivation,
@@ -310,14 +309,14 @@ router.post('/inn-recovery', requireActiveCultivator(), async (c) => {
     const [updatedCultivator] = await tx
       .update(cultivators)
       .set({
-        spirit_stones: sql`${cultivators.spirit_stones} - ${INN_RECOVERY_SPIRIT_STONE_COST}`,
+        spirit_stones: sql`${cultivators.spirit_stones} - ${recovery.spiritStoneCost}`,
         cultivation_progress: recovery.nextCultivationProgress,
         condition: recovery.nextCondition,
       })
       .where(
         and(
           eq(cultivators.id, activeCultivator.id),
-          sql`${cultivators.spirit_stones} >= ${INN_RECOVERY_SPIRIT_STONE_COST}`,
+          sql`${cultivators.spirit_stones} >= ${recovery.spiritStoneCost}`,
         ),
       )
       .returning({
@@ -331,7 +330,7 @@ router.post('/inn-recovery', requireActiveCultivator(), async (c) => {
     return c.json(
       {
         success: false,
-        error: `囊中羞涩，灵石不足（至少需要 ${INN_RECOVERY_SPIRIT_STONE_COST} 灵石）`,
+        error: `囊中羞涩，灵石不足（至少需要 ${recovery.spiritStoneCost} 灵石）`,
       },
       400,
     );
@@ -346,7 +345,7 @@ router.post('/inn-recovery', requireActiveCultivator(), async (c) => {
         cultivation_progress: recovery.nextCultivationProgress,
         condition: recovery.nextCondition,
       },
-      spiritStoneCost: INN_RECOVERY_SPIRIT_STONE_COST,
+      spiritStoneCost: recovery.spiritStoneCost,
       cultivationLossPercent: recovery.cultivationLossPercent,
       cultivationLossAmount: recovery.cultivationLossAmount,
       clearedStatusCount: recovery.clearedStatusCount,

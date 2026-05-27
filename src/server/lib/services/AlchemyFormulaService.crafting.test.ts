@@ -134,6 +134,7 @@ vi.mock('./AlchemyNarrativeEnricher', () => ({
 }));
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildCultivationGain } from '@shared/lib/alchemyProgress';
 import type { PillSpec } from '@shared/types/consumable';
 import { craftFromFormula } from './AlchemyFormulaService';
 
@@ -161,7 +162,7 @@ describe('craftFromFormula narrative copy', () => {
           ],
           consumeRules: {
             scene: 'out_of_battle_only',
-            countsTowardLongTermQuota: false,
+            quotaCategory: 'none',
           },
           targetStability: 78,
           targetToxicity: 6,
@@ -196,6 +197,7 @@ describe('craftFromFormula narrative copy', () => {
     executorState.cultivatorRow = {
       id: 'cultivator-1',
       userId: 'user-1',
+      realm: '筑基',
       spirit_stones: 50000,
     };
     executorState.consumableRows = [];
@@ -258,6 +260,71 @@ describe('craftFromFormula narrative copy', () => {
     expect((result.consumable.spec as PillSpec).operations).toContainEqual({
       type: 'remove_status',
       status: 'near_death',
+    });
+  });
+
+  it('recalculates cultivation gain by the current crafter realm instead of blueprint value', async () => {
+    generateFormulaBatchDescriptionMock.mockResolvedValueOnce(null);
+    executorState.formulaRows = [
+      {
+        ...executorState.formulaRows[0],
+        name: '养元丹方',
+        description: '此方偏收金水养气之势，重在缓积道基。',
+        family: 'cultivation',
+        pattern: {
+          requiredTags: ['cultivation'],
+          slotCount: 1,
+        },
+        blueprint: {
+          operations: [
+            { type: 'gain_progress', target: 'cultivation_exp', value: 9999 },
+            { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
+          ],
+          consumeRules: {
+            scene: 'out_of_battle_only',
+            quotaCategory: 'cultivation',
+          },
+          targetStability: 72,
+          targetToxicity: 9,
+        },
+      },
+    ];
+    executorState.materialRows = [
+      {
+        ...executorState.materialRows[0],
+        name: '金霞芝',
+        element: '金',
+        details: {
+          alchemyProfile: {
+            effectTags: ['cultivation'],
+            potency: 26,
+            toxicity: 2,
+            stability: 72,
+          },
+        },
+      },
+    ];
+    executorState.cultivatorRow = {
+      ...executorState.cultivatorRow,
+      realm: '筑基',
+    };
+
+    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+
+    expect(result.consumable.name).toBe('养元');
+    expect(result.consumable.spec.kind).toBe('pill');
+    expect((result.consumable.spec as PillSpec).consumeRules.quotaCategory).toBe(
+      'cultivation',
+    );
+    expect((result.consumable.spec as PillSpec).operations).toContainEqual({
+      type: 'gain_progress',
+      target: 'cultivation_exp',
+      value: buildCultivationGain('筑基', '真品'),
+    });
+    expect((result.consumable.spec as PillSpec).operations).not.toContainEqual({
+      type: 'gain_progress',
+      target: 'cultivation_exp',
+      value: 9999,
     });
   });
 });

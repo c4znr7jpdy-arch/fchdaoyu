@@ -17,7 +17,7 @@ import type {
   Cultivator,
 } from '@shared/types/cultivator';
 import {
-  evaluateFateGrowthContext,
+  evaluateFateContext,
 } from '@shared/lib/fates';
 import {
   getBreakthroughPenalty,
@@ -143,13 +143,13 @@ export function calculateBreakthroughChance(
         ? 0.9
         : 0.95
     : 1.0;
-  const fateBonus = evaluateFateGrowthContext(
-    cultivator.pre_heaven_fates ?? [],
-  ).breakthroughChanceBonus;
+  const fateContext = evaluateFateContext(cultivator.pre_heaven_fates ?? []);
+  const fateBonus = fateContext.breakthroughChanceBonus;
   const pillBonus =
     (hasBreakthroughFocus ? 0.06 : 0) + (hasClearMind ? 0.04 : 0);
   const toxicityPenalty = getBreakthroughPenalty(
     cultivator.condition,
+    fateContext.toxicityPenaltyMultiplier,
   );
 
   // 计算最终成功率

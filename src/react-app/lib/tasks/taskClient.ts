@@ -57,6 +57,7 @@ export function findCurrentMajorBreakthroughTask(
   return (
     tasks.find(
       (task) =>
+        task.category === 'breakthrough_major' &&
         task.metadata.fromRealm === cultivator.realm &&
         task.metadata.toRealm === toRealm,
     ) ?? null

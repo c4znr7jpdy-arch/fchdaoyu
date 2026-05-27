@@ -121,4 +121,33 @@ describe('findCurrentMajorBreakthroughTask', () => {
 
     expect(findCurrentMajorBreakthroughTask(cultivator, [createTask()])).toBeNull();
   });
+
+  it('ignores daily tasks that happen to lack breakthrough metadata', () => {
+    const cultivator = createCultivator();
+    const dailyTask = createTask({
+      id: 'daily-1',
+      definitionId: 'daily_alchemy_once',
+      category: 'daily',
+      metadata: {
+        dailyKind: 'alchemy',
+        resetKey: '2026-05-26',
+        rewardSummary: ['灵石 x300'],
+      },
+      snapshot: {
+        title: '丹炉留痕',
+        summary: '今日开炉一次，让炉火与药意都别生疏。',
+        isCompleted: false,
+        currentStageId: 'daily-alchemy-stage',
+        currentStageIndex: 0,
+        totalStages: 1,
+        missingRequirements: [],
+        dailyKind: 'alchemy',
+        resetKey: '2026-05-26',
+        rewardSummary: ['灵石 x300'],
+        stages: [],
+      },
+    });
+
+    expect(findCurrentMajorBreakthroughTask(cultivator, [dailyTask])).toBeNull();
+  });
 });

@@ -26,7 +26,7 @@ describe('RankingListItem', () => {
             ],
             consumeRules: {
               scene: 'out_of_battle_only',
-              countsTowardLongTermQuota: true,
+              quotaCategory: 'long_term',
             },
             alchemyMeta: {
               source: 'formula',

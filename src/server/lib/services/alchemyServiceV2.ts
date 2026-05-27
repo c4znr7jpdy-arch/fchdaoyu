@@ -1,8 +1,19 @@
 import { calculateCraftCost, calculateHighestMaterialRank } from '@shared/engine/creation-v2/CraftCostCalculator';
+import { getConsumableQualityScalar } from '@shared/config/consumableSystem';
 import {
   ELEMENT_PREFIX_MAP,
   type AlchemyMaterialType,
 } from '@shared/config/alchemyProfile';
+import {
+  buildCultivationGain,
+  buildInsightGain,
+  scaleProgressGain,
+} from '@shared/lib/alchemyProgress';
+import {
+  evaluateFateContext,
+  getAlchemySpiritStoneMultiplier,
+  scaleFateAdjustedValue,
+} from '@shared/lib/fates';
 import {
   getMaterialAlchemyTagFamily,
   getMaterialAlchemyTrackPath,
@@ -21,13 +32,18 @@ import type {
   Quality,
   RealmType,
 } from '@shared/types/constants';
-import type { Consumable, MaterialDetails } from '@shared/types/cultivator';
+import type {
+  Consumable,
+  MaterialDetails,
+  PreHeavenFate,
+} from '@shared/types/cultivator';
 import type {
   AlchemyFormulaDiscoveryCandidate,
   ConditionOperation,
   MaterialAlchemyEffectTag,
   MaterialAlchemyProfile,
   PillFamily,
+  PillQuotaCategory,
   PillSpec,
 } from '@shared/types/consumable';
 import { getExecutor } from '@server/lib/drizzle/db';
@@ -37,7 +53,10 @@ import { calculateSingleElixirScore } from '@server/utils/rankingUtils';
 import { and, eq, inArray } from 'drizzle-orm';
 import { buildDiscoveryCandidate } from './AlchemyFormulaService';
 import { AlchemyServiceError } from './AlchemyServiceError';
-import { addConsumableToInventory } from './cultivatorService';
+import {
+  addConsumableToInventory,
+  getCultivatorByIdUnsafe,
+} from './cultivatorService';
 import { mapConsumableRow, serializeConsumableSpec } from './consumablePersistence';
 import {
   AlchemyIntentResolver,
@@ -51,8 +70,6 @@ export { AlchemyServiceError } from './AlchemyServiceError';
 
 type MaterialRow = typeof materials.$inferSelect;
 type ShortTermFamily = Extract<PillFamily, 'healing' | 'mana' | 'detox'>;
-type LongTermFamily = Extract<PillFamily, 'breakthrough' | 'tempering' | 'marrow_wash'>;
-
 export interface AlchemySelectionValidation {
   valid: boolean;
   blockingReason?: string;
@@ -96,19 +113,16 @@ const SHORT_TERM_FAMILIES = new Set<ShortTermFamily>([
   'mana',
   'detox',
 ]);
-const LONG_TERM_FAMILIES = new Set<LongTermFamily>([
-  'breakthrough',
-  'tempering',
-  'marrow_wash',
-]);
 const FAMILY_PRIORITY: Record<PillFamily, number> = {
   breakthrough: 0,
-  tempering: 1,
-  marrow_wash: 2,
-  healing: 3,
-  mana: 4,
-  detox: 5,
-  hybrid: 6,
+  cultivation: 1,
+  insight: 2,
+  tempering: 3,
+  marrow_wash: 4,
+  healing: 5,
+  mana: 6,
+  detox: 7,
+  hybrid: 8,
 };
 const TRACK_PRIORITY: Record<Extract<ConditionTrackPath, `tempering.${string}`>, number> = {
   'tempering.vitality': 0,
@@ -122,6 +136,8 @@ const FAMILY_NAME_MAP: Record<PillFamily, string> = {
   healing: '疗伤丹',
   mana: '回元丹',
   detox: '解毒丹',
+  cultivation: '养元丹',
+  insight: '悟心丹',
   breakthrough: '破境丹',
   tempering: '淬体丹',
   marrow_wash: '洗髓丹',
@@ -131,20 +147,6 @@ const alchemyNarrativeEnricher = new AlchemyNarrativeEnricher();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-
-function getQualityScalar(quality: Quality): number {
-  const values: Quality[] = [
-    '凡品',
-    '灵品',
-    '玄品',
-    '真品',
-    '地品',
-    '天品',
-    '仙品',
-    '神品',
-  ];
-  return 1 + values.indexOf(quality) * 0.22;
 }
 
 function buildRestoreValue(baseRatio: number, scalar: number): number {
@@ -168,8 +170,17 @@ function scaleRestoreOperationValue(
   };
 }
 
-function countsTowardsQuota(family: PillFamily): boolean {
-  return LONG_TERM_FAMILIES.has(family as LongTermFamily);
+function getQuotaCategoryForFamily(family: PillFamily): PillQuotaCategory {
+  switch (family) {
+    case 'breakthrough':
+    case 'tempering':
+    case 'marrow_wash':
+      return 'long_term';
+    case 'cultivation':
+      return 'cultivation';
+    default:
+      return 'none';
+  }
 }
 
 function sortRowsByRequestedIds(
@@ -249,9 +260,10 @@ function buildDescription(
 function buildBaseOperations(
   family: PillFamily,
   quality: Quality,
+  realm: RealmType,
   trackPath?: Extract<ConditionTrackPath, `tempering.${string}`>,
 ): ConditionOperation[] {
-  const scalar = getQualityScalar(quality);
+  const scalar = getConsumableQualityScalar(quality);
 
   switch (family) {
     case 'mana':
@@ -295,6 +307,24 @@ function buildBaseOperations(
       return [
         { type: 'change_gauge', gauge: 'pillToxicity', delta: -Math.floor(18 * scalar) },
       ];
+    case 'cultivation':
+      return [
+        {
+          type: 'gain_progress',
+          target: 'cultivation_exp',
+          value: buildCultivationGain(realm, quality),
+        },
+        { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
+      ];
+    case 'insight':
+      return [
+        {
+          type: 'gain_progress',
+          target: 'comprehension_insight',
+          value: buildInsightGain(quality),
+        },
+        { type: 'change_gauge', gauge: 'pillToxicity', delta: 5 },
+      ];
     case 'hybrid':
       return [
         {
@@ -334,9 +364,7 @@ function applyLowStabilityPenalty(
   family: PillFamily,
 ): ConditionOperation[] {
   return operations.map((operation) => {
-    if (
-      operation.type === 'restore_resource'
-    ) {
+    if (operation.type === 'restore_resource') {
       return scaleRestoreOperationValue(operation, 0.8);
     }
 
@@ -344,6 +372,13 @@ function applyLowStabilityPenalty(
       return {
         ...operation,
         value: Math.max(1, Math.floor(operation.value * 0.8)),
+      };
+    }
+
+    if (operation.type === 'gain_progress') {
+      return {
+        ...operation,
+        value: scaleProgressGain(operation.value, 0.8),
       };
     }
 
@@ -366,10 +401,11 @@ function applyLowStabilityPenalty(
 function buildOperationsFromSynthesis(
   family: PillFamily,
   quality: Quality,
+  realm: RealmType,
   stability: number,
   trackPath?: Extract<ConditionTrackPath, `tempering.${string}`>,
 ): ConditionOperation[] {
-  const operations = buildBaseOperations(family, quality, trackPath);
+  const operations = buildBaseOperations(family, quality, realm, trackPath);
   if (stability >= 45) {
     return operations;
   }
@@ -565,6 +601,7 @@ export function synthesizeAlchemy(
   ingredients: PreparedAlchemyIngredient[],
   intent: AlchemyIntentResolution,
   quality: Quality,
+  realm: RealmType,
 ): AlchemySynthesisResult {
   const familyScores = new Map<PillFamily, number>();
   const trackScores = new Map<
@@ -656,6 +693,7 @@ export function synthesizeAlchemy(
     operations: buildOperationsFromSynthesis(
       family,
       quality,
+      realm,
       stability,
       trackPath,
     ),
@@ -674,7 +712,7 @@ function buildAlchemySpec(
     operations: synthesis.operations,
     consumeRules: {
       scene: 'out_of_battle_only',
-      countsTowardLongTermQuota: countsTowardsQuota(synthesis.family),
+      quotaCategory: getQuotaCategoryForFamily(synthesis.family),
     },
     alchemyMeta: {
       source: 'improvised',
@@ -782,6 +820,7 @@ export async function previewAlchemySelection(
   cultivatorId: string,
   availableSpiritStones: number,
   materialIds: string[],
+  fates: PreHeavenFate[] = [],
 ): Promise<AlchemyPreviewResult> {
   const { rows, blockingReason } = await loadPreviewMaterialRows(
     cultivatorId,
@@ -797,8 +836,12 @@ export async function previewAlchemySelection(
   }
 
   const highestMaterialRank = pickHighestRank(rows);
+  const fateContext = evaluateFateContext(fates);
   const spiritStones = highestMaterialRank
-    ? calculateCraftCost(highestMaterialRank, 'spiritStone')
+    ? scaleFateAdjustedValue(
+        calculateCraftCost(highestMaterialRank, 'spiritStone'),
+        getAlchemySpiritStoneMultiplier(fateContext),
+      )
     : 0;
   const validation = buildSelectionValidation(rows);
 
@@ -828,12 +871,16 @@ export function createAlchemyService(
       }
 
       try {
-        const selectedMaterials = await loadOwnedMaterials(cultivatorId, materialIds);
-        const [cultivator] = await getExecutor()
-          .select()
-          .from(cultivators)
-          .where(eq(cultivators.id, cultivatorId))
-          .limit(1);
+        const [selectedMaterials, cultivator, fullCultivator] = await Promise.all([
+          loadOwnedMaterials(cultivatorId, materialIds),
+          getExecutor()
+            .select()
+            .from(cultivators)
+            .where(eq(cultivators.id, cultivatorId))
+            .limit(1)
+            .then((rows) => rows[0]),
+          getCultivatorByIdUnsafe(cultivatorId),
+        ]);
 
         if (!cultivator) {
           throw new AlchemyServiceError('道友查无此人', 404);
@@ -847,7 +894,13 @@ export function createAlchemyService(
         const highestMaterialRank = calculateHighestMaterialRank(
           selectedMaterials as Array<{ rank: Quality }>,
         );
-        const cost = calculateCraftCost(highestMaterialRank, 'spiritStone');
+        const fateContext = evaluateFateContext(
+          fullCultivator?.cultivator.pre_heaven_fates ?? [],
+        );
+        const cost = scaleFateAdjustedValue(
+          calculateCraftCost(highestMaterialRank, 'spiritStone'),
+          getAlchemySpiritStoneMultiplier(fateContext),
+        );
 
         if ((cultivator.spirit_stones ?? 0) < cost) {
           throw new AlchemyServiceError(`灵石不足，需要 ${cost} 枚`);
@@ -873,6 +926,7 @@ export function createAlchemyService(
           ingredients,
           intent,
           highestMaterialRank,
+          cultivator.realm as RealmType,
         );
         const breakthroughTargetRealm =
           synthesis.family === 'breakthrough'

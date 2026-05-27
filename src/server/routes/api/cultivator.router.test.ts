@@ -1,19 +1,13 @@
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Cultivator } from '@shared/types/cultivator';
-
-const {
-  getExecutorMock,
-  getCultivatorByIdMock,
-  buildRecoveryResultMock,
-} = vi.hoisted(() => ({
-  getExecutorMock: vi.fn(),
-  getCultivatorByIdMock: vi.fn(),
-  buildRecoveryResultMock: vi.fn(),
-}));
+import type {
+  CultivationProgress,
+  Cultivator,
+} from '@shared/types/cultivator';
+import type { CultivatorCondition } from '@shared/types/condition';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('@server/lib/drizzle/db', () => ({
-  getExecutor: getExecutorMock,
+  getExecutor: vi.fn(),
 }));
 
 vi.mock('@server/lib/hono/middleware', () => ({
@@ -109,7 +103,7 @@ vi.mock('@server/lib/services/TaskService', () => ({
 
 vi.mock('@server/lib/services/InnRecoveryService', () => ({
   InnRecoveryService: {
-    buildRecoveryResult: buildRecoveryResultMock,
+    buildRecoveryResult: vi.fn(),
   },
 }));
 
@@ -118,7 +112,7 @@ vi.mock('@server/lib/services/cultivatorService', () => ({
   addRetreatRecord: vi.fn(),
   equipEquipment: vi.fn(),
   getCultivatorArtifacts: vi.fn(),
-  getCultivatorById: getCultivatorByIdMock,
+  getCultivatorById: vi.fn(),
   getCultivatorConsumables: vi.fn(),
   getCultivatorMaterials: vi.fn(),
   getLastDeadCultivatorSummary: vi.fn(),
@@ -163,7 +157,15 @@ vi.mock('@shared/engine/yield/YieldCalculator', () => ({
   },
 }));
 
+import { getExecutor } from '@server/lib/drizzle/db';
+import { InnRecoveryService } from '@server/lib/services/InnRecoveryService';
+import { getCultivatorById } from '@server/lib/services/cultivatorService';
 import cultivatorRouter from './cultivator.router';
+
+const getExecutorMock = getExecutor as unknown as Mock;
+const getCultivatorByIdMock = getCultivatorById as unknown as Mock;
+const buildRecoveryResultMock =
+  InnRecoveryService.buildRecoveryResult as unknown as Mock;
 
 function createApp() {
   return new Hono().route('/api/cultivator', cultivatorRouter);
@@ -232,6 +234,7 @@ function createCultivator(): Cultivator {
       },
       counters: {
         longTermPillUsesByRealm: {},
+      cultivationPillUsesByRealm: {},
       },
       statuses: [],
       timestamps: {
@@ -250,7 +253,7 @@ function mockTransactionReturning(rows: unknown[]) {
   getExecutorMock.mockReturnValue({
     transaction: async (callback: (tx: { update: typeof update }) => Promise<unknown>) =>
       callback({ update }),
-  });
+  } as any);
 
   return { update, set, where, returning };
 }
@@ -262,20 +265,26 @@ describe('cultivator inn recovery route', () => {
 
   it('returns the inn recovery settlement payload on success', async () => {
     const cultivator = createCultivator();
+    const currentCondition = cultivator.condition as CultivatorCondition;
+    const currentProgress =
+      cultivator.cultivation_progress as CultivationProgress;
+    const nextCondition: CultivatorCondition = {
+      ...currentCondition,
+      resources: {
+        hp: { current: 200 },
+        mp: { current: 120 },
+      },
+      statuses: [],
+    };
+    const nextCultivationProgress: CultivationProgress = {
+      ...currentProgress,
+      cultivation_exp: 809,
+    };
     getCultivatorByIdMock.mockResolvedValueOnce(cultivator);
     buildRecoveryResultMock.mockReturnValueOnce({
-      nextCondition: {
-        ...cultivator.condition,
-        resources: {
-          hp: { current: 200 },
-          mp: { current: 120 },
-        },
-        statuses: [],
-      },
-      nextCultivationProgress: {
-        ...cultivator.cultivation_progress,
-        cultivation_exp: 809,
-      },
+      spiritStoneCost: 5000,
+      nextCondition,
+      nextCultivationProgress,
       cultivationLossPercent: 8,
       cultivationLossAmount: 71,
       clearedStatusCount: 2,
@@ -293,18 +302,8 @@ describe('cultivator inn recovery route', () => {
         cultivator: {
           ...cultivator,
           spirit_stones: 4000,
-          cultivation_progress: {
-            ...cultivator.cultivation_progress,
-            cultivation_exp: 809,
-          },
-          condition: {
-            ...cultivator.condition,
-            resources: {
-              hp: { current: 200 },
-              mp: { current: 120 },
-            },
-            statuses: [],
-          },
+          cultivation_progress: nextCultivationProgress,
+          condition: nextCondition,
         },
         spiritStoneCost: 5000,
         cultivationLossPercent: 8,
@@ -318,10 +317,14 @@ describe('cultivator inn recovery route', () => {
 
   it('returns 400 when the cultivator cannot afford the inn recovery fee', async () => {
     const cultivator = createCultivator();
+    const currentCondition = cultivator.condition as CultivatorCondition;
+    const currentProgress =
+      cultivator.cultivation_progress as CultivationProgress;
     getCultivatorByIdMock.mockResolvedValueOnce(cultivator);
     buildRecoveryResultMock.mockReturnValueOnce({
-      nextCondition: cultivator.condition,
-      nextCultivationProgress: cultivator.cultivation_progress,
+      spiritStoneCost: 5000,
+      nextCondition: currentCondition,
+      nextCultivationProgress: currentProgress,
       cultivationLossPercent: 5,
       cultivationLossAmount: 44,
       clearedStatusCount: 1,
