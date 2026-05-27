@@ -1,7 +1,3 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { renderTemplate, type TemplateVariableMap } from '../template/render';
 
 export interface PromptTemplateFile {
@@ -17,31 +13,11 @@ export interface RenderedPrompt {
 
 export type PromptSectionKey = 'system' | 'user';
 
-function loadPromptSourcesFromFs(): Record<string, string> {
-  const promptsDir = resolve(
-    fileURLToPath(new URL('../../prompts', import.meta.url)),
-  );
-  const sources: Record<string, string> = {};
-
-  for (const entry of readdirSync(promptsDir, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith('.md')) {
-      continue;
-    }
-    const source = resolve(promptsDir, entry.name);
-    sources[source] = readFileSync(source, 'utf8');
-  }
-
-  return sources;
-}
-
-const bundledPromptSources =
-  typeof import.meta.glob === 'function'
-    ? (import.meta.glob('../../prompts/*.md', {
-        eager: true,
-        query: '?raw',
-        import: 'default',
-      }) as Record<string, string>)
-    : loadPromptSourcesFromFs();
+const bundledPromptSources = import.meta.glob('../../prompts/*.md', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+}) as Record<string, string>;
 
 export function parsePromptTemplateMarkdown(
   raw: string,
