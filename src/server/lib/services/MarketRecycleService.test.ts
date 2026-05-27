@@ -161,9 +161,6 @@ describe('MarketRecycleService', () => {
           element: '火',
           quality: '天品',
           description: '火纹流转',
-          abilityConfig: {
-            modifiers: [{ key: 'spirit', op: 'add', value: 12 }],
-          },
           productModel: {},
           score: 1680,
           isEquipped: false,

@@ -20,7 +20,6 @@ export interface ItemRankingEntry {
   cooldown?: number;
   quantity?: number;
   spec?: unknown;
-  abilityConfig?: unknown;
   productModel?: unknown;
 
   // Optional properties for UI compatibility

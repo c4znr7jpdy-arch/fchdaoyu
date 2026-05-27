@@ -765,7 +765,6 @@ export const creationProducts = pgTable(
     slot: varchar('slot', { length: 20 }), // 仅 artifact: weapon | armor | accessory
     score: integer('score').notNull().default(0), // 排行榜评分
     isEquipped: boolean('is_equipped').notNull().default(false), // 仅 artifact: 装备状态
-    abilityConfig: jsonb('ability_config').notNull(), // 完整 battle-v5 AbilityConfig
     productModel: jsonb('product_model').notNull(), // 完整 CreationProductModel 快照
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')

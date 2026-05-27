@@ -18,7 +18,6 @@ export function toRankingDetailItem(item: ItemRankingEntry): ItemDetailPayload {
       quality: item.quality as Artifact['quality'],
       description: item.description,
       score: item.score,
-      abilityConfig: item.abilityConfig as Artifact['abilityConfig'],
       productModel: item.productModel,
     };
 
@@ -34,7 +33,6 @@ export function toRankingDetailItem(item: ItemRankingEntry): ItemDetailPayload {
       cost: item.cost || 0,
       cooldown: item.cooldown || 0,
       description: item.description,
-      abilityConfig: item.abilityConfig as Skill['abilityConfig'],
       productModel: item.productModel,
     };
 
@@ -48,7 +46,6 @@ export function toRankingDetailItem(item: ItemRankingEntry): ItemDetailPayload {
       element: item.element as CultivationTechnique['element'],
       quality: item.quality as CultivationTechnique['quality'],
       description: item.description,
-      abilityConfig: item.abilityConfig as CultivationTechnique['abilityConfig'],
       productModel: item.productModel,
     };
 

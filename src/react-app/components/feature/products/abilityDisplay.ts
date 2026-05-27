@@ -212,7 +212,6 @@ export interface ProductRecordLike {
   slot?: string | null;
   score?: number;
   isEquipped?: boolean;
-  abilityConfig?: unknown;
   productModel?: unknown;
 }
 

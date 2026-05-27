@@ -1,21 +1,31 @@
 import {
-  deserializeAbilityConfig,
+  deserializeAndRehydrate,
   deserializeProductModel,
 } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
+import { projectAbilityConfig } from '@shared/engine/creation-v2/models/AbilityProjection';
 import { DEFAULT_AFFIX_REGISTRY, flattenAffixMatcherTags } from '@shared/engine/creation-v2/affixes';
+import type { AbilityConfig } from '@shared/engine/creation-v2/contracts/battle';
 import type { CreationProductRecord } from '@server/lib/repositories/creationProductRepository';
 import type { Artifact } from '@shared/types/cultivator';
-import type { Quality } from '@shared/types/constants';
+import type { ElementType, Quality } from '@shared/types/constants';
 
 function safeRecordJson(value: unknown): Record<string, unknown> {
   return (value ?? {}) as Record<string, unknown>;
 }
 
 export function toArtifactFromProduct(record: CreationProductRecord): Artifact {
-  const dbAbilityConfig = safeRecordJson(record.abilityConfig);
-  const productModel = enrichProductModelByAffixId(
-    deserializeProductModel(safeRecordJson(record.productModel)),
-  );
+  const productModelJson = safeRecordJson(record.productModel);
+  let abilityConfig: AbilityConfig | undefined;
+  let enrichedModel: unknown;
+
+  if (productModelJson.productType) {
+    const rehydrated = deserializeAndRehydrate(
+      productModelJson,
+      (record.element as ElementType) || undefined,
+    );
+    abilityConfig = projectAbilityConfig(rehydrated);
+    enrichedModel = enrichProductModelByAffixId(rehydrated);
+  }
 
   return {
     id: record.id,
@@ -24,13 +34,11 @@ export function toArtifactFromProduct(record: CreationProductRecord): Artifact {
     element: (record.element as Artifact['element']) || '金',
     quality: (record.quality as Artifact['quality']) || '凡品',
     description: record.description || undefined,
-    attributeModifiers:
-      (dbAbilityConfig.modifiers as Artifact['attributeModifiers']) ?? [],
-    abilityConfig: dbAbilityConfig as unknown as Artifact['abilityConfig'],
+    attributeModifiers: abilityConfig?.modifiers ?? [],
+    ...(abilityConfig ? { abilityConfig: { ...abilityConfig, slug: record.id } as unknown as Artifact['abilityConfig'] } : {}),
     score: record.score || 0,
-    // 背包详情弹窗直接复用列表数据渲染词缀，保留原始结构。
     ...(record.isEquipped !== undefined ? { isEquipped: record.isEquipped } : {}),
-    ...(productModel ? { productModel } : {}),
+    ...(enrichedModel ? { productModel: enrichedModel } : {}),
   } as Artifact;
 }
 
@@ -71,26 +79,16 @@ export function getArtifactQualityFromProduct(
 }
 
 export function getArtifactEffectCountFromProduct(
-  record: Pick<CreationProductRecord, 'abilityConfig' | 'productModel'>,
+  record: Pick<CreationProductRecord, 'productModel'>,
 ): number {
-  const abilityConfig = deserializeAbilityConfig(
-    safeRecordJson(record.abilityConfig),
-    'artifact-preview',
-  );
   const productModel = deserializeProductModel(safeRecordJson(record.productModel));
-
-  const directEffects = abilityConfig.effects?.length ?? 0;
-  const listeners = abilityConfig.listeners?.length ?? 0;
-  const modifiers = abilityConfig.modifiers?.length ?? 0;
   const affixes = productModel.affixes?.length ?? 0;
-
-  return Math.max(directEffects + listeners + modifiers, affixes);
+  return affixes;
 }
 
 export function getArtifactStateHash(record: CreationProductRecord): string {
   try {
     return JSON.stringify({
-      abilityConfig: record.abilityConfig ?? {},
       productModel: record.productModel ?? {},
       isEquipped: record.isEquipped,
     });

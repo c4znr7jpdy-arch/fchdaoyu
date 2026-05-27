@@ -496,8 +496,7 @@ function buildArtifactSessionSnapshot(
       score: item.score || 0,
       slot: item.slot,
       effectsHash: getEffectsHash({
-        attributeModifiers: item.attributeModifiers ?? [],
-        abilityConfig: item.abilityConfig ?? null,
+        productModel: item.productModel ?? null,
       }),
     };
   }

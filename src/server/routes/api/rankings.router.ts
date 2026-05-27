@@ -1,4 +1,5 @@
-import { deserializeAbilityConfig } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
+import { deserializeAndRehydrate } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
+import { projectAbilityConfig } from '@shared/engine/creation-v2/models/AbilityProjection';
 import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
 import { getExecutor } from '@server/lib/drizzle/db';
 import {
@@ -112,7 +113,6 @@ publicRouter.get('/items', async (c) => {
         title: item.quality ?? undefined,
         element: item.element ?? undefined,
         slot: item.slot ?? undefined,
-        abilityConfig: item.abilityConfig ?? undefined,
         productModel: item.productModel ?? undefined,
       }));
     } else if (type === 'skill') {
@@ -131,10 +131,19 @@ publicRouter.get('/items', async (c) => {
         .limit(limit);
 
       items = rows.map(({ item, owner }, index) => {
-        const abilityConfig = deserializeAbilityConfig(
-          (item.abilityConfig ?? {}) as Record<string, unknown>,
-          item.id,
-        );
+        let cooldown = 0;
+        let cost = 0;
+        if (item.productModel) {
+          try {
+            const rehydrated = deserializeAndRehydrate(
+              item.productModel as Record<string, unknown>,
+              (item.element as import('@shared/types/constants').ElementType) || undefined,
+            );
+            const abilityConfig = projectAbilityConfig(rehydrated);
+            cooldown = abilityConfig.cooldown ?? 0;
+            cost = abilityConfig.mpCost || 0;
+          } catch { /* fallback to defaults */ }
+        }
 
         return {
           id: item.id,
@@ -148,9 +157,8 @@ publicRouter.get('/items', async (c) => {
           description: item.description || '',
           title: item.quality || '未知品阶',
           element: item.element ?? undefined,
-          cooldown: abilityConfig.cooldown ?? 0,
-          cost: abilityConfig.mpCost || 0,
-          abilityConfig: item.abilityConfig ?? undefined,
+          cooldown,
+          cost,
           productModel: item.productModel ?? undefined,
         };
       });
@@ -209,7 +217,6 @@ publicRouter.get('/items', async (c) => {
         score: item.score || 0,
         description: item.description || '',
         title: item.quality || '未知品阶',
-        abilityConfig: item.abilityConfig ?? undefined,
         productModel: item.productModel ?? undefined,
       }));
     }

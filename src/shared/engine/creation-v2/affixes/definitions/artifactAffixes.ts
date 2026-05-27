@@ -729,7 +729,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
     },
     listenerSpec: {
       eventType: GameplayTags.EVENT.ROUND_PRE,
-      scope: GameplayTags.SCOPE.OWNER_AS_TARGET,
+      scope: GameplayTags.SCOPE.GLOBAL,
       priority: CREATION_LISTENER_PRIORITIES.roundPre,
     },
   },
@@ -829,7 +829,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
     },
     listenerSpec: {
       eventType: GameplayTags.EVENT.ROUND_PRE,
-      scope: GameplayTags.SCOPE.OWNER_AS_TARGET,
+      scope: GameplayTags.SCOPE.GLOBAL,
       priority: CREATION_LISTENER_PRIORITIES.roundPre,
     },
   },
@@ -1249,7 +1249,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
     },
     listenerSpec: {
       eventType: GameplayTags.EVENT.ROUND_PRE,
-      scope: GameplayTags.SCOPE.OWNER_AS_TARGET,
+      scope: GameplayTags.SCOPE.GLOBAL,
       priority: CREATION_LISTENER_PRIORITIES.roundPre,
     },
   },

@@ -1,15 +1,13 @@
-import { AbilityType } from '@shared/engine/battle-v5/core/types';
 import type { AbilityConfig } from '@shared/engine/creation-v2/contracts/battle';
 import {
-  deserializeAbilityConfig,
-  serializeAbilityConfig,
+  deserializeAndRehydrate,
   serializeProductModel,
 } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
+import { projectAbilityConfig } from '@shared/engine/creation-v2/models/AbilityProjection';
 import {
   ensureStarterSkill,
   ensureStarterTechnique,
 } from '@shared/engine/cultivator/creation/starterProducts';
-import { GameplayTags } from '@shared/engine/shared/tag-domain';
 import * as creationProductRepository from '@server/lib/repositories/creationProductRepository';
 import {
   existsCultivatorById,
@@ -113,13 +111,25 @@ async function assembleCultivatorFromRelations(
   );
 
   const toAbilityConfig = (
-    abilityConfig: Record<string, unknown>,
+    productModel: Record<string, unknown> | null | undefined,
+    element: string | null | undefined,
     id: string,
-  ): AbilityConfig => deserializeAbilityConfig(abilityConfig, id);
+  ): AbilityConfig => {
+    if (!productModel || !productModel.productType) {
+      return { slug: id } as AbilityConfig;
+    }
+    const rehydrated = deserializeAndRehydrate(
+      productModel as Record<string, unknown>,
+      (element as import('@shared/types/constants').ElementType) || undefined,
+    );
+    const config = projectAbilityConfig(rehydrated);
+    return { ...config, slug: id };
+  };
 
   const cultivations = gongfaProducts.map((product) => {
     const abilityConfig = toAbilityConfig(
-      product.abilityConfig as Record<string, unknown>,
+      product.productModel as Record<string, unknown>,
+      product.element,
       product.id,
     );
 
@@ -138,7 +148,8 @@ async function assembleCultivatorFromRelations(
 
   const skills = skillProducts.map((product) => {
     const abilityConfig = toAbilityConfig(
-      product.abilityConfig as Record<string, unknown>,
+      product.productModel as Record<string, unknown>,
+      product.element,
       product.id,
     );
 
@@ -159,7 +170,8 @@ async function assembleCultivatorFromRelations(
 
   const artifacts = artifactProducts.map((product) => {
     const abilityConfig = toAbilityConfig(
-      product.abilityConfig as Record<string, unknown>,
+      product.productModel as Record<string, unknown>,
+      product.element,
       product.id,
     );
 
@@ -538,7 +550,6 @@ export async function createCultivator(
           slot: null,
           score: normalizedTechnique.score ?? 0,
           isEquipped: false,
-          abilityConfig: serializeAbilityConfig(normalizedTechnique.abilityConfig),
           productModel: serializeProductModel(normalizedTechnique.productModel),
         };
       }),
@@ -554,7 +565,6 @@ export async function createCultivator(
           slot: null,
           score: 0,
           isEquipped: false,
-          abilityConfig: serializeAbilityConfig(normalizedSkill.abilityConfig),
           productModel: serializeProductModel(normalizedSkill.productModel),
         };
       }),
@@ -1648,17 +1658,6 @@ export async function addArtifactToInventory(
 
   const dbInstance = getExecutor(tx);
   const score = calculateSingleArtifactScore(artifact);
-  const abilityConfig =
-    artifact.abilityConfig ||
-    ({
-      slug: `artifact_${artifact.name}`,
-      name: artifact.name,
-      type: AbilityType.PASSIVE_SKILL,
-      tags: [GameplayTags.ABILITY.KIND.ARTIFACT],
-      modifiers: artifact.attributeModifiers ?? [],
-      effects: [],
-      listeners: [],
-    } as AbilityConfig);
 
   await creationProductRepository.insert(
     {
@@ -1671,7 +1670,6 @@ export async function addArtifactToInventory(
       slot: artifact.slot,
       score,
       isEquipped: false,
-      abilityConfig: serializeAbilityConfig(abilityConfig),
       productModel: serializeProductModel({ affixes: [] } as Record<
         string,
         unknown

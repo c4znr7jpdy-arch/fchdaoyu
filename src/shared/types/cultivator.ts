@@ -153,7 +153,7 @@ export interface CultivationTechnique {
   score?: number;
   description?: string;
   attributeModifiers?: AttributeModifierConfig[];
-  /** Phase 1 过渡期可选：旧数据/排行榜快照可能没有 abilityConfig */
+  /** 运行时由 productModel 实时推导，不持久化到数据库 */
   abilityConfig?: AbilityConfig;
   /** 背包/详情展示链路透传 creation_products.product_model */
   productModel?: unknown;
@@ -169,7 +169,7 @@ export interface Skill {
   cooldown: number;
   target_self?: boolean;
   description?: string;
-  /** Phase 1 过渡期可选：旧数据可能没有 abilityConfig */
+  /** 运行时由 productModel 实时推导，不持久化到数据库 */
   abilityConfig?: AbilityConfig;
   /** 背包/详情展示链路透传 creation_products.product_model */
   productModel?: unknown;
@@ -183,7 +183,7 @@ export interface Artifact {
   quality?: Quality;
   description?: string;
   attributeModifiers?: AttributeModifierConfig[];
-  /** Phase 1 过渡期可选 */
+  /** 运行时由 productModel 实时推导，不持久化到数据库 */
   abilityConfig?: AbilityConfig;
   prompt?: string;
   score?: number;

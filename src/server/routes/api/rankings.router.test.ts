@@ -41,7 +41,11 @@ vi.mock('@server/lib/hono/middleware', () => ({
 }));
 
 vi.mock('@shared/engine/creation-v2/persistence/ProductPersistenceMapper', () => ({
-  deserializeAbilityConfig: vi.fn(),
+  deserializeAndRehydrate: vi.fn(),
+}));
+
+vi.mock('@shared/engine/creation-v2/models/AbilityProjection', () => ({
+  projectAbilityConfig: vi.fn(() => ({ cooldown: 0, mpCost: 0 })),
 }));
 
 vi.mock('@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter', () => ({
