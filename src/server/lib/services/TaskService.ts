@@ -858,7 +858,8 @@ async function syncTaskRecord(
   );
   const serializedNext = serializeObjectiveStates(resolved.objectiveStates);
   const currentMetadata =
-    (preparedRecord.metadata as TaskInstanceMetadata | null | undefined) ?? null;
+    (preparedRecord.metadata as TaskInstanceMetadata | null | undefined) ??
+    undefined;
   const nextMetadata = isDailyTaskDefinition(definition)
     ? createTaskMetadata(
         definition,

@@ -418,22 +418,15 @@ function TowerBlessingChoices({
     nextStacks: number,
   ) => void;
 }) {
-  const [focusedId, setFocusedId] = useState<TowerBlessingId | null>(
-    state.pendingBlessingChoices[0]?.id ?? null,
-  );
-
-  useEffect(() => {
-    setFocusedId((current) => {
-      if (
-        current &&
-        state.pendingBlessingChoices.some((choice) => choice.id === current)
-      ) {
-        return current;
-      }
-
-      return state.pendingBlessingChoices[0]?.id ?? null;
-    });
-  }, [state.pendingBlessingChoices]);
+  const [selectedBlessingId, setSelectedBlessingId] =
+    useState<TowerBlessingId | null>(
+      state.pendingBlessingChoices[0]?.id ?? null,
+    );
+  const focusedId =
+    selectedBlessingId &&
+    state.pendingBlessingChoices.some((choice) => choice.id === selectedBlessingId)
+      ? selectedBlessingId
+      : state.pendingBlessingChoices[0]?.id ?? null;
 
   return (
     <div className="grid gap-2.5 md:grid-cols-3">
@@ -460,7 +453,7 @@ function TowerBlessingChoices({
               <button
                 type="button"
                 className="min-w-0 text-left"
-                onClick={() => setFocusedId(choice.id)}
+                onClick={() => setSelectedBlessingId(choice.id)}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="truncate text-sm font-semibold sm:text-base">
@@ -751,7 +744,6 @@ export default function TowerPage() {
   }, [
     encounterProbe,
     processing,
-    requestProbeBattleInEffect,
     setPayload,
     towerState?.activeBattleId,
     towerState?.status,

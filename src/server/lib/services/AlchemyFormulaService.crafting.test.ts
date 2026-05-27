@@ -3,6 +3,7 @@ const {
   executorState,
   generateFormulaBatchDescriptionMock,
   generateFormulaRecordCopyMock,
+  getCultivatorByIdUnsafeMock,
   getExecutorMock,
   redisDelMock,
   redisSetMock,
@@ -104,6 +105,21 @@ const {
     executorState: state,
     generateFormulaBatchDescriptionMock: vi.fn(),
     generateFormulaRecordCopyMock: vi.fn(),
+    getCultivatorByIdUnsafeMock: vi.fn((cultivatorId: string) =>
+      Promise.resolve(
+        state.cultivatorRow
+          ? {
+              cultivator: {
+                id: cultivatorId,
+                realm: state.cultivatorRow.realm,
+                pre_heaven_fates: [],
+              },
+              userId: state.cultivatorRow.userId ?? 'user-1',
+              updatedAt: new Date('2026-05-15T00:00:00.000Z'),
+            }
+          : null,
+      ),
+    ),
     getExecutorMock: vi.fn(() => executor),
     redisDelMock: vi.fn(),
     redisSetMock: vi.fn(),
@@ -124,6 +140,7 @@ vi.mock('@server/lib/redis', () => ({
 
 vi.mock('./cultivatorService', () => ({
   addConsumableToInventory: addConsumableToInventoryMock,
+  getCultivatorByIdUnsafe: getCultivatorByIdUnsafeMock,
 }));
 
 vi.mock('./AlchemyNarrativeEnricher', () => ({
@@ -206,6 +223,7 @@ describe('craftFromFormula narrative copy', () => {
     addConsumableToInventoryMock.mockReset();
     generateFormulaBatchDescriptionMock.mockReset();
     generateFormulaRecordCopyMock.mockReset();
+    getCultivatorByIdUnsafeMock.mockClear();
     redisSetMock.mockResolvedValue('OK');
     generateFormulaRecordCopyMock.mockResolvedValue(null);
   });

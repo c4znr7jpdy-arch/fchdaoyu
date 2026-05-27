@@ -234,7 +234,7 @@ describe('craft router alchemy routes', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       success: true,
-      data: {
+      data: expect.objectContaining({
         consumable: expect.objectContaining({
           id: 'pill-1',
           name: '青木疗伤丹',
@@ -242,7 +242,12 @@ describe('craft router alchemy routes', () => {
             kind: 'pill',
           }),
         }),
-      },
+        formulaDiscovery: expect.objectContaining({
+          token: '11111111-1111-1111-1111-111111111111',
+          name: '青木疗伤丹丹方',
+          family: 'healing',
+        }),
+      }),
     });
     expect(processAlchemyCraftMock).toHaveBeenCalledWith('cultivator-1', ['m1'], {
       materialQuantities: { m1: 2 },

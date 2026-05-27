@@ -3,6 +3,7 @@ const {
   buildDiscoveryCandidateMock,
   executorState,
   generateImprovisedPillCopyMock,
+  getCultivatorByIdUnsafeMock,
   getExecutorMock,
   redisDelMock,
   redisSetMock,
@@ -87,6 +88,21 @@ const {
     buildDiscoveryCandidateMock: vi.fn(),
     executorState: state,
     generateImprovisedPillCopyMock: vi.fn(),
+    getCultivatorByIdUnsafeMock: vi.fn((cultivatorId: string) =>
+      Promise.resolve(
+        state.cultivatorRow
+          ? {
+              cultivator: {
+                id: cultivatorId,
+                realm: state.cultivatorRow.realm ?? '筑基',
+                pre_heaven_fates: [],
+              },
+              userId: state.cultivatorRow.userId ?? 'user-1',
+              updatedAt: new Date('2026-05-15T00:00:00.000Z'),
+            }
+          : null,
+      ),
+    ),
     getExecutorMock: vi.fn(() => executor),
     redisDelMock: vi.fn(),
     redisSetMock: vi.fn(),
@@ -106,6 +122,7 @@ vi.mock('@server/lib/redis', () => ({
 
 vi.mock('./cultivatorService', () => ({
   addConsumableToInventory: addConsumableToInventoryMock,
+  getCultivatorByIdUnsafe: getCultivatorByIdUnsafeMock,
 }));
 
 vi.mock('./AlchemyFormulaService', () => ({
@@ -153,6 +170,7 @@ describe('processAlchemyCraft narrative copy', () => {
     addConsumableToInventoryMock.mockReset();
     buildDiscoveryCandidateMock.mockReset();
     generateImprovisedPillCopyMock.mockReset();
+    getCultivatorByIdUnsafeMock.mockClear();
     redisSetMock.mockResolvedValue('OK');
     buildDiscoveryCandidateMock.mockResolvedValue(null);
   });

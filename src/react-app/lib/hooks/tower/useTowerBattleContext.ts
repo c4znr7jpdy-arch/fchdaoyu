@@ -2,15 +2,14 @@ import type { TowerBattleContext } from '@shared/lib/tower';
 import { useEffect, useState } from 'react';
 
 export function useTowerBattleContext(battleId: string | null) {
-  const [context, setContext] = useState<TowerBattleContext | null>(null);
-  const [error, setError] = useState<string>();
-  const [loading, setLoading] = useState(Boolean(battleId));
+  const [resolvedState, setResolvedState] = useState<{
+    battleId: string;
+    context: TowerBattleContext | null;
+    error?: string;
+  }>();
 
   useEffect(() => {
     if (!battleId) {
-      setContext(null);
-      setError('缺少幻境战局标识');
-      setLoading(false);
       return;
     }
 
@@ -18,8 +17,6 @@ export function useTowerBattleContext(battleId: string | null) {
 
     const load = async () => {
       try {
-        setLoading(true);
-        setError(undefined);
         const response = await fetch(
           `/api/tower/battle/context?battleId=${encodeURIComponent(battleId)}`,
         );
@@ -32,19 +29,21 @@ export function useTowerBattleContext(battleId: string | null) {
           throw new Error(data.error || '读取幻境战局失败');
         }
 
-        setContext(data);
+        setResolvedState({
+          battleId,
+          context: data,
+        });
       } catch (requestError) {
         if (cancelled) return;
-        setContext(null);
-        setError(
+        const error =
           requestError instanceof Error
             ? requestError.message
-            : '读取幻境战局失败',
-        );
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+            : '读取幻境战局失败';
+        setResolvedState({
+          battleId,
+          context: null,
+          error,
+        });
       }
     };
 
@@ -54,6 +53,17 @@ export function useTowerBattleContext(battleId: string | null) {
       cancelled = true;
     };
   }, [battleId]);
+
+  const context =
+    battleId && resolvedState?.battleId === battleId
+      ? resolvedState.context
+      : null;
+  const error = !battleId
+    ? '缺少幻境战局标识'
+    : resolvedState?.battleId === battleId
+      ? resolvedState.error
+      : undefined;
+  const loading = Boolean(battleId) && resolvedState?.battleId !== battleId;
 
   return {
     context,
