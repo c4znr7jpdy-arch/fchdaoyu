@@ -74,6 +74,24 @@ export function buildRaceFallbackName(
   return `${ELEMENT_NAME_PREFIX[element]}${realm}${realmStage}${suffixByRace[race]}`;
 }
 
+export function buildTitleFallback(
+  race: EnemyRace,
+  realm: RealmType,
+  realmStage: RealmStage,
+  primaryElement: ElementType,
+): string {
+  const suffixByRace: Record<EnemyRace, string> = {
+    人族: '守关人',
+    妖族: '妖影',
+    鬼魂: '幽使',
+    魔族: '魔影',
+    古兽: '镇关兽',
+    灵族: '灵卫',
+  };
+
+  return `${ELEMENT_NAME_PREFIX[primaryElement]}${realm}${realmStage}${suffixByRace[race]}`;
+}
+
 export function buildBackgroundFallback(
   race: EnemyRace,
   realm: RealmType,
@@ -138,7 +156,7 @@ export function resolveEnergyBudget(
   isBoss: boolean = false,
 ): number {
   const baseByType = {
-    skill: 14,
+    skill: 18,
     gongfa: 12,
     artifact: 12,
   } as const;

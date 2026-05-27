@@ -26,6 +26,10 @@ const BattleIdBodySchema = z.object({
   battleId: z.string().min(1),
 });
 
+const BattleIdQuerySchema = z.object({
+  battleId: z.string().min(1),
+});
+
 const LeaderboardQuerySchema = z.object({
   realm: z.enum(REALM_VALUES),
   limit: z.coerce.number().int().min(1).max(30).default(30),
@@ -107,6 +111,24 @@ battleRouter.post('/probe', requireActiveCultivator(), async (c) => {
     return c.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : '照见幻影失败';
+    return c.json({ error: message }, 400);
+  }
+});
+
+battleRouter.get('/context', requireActiveCultivator(), async (c) => {
+  try {
+    const cultivator = c.get('cultivator');
+    if (!cultivator) {
+      return c.json({ error: '当前没有活跃角色' }, 404);
+    }
+
+    const { battleId } = BattleIdQuerySchema.parse({
+      battleId: c.req.query('battleId'),
+    });
+    const result = await towerService.getBattleContext(cultivator.id, battleId);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '读取幻境战局失败';
     return c.json({ error: message }, 400);
   }
 });

@@ -1,6 +1,7 @@
 import type { ResourceOperation } from '@shared/engine/resource/types';
 import type { CultivatorCondition } from '@shared/types/condition';
 import type { EnemyRace, RealmStage, RealmType } from '@shared/types/constants';
+import type { Cultivator } from '@shared/types/cultivator';
 import type { TowerBlessingId } from './blessings';
 
 export type TowerRunStatus =
@@ -37,6 +38,12 @@ export interface TowerEncounter {
   realm: RealmType;
   realmStage: RealmStage;
   isBoss: boolean;
+}
+
+export interface TowerBattleContext {
+  battleId: string;
+  encounter: TowerEncounter;
+  enemy: Cultivator;
 }
 
 export interface TowerMilestoneReward {

@@ -324,6 +324,7 @@ export interface CreationSessionState {
     selectionSeed?: string | number;
     rng?: () => number;
     stableOutputKey?: string;
+    suppressLogs?: boolean;
   };
 
   // ── 阶段 1：材料分析 ────────────────────────────────────────────────────────

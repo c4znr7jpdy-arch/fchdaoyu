@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
-import { enemyGenerator } from '@shared/engine/enemyGenerator';
+import { EnemyGenerator } from '@shared/engine/enemyGenerator';
 import { resourceEngine } from '@shared/engine/resource/ResourceEngine';
 import type { ResourceOperation } from '@shared/engine/resource/types';
 import {
@@ -11,6 +11,7 @@ import {
   resolveTowerFloorKind,
   resolveTowerMilestoneTier,
   resolveTowerRealmStage,
+  type TowerBattleContext,
   type TowerBlessingId,
   type TowerEncounter,
   type TowerMilestoneReward,
@@ -29,11 +30,17 @@ import {
   getCultivatorOwnerId,
 } from '@server/lib/services/cultivatorService';
 import { ConditionService } from '@server/lib/services/ConditionService';
+import { ServerEnemyCopyProvider } from '@server/lib/services/ServerEnemyCopyProvider';
 import type { PlayerInfo } from '@server/lib/dungeon/types';
 import { buildTowerBattleInit, applyTowerBattleOutcome } from './battleInit';
 import { getTowerLeaderboard, updateTowerWeeklyRecord } from './leaderboard';
 
 const RUN_TTL_SECONDS = 8 * 24 * 60 * 60;
+const towerEnemyGenerator = new EnemyGenerator({
+  copyProvider: new ServerEnemyCopyProvider({
+    enabled: process.env.NODE_ENV !== 'test',
+  }),
+});
 
 interface TowerBattleSession {
   battleId: string;
@@ -97,6 +104,17 @@ function buildRewardPlayerInfo(cultivator: Cultivator): PlayerInfo {
 }
 
 export class TowerService {
+  private buildBattleContext(
+    battleId: string,
+    payload: TowerBattleCachePayload,
+  ): TowerBattleContext {
+    return {
+      battleId,
+      encounter: payload.session.encounter,
+      enemy: payload.enemyObject,
+    };
+  }
+
   private async loadState(
     cultivatorId: string,
     now: Date = new Date(),
@@ -169,13 +187,15 @@ export class TowerService {
     state: TowerState,
   ) {
     const encounter = this.buildEncounter(cultivator, state);
-    const draft = enemyGenerator.buildDraft({
-      realm: encounter.realm,
-      realmStage: encounter.realmStage,
-      race: encounter.race,
-      difficulty: encounter.difficulty,
-      isBoss: encounter.isBoss,
-    });
+    const draft = await towerEnemyGenerator.enrichNarrative(
+      towerEnemyGenerator.buildDraft({
+        realm: encounter.realm,
+        realmStage: encounter.realmStage,
+        race: encounter.race,
+        difficulty: encounter.difficulty,
+        isBoss: encounter.isBoss,
+      }),
+    );
     const { normalizedCondition } = buildTowerBattleInit({
       cultivator,
       condition: state.condition,
@@ -335,13 +355,11 @@ export class TowerService {
 
     if (state.status === 'WAITING_BATTLE' && state.activeBattleId) {
       const { payload } = await this.getBattlePayload(state.activeBattleId);
-      if (payload?.enemyObject) {
+      if (payload?.session && payload.enemyObject) {
         return {
           season,
           state,
-          battleId: state.activeBattleId,
-          encounter: payload.session.encounter,
-          enemy: payload.enemyObject,
+          ...this.buildBattleContext(state.activeBattleId, payload),
         };
       }
 
@@ -370,10 +388,37 @@ export class TowerService {
     return {
       season,
       state,
-      battleId: session.session.battleId,
-      encounter: session.session.encounter,
-      enemy: session.enemyObject,
+      ...this.buildBattleContext(session.session.battleId, {
+        session: session.session,
+        enemyObject: session.enemyObject,
+      }),
     };
+  }
+
+  async getBattleContext(
+    cultivatorId: string,
+    battleId: string,
+    now: Date = new Date(),
+  ) {
+    const { state } = await this.loadState(cultivatorId, now);
+    if (
+      !state ||
+      state.status !== 'WAITING_BATTLE' ||
+      state.activeBattleId !== battleId
+    ) {
+      throw new Error('当前没有匹配的幻境战局');
+    }
+
+    const { payload } = await this.getBattlePayload(battleId);
+    if (
+      !payload?.session ||
+      !payload.enemyObject ||
+      payload.session.cultivatorId !== cultivatorId
+    ) {
+      throw new Error('幻境战局数据不存在或已失效');
+    }
+
+    return this.buildBattleContext(battleId, payload);
   }
 
   async chooseBlessing(

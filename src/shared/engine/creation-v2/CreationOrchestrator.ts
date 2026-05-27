@@ -274,6 +274,7 @@ export class CreationOrchestrator {
     input: IntentCraftInput,
     options: Omit<CreationWorkflowOptions, 'materialAnalysisMode'> & {
       rng?: () => number;
+      suppressLogs?: boolean;
     } = {},
   ): CreationSession {
     if ((options.namingMode ?? 'skip') === 'llm') {
@@ -304,6 +305,7 @@ export class CreationOrchestrator {
       selectionSeed: `${String(input.seed)}:${input.stableOutputKey}`,
       rng: options.rng,
       stableOutputKey: input.stableOutputKey,
+      suppressLogs: options.suppressLogs,
     };
 
     try {
@@ -947,7 +949,10 @@ export class CreationOrchestrator {
       'status' | 'provider' | 'fallbackReason' | 'failureDisposition'
     >,
   ): void {
-    if (process.env.NODE_ENV === 'test') {
+    if (
+      process.env.NODE_ENV === 'test' ||
+      session.state.intentCraftMeta?.suppressLogs
+    ) {
       return;
     }
 
@@ -987,7 +992,10 @@ export class CreationOrchestrator {
   }
 
   private logWorkflowCompleted(session: CreationSession): void {
-    if (process.env.NODE_ENV === 'test') {
+    if (
+      process.env.NODE_ENV === 'test' ||
+      session.state.intentCraftMeta?.suppressLogs
+    ) {
       return;
     }
 
@@ -1010,7 +1018,10 @@ export class CreationOrchestrator {
     reason: string,
     details?: Record<string, unknown>,
   ): void {
-    if (process.env.NODE_ENV === 'test') {
+    if (
+      process.env.NODE_ENV === 'test' ||
+      session.state.intentCraftMeta?.suppressLogs
+    ) {
       return;
     }
 

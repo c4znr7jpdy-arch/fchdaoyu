@@ -7,6 +7,7 @@ const {
   resetRunMock,
   chooseBlessingMock,
   probeBattleMock,
+  getBattleContextMock,
   executeBattleMock,
   getLeaderboardMock,
 } = vi.hoisted(() => ({
@@ -15,6 +16,7 @@ const {
   resetRunMock: vi.fn(),
   chooseBlessingMock: vi.fn(),
   probeBattleMock: vi.fn(),
+  getBattleContextMock: vi.fn(),
   executeBattleMock: vi.fn(),
   getLeaderboardMock: vi.fn(),
 }));
@@ -33,6 +35,7 @@ vi.mock('@server/lib/tower/service', () => ({
     resetRun: resetRunMock,
     chooseBlessing: chooseBlessingMock,
     probeBattle: probeBattleMock,
+    getBattleContext: getBattleContextMock,
     executeBattle: executeBattleMock,
     getLeaderboard: getLeaderboardMock,
   },
@@ -104,6 +107,26 @@ describe('tower router', () => {
       encounter: { floor: 5, kind: 'elite' },
       enemy: { id: 'enemy-1', name: '守塔者' },
     });
+
+    getBattleContextMock.mockResolvedValueOnce({
+      battleId: 'battle-1',
+      encounter: { floor: 5, kind: 'elite' },
+      enemy: { id: 'enemy-1', name: '守塔者' },
+    });
+
+    const contextResponse = await createApp().request(
+      '/api/tower/battle/context?battleId=battle-1',
+    );
+    expect(contextResponse.status).toBe(200);
+    await expect(contextResponse.json()).resolves.toEqual({
+      battleId: 'battle-1',
+      encounter: { floor: 5, kind: 'elite' },
+      enemy: { id: 'enemy-1', name: '守塔者' },
+    });
+    expect(getBattleContextMock).toHaveBeenCalledWith(
+      'cultivator-1',
+      'battle-1',
+    );
 
     const executeResponse = await createApp().request(
       '/api/tower/battle/execute/v5',

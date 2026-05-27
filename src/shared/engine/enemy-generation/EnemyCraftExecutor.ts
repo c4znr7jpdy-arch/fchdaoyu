@@ -91,7 +91,13 @@ function coreSemanticTagsForIntent(
 ): string[] {
   switch (intent.productType) {
     case 'gongfa':
-      return [CreationTags.MATERIAL.SEMANTIC_MANUAL];
+      return [
+        CreationTags.MATERIAL.SEMANTIC_MANUAL,
+        CreationTags.MATERIAL.SEMANTIC_SPIRIT,
+        CreationTags.MATERIAL.SEMANTIC_SUSTAIN,
+        CreationTags.MATERIAL.SEMANTIC_GUARD,
+        CreationTags.MATERIAL.SEMANTIC_BLADE,
+      ];
     case 'artifact':
       switch (intent.slot) {
         case 'armor':
@@ -114,6 +120,27 @@ function coreSemanticTagsForIntent(
         default:
           return [CreationTags.MATERIAL.SEMANTIC_BURST];
       }
+  }
+}
+
+function elementSemanticTag(element: ElementType): string | undefined {
+  switch (element) {
+    case '金':
+      return CreationTags.MATERIAL.SEMANTIC_METAL;
+    case '木':
+      return CreationTags.MATERIAL.SEMANTIC_WOOD;
+    case '水':
+      return CreationTags.MATERIAL.SEMANTIC_WATER;
+    case '火':
+      return CreationTags.MATERIAL.SEMANTIC_FLAME;
+    case '土':
+      return CreationTags.MATERIAL.SEMANTIC_EARTH;
+    case '风':
+      return CreationTags.MATERIAL.SEMANTIC_WIND;
+    case '雷':
+      return CreationTags.MATERIAL.SEMANTIC_THUNDER;
+    case '冰':
+      return CreationTags.MATERIAL.SEMANTIC_FREEZE;
   }
 }
 
@@ -230,6 +257,7 @@ export class EnemyCraftExecutor {
         const session = this.creationOrchestrator.craftFromIntent(normalized, {
           autoMaterialize: false,
           namingMode: 'skip',
+          suppressLogs: true,
         });
         const blueprint = session.state.blueprint;
         if (!blueprint) {
@@ -282,10 +310,12 @@ export class EnemyCraftExecutor {
     recoveryTier: 0 | 1 | 2,
   ): IntentCraftInput {
     const loosened = recoveryTier >= 2;
+    const semanticElementTag = elementSemanticTag(element);
     const dominantTags = uniqueStrings([
       ...intent.dominantTags,
       ...archetype.dominantTags,
       ELEMENT_TO_MATERIAL_TAG[element],
+      ...(semanticElementTag ? [semanticElementTag] : []),
       ...(loosened ? coreSemanticTagsForIntent(intent) : []),
     ]).filter(
       (tag) => !loosened || tag !== CreationTags.MATERIAL.TYPE_SPECIAL,
@@ -305,7 +335,8 @@ export class EnemyCraftExecutor {
     return {
       productType: intent.productType,
       energyBudget: Math.max(
-        CREATION_RESERVED_ENERGY[intent.productType] + 10,
+        CREATION_RESERVED_ENERGY[intent.productType] +
+          (intent.productType === 'skill' ? 15 : 10),
         intent.energyBudget + (archetype.energyBias ?? 0),
       ),
       unlockScore: Math.max(0, intent.unlockScore + (archetype.unlockBias ?? 0)),

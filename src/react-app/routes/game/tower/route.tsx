@@ -1,4 +1,4 @@
-import { LingGenMini } from '@app/components/func/LingGen';
+import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
   GameSceneAsideSection,
   GameSceneFrame,
@@ -15,44 +15,37 @@ import { useTowerLeaderboard } from '@app/lib/hooks/tower/useTowerLeaderboard';
 import { useTowerState } from '@app/lib/hooks/tower/useTowerState';
 import {
   getTowerBlessingDefinition,
-  resolveTowerFloorKind,
+  getTowerBlessingEffectPreview,
+  type TowerBattleContext,
   type TowerBlessingId,
   type TowerSeasonMeta,
   type TowerSettlement,
   type TowerState,
 } from '@shared/lib/tower';
+import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { REALM_VALUES, type RealmType } from '@shared/types/constants';
 import { InkBadge } from '@app/components/ui/InkBadge';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
-import { StatusCard } from '@app/components/cultivator/StatusCard';
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
-import { TowerBattlePanel } from './components/TowerBattlePanel';
+import {
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useNavigate } from 'react-router';
+import { TowerBlessingDetailModal } from './components/TowerBlessingDetailModal';
+import { TowerEnemyDetailModal } from './components/TowerEnemyDetailModal';
 import { TowerLeaderboard } from './components/TowerLeaderboard';
+import {
+  describeEncounterLabel,
+  describeFloorPressure,
+  formatDepthLabel,
+  formatSeasonReset,
+} from './utils';
 
 const TOWER_SCENE_NAME = '蜃楼幻境';
-
-function formatSeasonReset(nextResetAt: string) {
-  const date = new Date(nextResetAt);
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
-function formatDepthLabel(floor: number) {
-  return `第 ${floor} 重`;
-}
-
-function describeFloorPressure(floor: number) {
-  const kind = resolveTowerFloorKind(floor);
-  if (kind === 'boss') return '主影';
-  if (kind === 'elite') return '异化幻影';
-  return '寻常幻影';
-}
-
-function describeEncounterLabel(kind: TowerProbeResponse['encounter']['kind']) {
-  if (kind === 'boss') return '压阵主影';
-  if (kind === 'elite') return '异化幻影';
-  return '寻常幻影';
-}
 
 function buildScenePulse(args: {
   state: TowerState | null;
@@ -88,65 +81,86 @@ function buildScenePulse(args: {
 }
 
 function summarizeBlessings(blessings: TowerState['blessings']) {
-  return Object.entries(blessings)
-    .flatMap(([id, stacks]) => {
-      if (typeof stacks !== 'number' || stacks <= 0) {
-        return [];
-      }
+  return Object.entries(blessings).flatMap(([id, stacks]) => {
+    if (typeof stacks !== 'number' || stacks <= 0) {
+      return [];
+    }
 
-      const blessingId = id as TowerBlessingId;
-      return [
-        {
-          id: blessingId,
-          stacks,
-          definition: getTowerBlessingDefinition(blessingId),
-        },
-      ];
-    });
+    const blessingId = id as TowerBlessingId;
+    return [
+      {
+        id: blessingId,
+        stacks,
+        definition: getTowerBlessingDefinition(blessingId),
+      },
+    ];
+  });
 }
 
-function resourceLine(state: TowerState, maxHp: number, maxMp: number) {
-  return {
-    hp: `${state.condition.resources.hp.current} / ${maxHp}`,
-    mp: `${state.condition.resources.mp.current} / ${maxMp}`,
-  };
+function getMeterPercent(current: number, max: number) {
+  if (!Number.isFinite(max) || max <= 0) {
+    return 0;
+  }
+
+  const percent = (current / max) * 100;
+  return Math.max(0, Math.min(100, percent));
+}
+
+function TowerRunResourceMeter({
+  label,
+  current,
+  max,
+  tone,
+}: {
+  label: string;
+  current: number;
+  max: number;
+  tone: 'hp' | 'mp';
+}) {
+  const percent = getMeterPercent(current, max);
+  const toneClass = tone === 'hp' ? 'bg-crimson' : 'bg-teal';
+
+  return (
+    <div className="min-w-0 space-y-1.5">
+      <div className="flex items-center justify-between gap-2 text-[0.68rem] leading-4 sm:text-[0.72rem]">
+        <span className="text-battle-muted shrink-0 tracking-[0.14em]">
+          {label}
+        </span>
+        <span className="text-ink shrink-0 text-right font-mono text-[0.72rem] sm:text-[0.82rem]">
+          {current} / {max}
+        </span>
+      </div>
+      <div className="bg-battle-faint h-[5px] min-w-0 overflow-hidden rounded-full">
+        <div
+          className={`${toneClass} h-full rounded-full`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  );
 }
 
 function TowerAside({
   season,
   state,
   settlement,
-  maxHp,
-  maxMp,
   onReset,
 }: {
   season?: TowerSeasonMeta;
   state: TowerState | null;
   settlement?: TowerSettlement;
-  maxHp: number;
-  maxMp: number;
   onReset: () => Promise<boolean>;
 }) {
-  const blessings = state ? summarizeBlessings(state.blessings) : [];
-  const resources = state ? resourceLine(state, maxHp, maxMp) : null;
-
   return (
     <>
-      <GameSceneAsideSection title="境中留痕">
-        {state ? (
+      <GameSceneAsideSection title="境门时刻">
+        {season ? (
           <div className="space-y-2 text-sm leading-7">
-            <div>当前所至：{formatDepthLabel(state.currentFloor)}</div>
-            <div>本周最高：{formatDepthLabel(state.highestFloorCleared)}</div>
-            {resources ? (
-              <>
-                <div>境内气血：{resources.hp}</div>
-                <div>境内法力：{resources.mp}</div>
-              </>
-            ) : null}
-            {season ? <div>境门改换：{formatSeasonReset(season.nextResetAt)}</div> : null}
+            <div>下次改换：{formatSeasonReset(season.nextResetAt)}</div>
+            <div>本周留痕随境门一并改写。</div>
           </div>
         ) : (
-          <p className="text-sm leading-7">本周尚未入境。</p>
+          <p className="text-sm leading-7">天象未明，暂难测定境门轮替。</p>
         )}
       </GameSceneAsideSection>
 
@@ -164,18 +178,6 @@ function TowerAside({
         </GameSceneAsideSection>
       ) : null}
 
-      {blessings.length > 0 ? (
-        <GameSceneAsideSection title="已承机缘">
-          <div className="space-y-2 text-sm leading-7">
-            {blessings.map((item) => (
-              <div key={item.id}>
-                {item.definition.name} · {item.stacks}/{item.definition.maxStacks}
-              </div>
-            ))}
-          </div>
-        </GameSceneAsideSection>
-      ) : null}
-
       {state ? (
         <GameSceneAsideSection title="再启此境">
           <InkButton variant="secondary" className="w-full" onClick={onReset}>
@@ -187,16 +189,125 @@ function TowerAside({
   );
 }
 
+function TowerRunStatusCard({
+  state,
+  maxHp,
+  maxMp,
+  onOpenBlessing,
+  onOpenStatuses,
+}: {
+  state: TowerState;
+  maxHp: number;
+  maxMp: number;
+  onOpenBlessing: (blessingId: TowerBlessingId, currentStacks: number) => void;
+  onOpenStatuses: () => void;
+}) {
+  const blessings = summarizeBlessings(state.blessings);
+  const statusSummary = state.condition.statuses.length
+    ? state.condition.statuses
+        .map((status) => {
+          const template = getConditionStatusTemplate(status.key);
+          const label = template?.name ?? status.key;
+          return status.stacks > 1 ? `${label} ${status.stacks} 层` : label;
+        })
+        .join('，')
+    : '暂无明显伤势，境中气息尚稳。';
+
+  return (
+    <GameSceneSection title="塔中留痕">
+      <InkCard className="space-y-4 p-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-start">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="border-ink/12 bg-ink/5 space-y-1 rounded-none border border-dashed px-3 py-2.5">
+              <div className="text-ink-secondary text-[0.68rem] tracking-[0.14em]">
+                当前所至
+              </div>
+              <div className="text-base font-semibold sm:text-lg">
+                {formatDepthLabel(state.currentFloor)}
+              </div>
+            </div>
+            <div className="border-ink/12 bg-ink/5 space-y-1 rounded-none border border-dashed px-3 py-2.5">
+              <div className="text-ink-secondary text-[0.68rem] tracking-[0.14em]">
+                本周最高
+              </div>
+              <div className="text-base font-semibold sm:text-lg">
+                {formatDepthLabel(state.highestFloorCleared)}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <TowerRunResourceMeter
+              label="境内气血"
+              current={state.condition.resources.hp.current}
+              max={maxHp}
+              tone="hp"
+            />
+            <TowerRunResourceMeter
+              label="境内法力"
+              current={state.condition.resources.mp.current}
+              max={maxMp}
+              tone="mp"
+            />
+          </div>
+        </div>
+
+        <div className="border-ink/15 border-t border-dashed pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="font-semibold">伤势与余痕</div>
+            {state.condition.statuses.length > 0 ? (
+              <button
+                type="button"
+                className="text-ink-secondary hover:text-ink text-xs underline decoration-dotted underline-offset-4 transition-colors"
+                onClick={onOpenStatuses}
+              >
+                查看详情
+              </button>
+            ) : null}
+          </div>
+          <p className="text-ink-secondary mt-2 text-sm leading-7">
+            {statusSummary}
+          </p>
+        </div>
+
+        <div className="border-ink/15 border-t border-dashed pt-4">
+          <div className="font-semibold">已承机缘</div>
+          {blessings.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {blessings.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="border-ink/15 hover:border-crimson/35 hover:text-ink rounded-none border border-dashed px-2 py-1 text-left text-sm transition-colors"
+                  onClick={() => onOpenBlessing(item.id, item.stacks)}
+                >
+                  {item.definition.name} · {item.stacks}/{item.definition.maxStacks}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-ink-secondary mt-2 text-sm leading-7">
+              尚未承接塔中机缘。
+            </p>
+          )}
+        </div>
+      </InkCard>
+    </GameSceneSection>
+  );
+}
+
 function TowerEncounterCard({
   probe,
   loading,
   onRetryProbe,
   onStartBattle,
+  onOpenDetail,
 }: {
   probe: TowerProbeResponse | null;
   loading: boolean;
   onRetryProbe: () => void;
   onStartBattle: () => void;
+  onOpenDetail: () => void;
 }) {
   if (!probe) {
     return (
@@ -220,18 +331,26 @@ function TowerEncounterCard({
   }
 
   const enemy = probe.enemy;
+  const atmosphereCopy =
+    enemy.description ??
+    enemy.background ??
+    '那道幻影已在塔中凝实，正静候你踏入此战。';
 
   return (
     <GameSceneSection title="眼前幻影">
-      <InkCard className="space-y-4 p-4">
-        <div className="flex items-center justify-between gap-3">
+      <InkCard className="space-y-5 p-5">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="font-semibold">
+            <div className="text-ink-secondary text-sm">
               {formatDepthLabel(probe.encounter.floor)} ·{' '}
               {describeEncounterLabel(probe.encounter.kind)}
             </div>
-            <div className="text-ink-secondary mt-1 text-sm">
-              {enemy.name} · {probe.encounter.realm} {probe.encounter.realmStage}
+            <div className="mt-2 text-[1.35rem] leading-tight font-semibold">
+              {enemy.name}
+            </div>
+            <div className="text-ink-secondary mt-1 text-sm leading-7">
+              {probe.encounter.realm} {probe.encounter.realmStage}
+              {enemy.title ? ` · 「${enemy.title}」` : ''}
             </div>
           </div>
           <InkBadge tier={probe.encounter.realm}>
@@ -239,23 +358,12 @@ function TowerEncounterCard({
           </InkBadge>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>体魄：{enemy.attributes.vitality}</div>
-          <div>灵力：{enemy.attributes.spirit}</div>
-          <div>悟性：{enemy.attributes.wisdom}</div>
-          <div>身法：{enemy.attributes.speed}</div>
-          <div className="col-span-2">神识：{enemy.attributes.willpower}</div>
-        </div>
+        <p className="text-sm leading-8">{atmosphereCopy}</p>
 
-        <LingGenMini spiritualRoots={enemy.spiritual_roots} />
-
-        {enemy.background ? (
-          <p className="text-ink-secondary text-sm leading-7">
-            {enemy.background}
-          </p>
-        ) : null}
-
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-4">
+          <InkButton variant="secondary" onClick={onOpenDetail}>
+            查看详情
+          </InkButton>
           <InkButton variant="primary" onClick={onStartBattle}>
             入境交手
           </InkButton>
@@ -268,35 +376,110 @@ function TowerEncounterCard({
 function TowerBlessingChoices({
   state,
   processing,
+  currentHp,
+  maxHp,
+  currentMp,
+  maxMp,
   onChoose,
+  onOpenDetail,
 }: {
   state: TowerState;
   processing: boolean;
+  currentHp: number;
+  maxHp: number;
+  currentMp: number;
+  maxMp: number;
   onChoose: (blessingId: TowerBlessingId) => Promise<void>;
+  onOpenDetail: (
+    blessingId: TowerBlessingId,
+    currentStacks: number,
+    nextStacks: number,
+  ) => void;
 }) {
+  const [focusedId, setFocusedId] = useState<TowerBlessingId | null>(
+    state.pendingBlessingChoices[0]?.id ?? null,
+  );
+
+  useEffect(() => {
+    setFocusedId((current) => {
+      if (
+        current &&
+        state.pendingBlessingChoices.some((choice) => choice.id === current)
+      ) {
+        return current;
+      }
+
+      return state.pendingBlessingChoices[0]?.id ?? null;
+    });
+  }, [state.pendingBlessingChoices]);
+
   return (
     <GameSceneSection title="残留机缘">
-      <div className="grid gap-3 md:grid-cols-3">
-        {state.pendingBlessingChoices.map((choice) => (
-          <InkCard key={choice.id} className="flex flex-col gap-3 p-4">
-            <div>
-              <div className="font-semibold">{choice.name}</div>
-              <div className="text-ink-secondary mt-2 text-sm leading-7">
-                {choice.description}
-              </div>
-            </div>
-            <div className="text-ink-secondary text-xs">
-              当前 {choice.currentStacks} 层 → 选后 {choice.nextStacks} 层 / 上限 {choice.maxStacks}
-            </div>
-            <InkButton
-              variant="primary"
-              disabled={processing}
-              onClick={() => void onChoose(choice.id)}
+      <div className="grid gap-4 md:grid-cols-3">
+        {state.pendingBlessingChoices.map((choice) => {
+          const isFocused = focusedId === choice.id;
+          const preview = getTowerBlessingEffectPreview({
+            blessingId: choice.id,
+            currentStacks: choice.currentStacks,
+            nextStacks: choice.nextStacks,
+            currentHp,
+            maxHp,
+            currentMp,
+            maxMp,
+          });
+
+          return (
+            <InkCard
+              key={choice.id}
+              variant={isFocused ? 'highlighted' : 'default'}
+              className={isFocused ? 'md:-translate-y-1' : ''}
             >
-              承此机缘
-            </InkButton>
-          </InkCard>
-        ))}
+              <div className="flex h-full flex-col gap-4 p-4">
+                <button
+                  type="button"
+                  className="min-w-0 text-left"
+                  onClick={() => setFocusedId(choice.id)}
+                >
+                  <div className="text-lg font-semibold">{choice.name}</div>
+                  <div className="text-ink-secondary mt-2 text-sm leading-7">
+                    {choice.description}
+                  </div>
+                  <div className="text-ink-secondary mt-3 text-xs leading-6">
+                    当前 {choice.currentStacks} 层 → 选后 {choice.nextStacks} 层 / 上限{' '}
+                    {choice.maxStacks}
+                  </div>
+                  <div className="mt-3 space-y-1 text-sm leading-7">
+                    <p>{preview.currentLabel}</p>
+                    <p className="text-ink-secondary">选后：{preview.nextLabel}</p>
+                  </div>
+                </button>
+
+                <div className="mt-auto flex items-center justify-between gap-3">
+                  <button
+                    type="button"
+                    className="text-ink-secondary hover:text-ink text-xs underline decoration-dotted underline-offset-4 transition-colors"
+                    onClick={() =>
+                      onOpenDetail(choice.id, choice.currentStacks, choice.nextStacks)
+                    }
+                  >
+                    查看详情
+                  </button>
+                  {isFocused ? (
+                    <InkButton
+                      variant="primary"
+                      disabled={processing}
+                      onClick={() => void onChoose(choice.id)}
+                    >
+                      承此机缘
+                    </InkButton>
+                  ) : (
+                    <span className="text-ink-secondary text-xs">聚神选此机缘</span>
+                  )}
+                </div>
+              </div>
+            </InkCard>
+          );
+        })}
       </div>
     </GameSceneSection>
   );
@@ -348,12 +531,10 @@ function TowerSettlementSection({
 }
 
 export default function TowerPage() {
-  const {
-    cultivator,
-    finalAttributes,
-    isLoading: cultivatorLoading,
-    refreshCultivator,
-  } = useCultivator();
+  const { cultivator, finalAttributes, isLoading: cultivatorLoading } =
+    useCultivator();
+  const { openDialog } = useInkUI();
+  const navigate = useNavigate();
   const { payload, setPayload, loading } = useTowerState(!!cultivator);
   const { startRun, probeBattle, chooseBlessing, resetRun, processing } =
     useTowerActions();
@@ -361,8 +542,13 @@ export default function TowerPage() {
   const activeRealm = selectedRealm ?? cultivator?.realm ?? REALM_VALUES[0];
   const { payload: leaderboardPayload, loading: leaderboardLoading } =
     useTowerLeaderboard(!!cultivator, activeRealm);
-  const [battleId, setBattleId] = useState<string | null>(null);
   const [probe, setProbe] = useState<TowerProbeResponse | null>(null);
+  const [selectedBlessingDetail, setSelectedBlessingDetail] = useState<{
+    blessingId: TowerBlessingId;
+    currentStacks: number;
+    nextStacks?: number;
+  } | null>(null);
+  const [isEnemyDetailOpen, setIsEnemyDetailOpen] = useState(false);
   const probeRequestBattleIdRef = useRef<string | null>(null);
 
   const towerState = payload?.state ?? null;
@@ -384,6 +570,13 @@ export default function TowerPage() {
     probe?.battleId === towerState.activeBattleId
       ? probe
       : null;
+  const encounterContext: TowerBattleContext | null = encounterProbe
+    ? {
+        battleId: encounterProbe.battleId,
+        encounter: encounterProbe.encounter,
+        enemy: encounterProbe.enemy,
+      }
+    : null;
   const requestProbeBattleInEffect = useEffectEvent(() => probeBattle());
 
   const handleStartRun = async () => {
@@ -407,7 +600,6 @@ export default function TowerPage() {
         : null,
     );
     setProbe(null);
-    setBattleId(null);
     probeRequestBattleIdRef.current = null;
     return true;
   };
@@ -430,6 +622,42 @@ export default function TowerPage() {
     setPayload(data);
     setProbe(null);
     probeRequestBattleIdRef.current = null;
+    setSelectedBlessingDetail(null);
+  };
+
+  const handleOpenStatusDetails = () => {
+    if (!towerState || towerState.condition.statuses.length === 0) {
+      return;
+    }
+
+    openDialog({
+      title: '塔中伤势与余痕',
+      confirmLabel: '知晓',
+      cancelLabel: null,
+      content: (
+        <div className="space-y-3 text-sm leading-7">
+          {towerState.condition.statuses.map((status, index) => {
+            const template = getConditionStatusTemplate(status.key);
+            return (
+              <div key={`${status.key}:${index}`} className="space-y-1">
+                <div className="font-semibold">
+                  {template?.name ?? status.key}
+                  {status.stacks > 1 ? ` · ${status.stacks} 层` : ''}
+                </div>
+                <div className="text-ink-secondary">
+                  {template?.description ?? '未知状态'}
+                </div>
+                {template?.effectDetails?.length ? (
+                  <div className="text-ink-secondary">
+                    {template.effectDetails.join(' ')}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ),
+    });
   };
 
   useEffect(() => {
@@ -439,7 +667,7 @@ export default function TowerPage() {
       return;
     }
 
-    if (encounterProbe || battleId || processing) {
+    if (encounterProbe || processing) {
       return;
     }
 
@@ -469,12 +697,12 @@ export default function TowerPage() {
       cancelled = true;
     };
   }, [
-    battleId,
     encounterProbe,
     processing,
+    requestProbeBattleInEffect,
+    setPayload,
     towerState?.activeBattleId,
     towerState?.status,
-    setPayload,
   ]);
 
   if (cultivatorLoading || loading) {
@@ -490,149 +718,172 @@ export default function TowerPage() {
   }
 
   return (
-    <GameSceneFrame
-      title={TOWER_SCENE_NAME}
-      variant="workflow"
-      headerMeta={
-        <GameSceneNote>
-          <p className="text-sm leading-7">{scenePulse.summary}</p>
-          {scenePulse.resetLine ? (
-            <p className="text-sm leading-7">{scenePulse.resetLine}</p>
-          ) : null}
-        </GameSceneNote>
-      }
-      aside={towerState ? (
-        <TowerAside
-          season={season}
-          state={towerState}
-          settlement={settlement}
-          maxHp={maxHp}
-          maxMp={maxMp}
-          onReset={handleResetRun}
-        />
-      ) : undefined}
-    >
-      {!battleId && (!towerState || towerState.status === 'READY') ? (
-        <GameSceneSection title="眼前一步">
-          <InkCard className="space-y-4 p-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <InkBadge tone="accent">周常幻境</InkBadge>
-              {towerState ? (
-                <InkBadge tier={cultivator.realm}>
-                  {`已至${formatDepthLabel(towerState.currentFloor)}`}
-                </InkBadge>
+    <>
+      <GameSceneFrame
+        title={TOWER_SCENE_NAME}
+        variant="workflow"
+        headerMeta={
+          <GameSceneNote>
+            <p className="text-sm leading-7">{scenePulse.summary}</p>
+            {scenePulse.resetLine ? (
+              <p className="text-sm leading-7">{scenePulse.resetLine}</p>
+            ) : null}
+          </GameSceneNote>
+        }
+        aside={
+          season ? (
+            <TowerAside
+              season={season}
+              state={towerState}
+              settlement={settlement}
+              onReset={handleResetRun}
+            />
+          ) : undefined
+        }
+      >
+        {!towerState || towerState.status === 'READY' ? (
+          <GameSceneSection title="眼前一步">
+            <InkCard className="space-y-4 p-5">
+              <div className="flex flex-wrap items-center gap-3">
+                <InkBadge tone="accent">周常幻境</InkBadge>
+                {towerState ? (
+                  <InkBadge tier={cultivator.realm}>
+                    {`已至${formatDepthLabel(towerState.currentFloor)}`}
+                  </InkBadge>
+                ) : (
+                  <InkBadge tier={cultivator.realm}>本周未入境</InkBadge>
+                )}
+              </div>
+
+              {!towerState ? (
+                <>
+                  <p className="text-sm leading-7">
+                    蜃气每周只聚成这一回。入境之后，外界伤势、丹药与恢复都不再干涉此地，只看你此刻道身与沿途机缘能把名号留到多深。
+                  </p>
+                  <div className="flex justify-end">
+                    <InkButton
+                      variant="primary"
+                      disabled={processing}
+                      onClick={() => void handleStartRun()}
+                    >
+                      踏入本周幻境
+                    </InkButton>
+                  </div>
+                </>
               ) : (
-                <InkBadge tier={cultivator.realm}>本周未入境</InkBadge>
+                <>
+                  <p className="text-sm leading-7">
+                    {formatDepthLabel(towerState.currentFloor)}的幻影已经凝实。
+                    先照见其形，再决定何时入境交手。
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-sm leading-7">
+                    <span>本周最高：{formatDepthLabel(towerState.highestFloorCleared)}</span>
+                    <span>眼前压势：{describeFloorPressure(towerState.currentFloor)}</span>
+                    <span>已承机缘：{blessings.length} 类</span>
+                  </div>
+                  <div className="flex justify-end">
+                    <InkButton
+                      variant="primary"
+                      disabled={processing}
+                      onClick={() => void handleProbeBattle()}
+                    >
+                      照见前路幻影
+                    </InkButton>
+                  </div>
+                </>
               )}
-            </div>
+            </InkCard>
+          </GameSceneSection>
+        ) : null}
 
-            {!towerState ? (
-              <>
-                <p className="text-sm leading-7">
-                  蜃气每周只聚成这一回。入境之后，外界伤势、丹药与恢复都不再干涉此地，只看你此刻道身与沿途机缘能把名号留到多深。
-                </p>
-                <div className="flex justify-end">
-                  <InkButton
-                    variant="primary"
-                    disabled={processing}
-                    onClick={() => void handleStartRun()}
-                  >
-                    踏入本周幻境
-                  </InkButton>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm leading-7">
-                  {formatDepthLabel(towerState.currentFloor)}的幻影已经凝实。
-                  先照见其形，再决定何时入境交手。
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-sm leading-7">
-                  <span>本周最高：{formatDepthLabel(towerState.highestFloorCleared)}</span>
-                  <span>眼前压势：{describeFloorPressure(towerState.currentFloor)}</span>
-                  <span>已承机缘：{blessings.length} 类</span>
-                </div>
-                <div className="flex justify-end">
-                  <InkButton
-                    variant="primary"
-                    disabled={processing}
-                    onClick={() => void handleProbeBattle()}
-                  >
-                    照见前路幻影
-                  </InkButton>
-                </div>
-              </>
-            )}
-          </InkCard>
-        </GameSceneSection>
-      ) : null}
-
-      {towerState?.condition.statuses.length ? (
-        <GameSceneSection title="残余状态">
-          <StatusCard buffs={towerState.condition.statuses} />
-        </GameSceneSection>
-      ) : null}
-
-      {battleId && cultivator ? (
-        <TowerBattlePanel
-          battleId={battleId}
-          player={cultivator}
-          onComplete={(data) => {
-            setBattleId(null);
-            const nextSeason = season ?? payload?.season ?? leaderboardPayload?.season;
-            if (nextSeason) {
-              setPayload({
-                season: nextSeason,
-                state: data.towerState,
-                settlement: data.settlement,
-              });
+        {towerState ? (
+          <TowerRunStatusCard
+            state={towerState}
+            maxHp={maxHp}
+            maxMp={maxMp}
+            onOpenBlessing={(blessingId, currentStacks) =>
+              setSelectedBlessingDetail({
+                blessingId,
+                currentStacks,
+              })
             }
-            setProbe(null);
-            probeRequestBattleIdRef.current = null;
-            if (data.milestoneReward) {
-              void refreshCultivator();
+            onOpenStatuses={handleOpenStatusDetails}
+          />
+        ) : null}
+
+        {towerState?.status === 'WAITING_BATTLE' ? (
+          <TowerEncounterCard
+            probe={encounterProbe}
+            loading={processing}
+            onRetryProbe={() => void handleProbeBattle()}
+            onOpenDetail={() => setIsEnemyDetailOpen(true)}
+            onStartBattle={() => {
+              const nextBattleId =
+                encounterProbe?.battleId ?? towerState.activeBattleId ?? null;
+              if (!nextBattleId) {
+                return;
+              }
+
+              navigate(`/game/tower/battle?battleId=${encodeURIComponent(nextBattleId)}`);
+            }}
+          />
+        ) : null}
+
+        {towerState?.status === 'CHOOSING_BLESSING' ? (
+          <TowerBlessingChoices
+            state={towerState}
+            processing={processing}
+            currentHp={towerState.condition.resources.hp.current}
+            maxHp={maxHp}
+            currentMp={towerState.condition.resources.mp.current}
+            maxMp={maxMp}
+            onChoose={handleChooseBlessing}
+            onOpenDetail={(blessingId, currentStacks, nextStacks) =>
+              setSelectedBlessingDetail({
+                blessingId,
+                currentStacks,
+                nextStacks,
+              })
             }
-          }}
-        />
-      ) : null}
+          />
+        ) : null}
 
-      {!battleId && towerState?.status === 'WAITING_BATTLE' ? (
-        <TowerEncounterCard
-          probe={encounterProbe}
-          loading={processing}
-          onRetryProbe={() => void handleProbeBattle()}
-          onStartBattle={() =>
-            setBattleId(encounterProbe?.battleId ?? towerState.activeBattleId ?? null)
-          }
-        />
-      ) : null}
+        {settlement ? (
+          <TowerSettlementSection
+            settlement={settlement}
+            onRestart={async () => {
+              const success = await handleResetRun();
+              if (success) {
+                await handleStartRun();
+              }
+            }}
+          />
+        ) : null}
 
-      {!battleId && towerState?.status === 'CHOOSING_BLESSING' ? (
-        <TowerBlessingChoices
-          state={towerState}
-          processing={processing}
-          onChoose={handleChooseBlessing}
+        <TowerLeaderboard
+          activeRealm={activeRealm}
+          entries={leaderboardPayload?.entries ?? []}
+          loading={leaderboardLoading}
+          onRealmChange={setSelectedRealm}
         />
-      ) : null}
+      </GameSceneFrame>
 
-      {!battleId && settlement ? (
-        <TowerSettlementSection
-          settlement={settlement}
-          onRestart={async () => {
-            const success = await handleResetRun();
-            if (success) {
-              await handleStartRun();
-            }
-          }}
-        />
-      ) : null}
-
-      <TowerLeaderboard
-        activeRealm={activeRealm}
-        entries={leaderboardPayload?.entries ?? []}
-        loading={leaderboardLoading}
-        onRealmChange={setSelectedRealm}
+      <TowerEnemyDetailModal
+        context={encounterContext}
+        isOpen={isEnemyDetailOpen}
+        onClose={() => setIsEnemyDetailOpen(false)}
       />
-    </GameSceneFrame>
+      <TowerBlessingDetailModal
+        blessingId={selectedBlessingDetail?.blessingId ?? null}
+        isOpen={!!selectedBlessingDetail}
+        onClose={() => setSelectedBlessingDetail(null)}
+        currentStacks={selectedBlessingDetail?.currentStacks ?? 0}
+        nextStacks={selectedBlessingDetail?.nextStacks}
+        currentHp={towerState?.condition.resources.hp.current}
+        maxHp={maxHp}
+        currentMp={towerState?.condition.resources.mp.current}
+        maxMp={maxMp}
+      />
+    </>
   );
 }

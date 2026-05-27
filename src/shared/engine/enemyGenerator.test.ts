@@ -62,6 +62,7 @@ function snapshotEnemy(draft: ReturnType<typeof enemyGenerator.buildDraft>): str
     cultivator: {
       id: draft.cultivator.id,
       name: draft.cultivator.name,
+      title: draft.cultivator.title,
       background: draft.cultivator.background,
       description: draft.cultivator.description,
       attributes: draft.cultivator.attributes,
@@ -312,17 +313,31 @@ describe('EnemyGenerator', () => {
     expect(enriched).toBe(draft);
   });
 
+  it('builds a deterministic fallback title when no narrative override exists', () => {
+    const draft = enemyGenerator.buildDraft({
+      realm: '筑基',
+      realmStage: '后期',
+      race: '鬼魂',
+      difficulty: 62,
+    });
+
+    expect(draft.cultivator.title).toBeTruthy();
+    expect(draft.copyFacts.character.fallbackTitle).toBe(draft.cultivator.title);
+  });
+
   it('only fills missing character narrative fields and rewrites product copy in one shot', async () => {
     const draft = enemyGenerator.buildDraft({
       realm: '金丹',
       realmStage: '中期',
       race: '灵族',
       name: '手填名字',
+      title: '手填名号',
       background: '手填背景',
     });
     const enrich = vi.fn().mockResolvedValue({
       character: {
         name: '不应覆盖',
+        title: '不应覆盖',
         background: '不应覆盖',
         description: '灵潮翻卷间，敌影似真似幻。',
       },
@@ -340,6 +355,7 @@ describe('EnemyGenerator', () => {
 
     expect(enrich).toHaveBeenCalledTimes(1);
     expect(enriched.cultivator.name).toBe('手填名字');
+    expect(enriched.cultivator.title).toBe('手填名号');
     expect(enriched.cultivator.background).toBe('手填背景');
     expect(enriched.cultivator.description).toBe('灵潮翻卷间，敌影似真似幻。');
     expect(enriched.cultivator.cultivations[0]?.name).toBe('润色产物1');
@@ -359,6 +375,7 @@ describe('EnemyGenerator', () => {
     const enrich = vi.fn().mockResolvedValue({
       character: {
         name: '夜潮灵使',
+        title: '镇潮灵卫',
         background: '其本体为潮汐灵物，久困古阵而化形。',
         description: '灵潮翻卷间，敌影似真似幻。',
       },
@@ -423,5 +440,16 @@ describe('EnemyGenerator', () => {
     for (const artifact of loadout.artifacts) {
       expect(() => AbilityFactory.create(artifact.item.abilityConfig!)).not.toThrow();
     }
+  });
+
+  it('keeps low-floor ghost drafts out of tier 3 safe fallback', () => {
+    const draft = enemyGenerator.buildDraft({
+      realm: '筑基',
+      realmStage: '初期',
+      race: '鬼魂',
+      difficulty: 1,
+    });
+
+    expect(draft.balance.recoveryTierUsed).toBeLessThan(3);
   });
 });

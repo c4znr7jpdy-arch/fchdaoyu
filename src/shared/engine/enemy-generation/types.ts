@@ -41,6 +41,7 @@ export interface EnemyGenerationInput {
   race: EnemyRace;
   difficulty?: number;
   name?: string;
+  title?: string;
   background?: string;
   description?: string;
   isBoss?: boolean;
@@ -52,6 +53,7 @@ export interface NormalizedEnemyGenerationInput {
   race: EnemyRace;
   difficulty: number;
   name?: string;
+  title?: string;
   background?: string;
   description?: string;
   isBoss: boolean;
@@ -96,6 +98,7 @@ export interface EnemyCopyFacts {
   personaTags: string[];
   character: {
     fallbackName: string;
+    fallbackTitle: string;
     fallbackBackground: string;
     fallbackDescription: string;
   };
@@ -106,6 +109,7 @@ export interface EnemyGenerationDraft {
   input: NormalizedEnemyGenerationInput;
   missingNarrative: {
     name: boolean;
+    title: boolean;
     background: boolean;
     description: boolean;
   };

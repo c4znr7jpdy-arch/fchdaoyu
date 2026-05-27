@@ -1,4 +1,5 @@
 import { BASIC_SKILLS, BASIC_TECHNIQUES } from '@shared/engine/cultivator/creation/config';
+import { simulateBattleV5 } from '@shared/lib/battle/simulateBattleV5';
 import type { CultivatorCondition } from '@shared/types/condition';
 import type { Cultivator } from '@shared/types/cultivator';
 import { describe, expect, it } from 'vitest';
@@ -149,5 +150,50 @@ describe('tower battle init', () => {
         expect.objectContaining({ key: 'near_death' }),
       ]),
     );
+  });
+
+  it('accepts battle snapshots returned by simulateBattleV5', () => {
+    const cultivator = createCultivator();
+    const cultivatorId = cultivator.id!;
+    const opponent = {
+      ...createCultivator(),
+      id: 'opponent-1',
+      name: '厉飞雨',
+    };
+    const condition = createCondition({
+      resources: {
+        hp: { current: 320 },
+        mp: { current: 180 },
+      },
+    });
+    const { battleInit } = buildTowerBattleInit({
+      cultivator,
+      condition,
+      blessings: {},
+      encounterKind: 'normal',
+    });
+    const result = simulateBattleV5(cultivator, opponent, battleInit);
+    const playerSnapshot =
+      result.winner.id === cultivatorId
+        ? result.winnerSnapshot
+        : result.loserSnapshot;
+    const finalFrame = result.stateTimeline.frames.at(-1);
+
+    expect(finalFrame).toBeDefined();
+    expect(playerSnapshot).toBeDefined();
+    expect(finalFrame!.units[cultivatorId]).toBe(playerSnapshot);
+    expect(playerSnapshot?.hp.current).toBeTypeOf('number');
+    expect(playerSnapshot?.mp.current).toBeTypeOf('number');
+
+    const nextCondition = applyTowerBattleOutcome({
+      cultivator,
+      condition,
+      playerSnapshot: playerSnapshot!,
+      didLose: result.winner.id !== cultivatorId,
+      now: new Date('2026-05-26T12:00:00.000Z'),
+    });
+
+    expect(nextCondition.resources.hp.current).toBeGreaterThanOrEqual(0);
+    expect(nextCondition.resources.mp.current).toBeGreaterThanOrEqual(0);
   });
 });

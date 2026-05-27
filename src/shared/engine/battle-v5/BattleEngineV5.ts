@@ -13,7 +13,10 @@ import { DamageSystem } from './systems/DamageSystem';
 import { LogSpan } from './systems/log';
 import { CombatLogSystem } from './systems/log/CombatLogSystem';
 import { BattleStateRecorder } from './systems/state/BattleStateRecorder';
-import { BattleStateTimeline } from './systems/state/types';
+import {
+  BattleStateTimeline,
+  UnitStateSnapshot,
+} from './systems/state/types';
 import { VictorySystem } from './systems/VictorySystem';
 import { Unit } from './units/Unit';
 
@@ -24,9 +27,9 @@ export interface BattleResult {
   logs: string[];
   logSpans?: LogSpan[]; // 新增，支持结构化日志
   /** 状态时间线：每次行动前后的双方状态帧，含 delta */
-  stateTimeline?: BattleStateTimeline;
-  winnerSnapshot: unknown;
-  loserSnapshot: unknown;
+  stateTimeline: BattleStateTimeline;
+  winnerSnapshot: UnitStateSnapshot;
+  loserSnapshot?: UnitStateSnapshot;
 }
 
 /**
@@ -302,6 +305,18 @@ export class BattleEngineV5 {
     const winner =
       context.winner === this._player.id ? this._player : this._opponent;
     const loser = winner === this._player ? this._opponent : this._player;
+    const stateTimeline = this._stateRecorder.getTimeline([
+      this._player,
+      this._opponent,
+    ]);
+    const finalFrame =
+      stateTimeline.frames[stateTimeline.frames.length - 1];
+    const winnerSnapshot = finalFrame?.units[winner.id];
+    const loserSnapshot = loser ? finalFrame?.units[loser.id] : undefined;
+
+    if (!winnerSnapshot) {
+      throw new Error('战斗终态缺少胜者状态快照');
+    }
 
     return {
       winner: winner.id,
@@ -309,12 +324,9 @@ export class BattleEngineV5 {
       turns: context.turn,
       logs: this._logSystem.getPlayerLogs(),
       logSpans: this._logSystem.getSpans(),
-      stateTimeline: this._stateRecorder.getTimeline([
-        this._player,
-        this._opponent,
-      ]),
-      winnerSnapshot: winner.getSnapshot(),
-      loserSnapshot: loser?.getSnapshot(),
+      stateTimeline,
+      winnerSnapshot,
+      loserSnapshot,
     };
   }
 

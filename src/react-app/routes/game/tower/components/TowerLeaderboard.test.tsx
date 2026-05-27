@@ -78,5 +78,6 @@ describe('TowerLeaderboard', () => {
     expect(html).toContain('记入 筑基 榜');
     expect(html).toContain('overflow-y-auto');
     expect(html).toContain('overflow-hidden');
+    expect(html).not.toContain('flex-col');
   });
 });

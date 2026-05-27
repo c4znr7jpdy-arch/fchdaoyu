@@ -18,6 +18,20 @@ vi.mock('@app/lib/hooks/tower/useTowerLeaderboard', () => ({
   useTowerLeaderboard: vi.fn(),
 }));
 
+vi.mock('@app/components/providers/InkUIProvider', () => ({
+  useInkUI: () => ({
+    openDialog: vi.fn(),
+  }),
+}));
+
+vi.mock('react-router', async () => {
+  const actual = await vi.importActual<typeof import('react-router')>('react-router');
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+  };
+});
+
 vi.mock('@app/components/game-shell', () => ({
   GameSceneFrame: ({ title, description, headerMeta, aside, children }: any) => (
     <div>
@@ -66,10 +80,6 @@ vi.mock('@app/components/cultivator/StatusCard', () => ({
 
 vi.mock('@app/components/func/LingGen', () => ({
   LingGenMini: () => <div>LingGenMini</div>,
-}));
-
-vi.mock('./components/TowerBattlePanel', () => ({
-  TowerBattlePanel: () => <div>TowerBattlePanel</div>,
 }));
 
 vi.mock('./components/TowerLeaderboard', () => ({
@@ -314,9 +324,12 @@ describe('TowerPage', () => {
 
     const html = renderToStaticMarkup(<TowerPage />);
 
-    expect(html).toContain('当前所至：第 6 重');
-    expect(html).toContain('境内气血：188 / 360');
-    expect(html).toContain('境内法力：73 / 180');
+    expect(html).toContain('塔中留痕');
+    expect(html).toContain('第 6 层');
+    expect(html).toContain('境内气血');
+    expect(html).toContain('境内法力');
+    expect(html).toContain('188 / 360');
+    expect(html).toContain('73 / 180');
     expect(html).toContain('残留机缘');
     expect(html).toContain('玉骨');
     expect(html).toContain('承此机缘');

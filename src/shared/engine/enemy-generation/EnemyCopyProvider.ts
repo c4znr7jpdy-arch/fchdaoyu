@@ -3,6 +3,7 @@ import type { EnemyGenerationDraft } from './types';
 export interface EnemyCopyPayload {
   character: {
     name: string;
+    title: string;
     background: string;
     description: string;
   };

@@ -39,6 +39,7 @@ export class EnemyCultivatorAssembler {
     primaryElement: EnemyCraftedLoadout['primaryElement'];
     attributes: Attributes;
     name: string;
+    title: string;
     background: string;
     description: string;
     loadout: EnemyCraftedLoadout;
@@ -49,6 +50,7 @@ export class EnemyCultivatorAssembler {
       primaryElement,
       attributes,
       name,
+      title,
       background,
       description,
       loadout,
@@ -98,7 +100,7 @@ export class EnemyCultivatorAssembler {
     return {
       id: `enemy:${variantKey}`,
       name,
-      title: null,
+      title,
       gender,
       race: input.race,
       realm: input.realm,

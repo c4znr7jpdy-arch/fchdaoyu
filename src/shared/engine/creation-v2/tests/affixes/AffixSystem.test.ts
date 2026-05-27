@@ -1027,4 +1027,20 @@ describe('DEFAULT_AFFIX_REGISTRY', () => {
       [...persistentExceptionIds].sort(),
     );
   });
+
+  it('RoundPreEvent 类词缀的 listenerSpec.scope 必须为 global', () => {
+    const roundPreAffixIds = [
+      'artifact-defense-mana-recovery',
+      'artifact-defense-debuff-cleanse-per-round',
+      'artifact-defense-round-heal',
+    ];
+
+    for (const id of roundPreAffixIds) {
+      const def = DEFAULT_AFFIX_REGISTRY.queryById(id);
+      expect(def, `affix ${id} should exist`).toBeDefined();
+      expect(def!.listenerSpec, `affix ${id} should have listenerSpec`).toBeDefined();
+      expect(def!.listenerSpec!.eventType).toBe('RoundPreEvent');
+      expect(def!.listenerSpec!.scope).toBe('global');
+    }
+  });
 });

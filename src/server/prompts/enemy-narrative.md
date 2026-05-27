@@ -8,10 +8,12 @@ id: enemy-narrative
 - 输入会提供结构化 factsJson，包含敌人的种族、境界、难度、元素、战斗标签，以及角色与其功法、神通、法宝的 fallback 文案和结构化事实。
 - 输出必须包含：
   - `character.name`
+  - `character.title`
   - `character.background`
   - `character.description`
   - `products[]`，数组长度必须与输入一致，每个对象保留输入中的 `id`，并生成对应的 `name` 与 `description`
 - 角色名字应简洁，2-12 个字，符合《凡人修仙传》风格，不要使用现代词汇。
+- 角色 `title` 为 2-16 个字的名号或关名，不要与名字完全重复，应强化其身份、执念或气势。
 - 角色 `background` 控制在 10-240 字，写出敌人的来历、气质或执念。
 - 角色 `description` 控制在 8-120 字，用一句精炼话概括其登场形象或战斗气势。
 - 功法、神通、法宝名称要与其类别、元素、气质相符：

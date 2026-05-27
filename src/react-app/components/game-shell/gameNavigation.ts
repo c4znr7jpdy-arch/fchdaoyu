@@ -246,6 +246,10 @@ export const gameDockGroups: GameNavGroup[] = [
         sceneLabel: '战斗回放',
       },
       {
+        id: 'tower-battle',
+        sceneLabel: '蜃楼战局',
+      },
+      {
         id: 'task-challenge',
         sceneLabel: '破境试炼',
       },

@@ -176,7 +176,12 @@ export class CreationPhaseHandlerRegistry {
           cause: error instanceof Error ? error.message : String(error),
         },
       );
-      console.error(`[CreationPhaseHandlerRegistry] 执行阶段动作失败: ${action}`, error);
+      if (!session.state.intentCraftMeta?.suppressLogs) {
+        console.error(
+          `[CreationPhaseHandlerRegistry] 执行阶段动作失败: ${action}`,
+          error,
+        );
+      }
     }
   }
 

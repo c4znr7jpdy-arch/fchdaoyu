@@ -7,6 +7,7 @@ import {
   resolveTowerRealmStage,
   unpackTowerLeaderboardScore,
 } from './helpers';
+import { getTowerBlessingEffectPreview } from './presentation';
 
 describe('tower helpers', () => {
   it('maps floor kinds and realm stages deterministically', () => {
@@ -46,6 +47,34 @@ describe('tower helpers', () => {
     expect(choices.map((choice) => choice.id)).toContain('breathing_technique');
     expect(choices.map((choice) => choice.id)).toContain('meridian_cycle');
     expect(choices.length).toBeLessThanOrEqual(3);
+  });
+
+  it('projects blessing effect previews with concrete recovery values', () => {
+    expect(
+      getTowerBlessingEffectPreview({
+        blessingId: 'breathing_technique',
+        currentStacks: 2,
+        nextStacks: 3,
+        currentHp: 120,
+        maxHp: 320,
+      }),
+    ).toEqual({
+      currentLabel: '战前回复 20% 缺失气血（约 40 点）',
+      nextLabel: '战前回复 30% 缺失气血（约 60 点）',
+      formulaLabel: '公式：每层战前回复 10% 缺失气血。 上限 3 层。',
+    });
+
+    expect(
+      getTowerBlessingEffectPreview({
+        blessingId: 'balanced_dao',
+        currentStacks: 1,
+        nextStacks: 2,
+      }),
+    ).toEqual({
+      currentLabel: '五维主属性 +5%',
+      nextLabel: '五维主属性 +10%',
+      formulaLabel: '公式：每层五维主属性同步 +5%。 上限 3 层。',
+    });
   });
 
   it('packs and unpacks leaderboard scores while preserving rank tie ordering', () => {

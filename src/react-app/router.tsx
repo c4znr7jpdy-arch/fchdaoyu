@@ -561,6 +561,20 @@ export const router = createBrowserRouter(
               )}
             />
             <Route
+              path="tower/battle"
+              lazy={lazyRoute(
+                () => import('@app/routes/game/tower/battle/route'),
+              )}
+              handle={scene(
+                {
+                  id: 'tower-battle',
+                  chrome: 'immersive',
+                  dock: 'hidden',
+                },
+                '蜃楼战局',
+              )}
+            />
+            <Route
               path="bet-battle/challenge"
               lazy={lazyRoute(
                 () => import('@app/routes/game/bet-battle/challenge/route'),

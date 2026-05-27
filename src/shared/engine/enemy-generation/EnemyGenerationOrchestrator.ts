@@ -17,6 +17,7 @@ import {
   buildDescriptionFallback,
   buildDifficultyFactor,
   buildRaceFallbackName,
+  buildTitleFallback,
   normalizeOptionalText,
 } from './utils';
 
@@ -44,6 +45,7 @@ export class EnemyGenerationOrchestrator {
 
     const missingNarrative = {
       name: !normalized.name,
+      title: !normalized.title,
       background: !normalized.background,
       description: !normalized.description,
     };
@@ -73,6 +75,14 @@ export class EnemyGenerationOrchestrator {
         normalized.realmStage,
         craftedLoadout.primaryElement,
       );
+    const fallbackTitle =
+      normalized.title ??
+      buildTitleFallback(
+        normalized.race,
+        normalized.realm,
+        normalized.realmStage,
+        craftedLoadout.primaryElement,
+      );
 
     const cultivator = this.cultivatorAssembler.assemble({
       variantKey: plan.variantKey,
@@ -81,6 +91,7 @@ export class EnemyGenerationOrchestrator {
       primaryElement: craftedLoadout.primaryElement,
       attributes: stats.attributes,
       name: fallbackName,
+      title: fallbackTitle,
       background: fallbackBackground,
       description: fallbackDescription,
       loadout: craftedLoadout,
@@ -115,6 +126,7 @@ export class EnemyGenerationOrchestrator {
         personaTags: this.buildPersonaTags(plan),
         character: {
           fallbackName,
+          fallbackTitle,
           fallbackBackground,
           fallbackDescription,
         },
@@ -144,6 +156,7 @@ export class EnemyGenerationOrchestrator {
       ...draft,
       missingNarrative: {
         name: false,
+        title: false,
         background: false,
         description: false,
       },
@@ -152,6 +165,9 @@ export class EnemyGenerationOrchestrator {
         name: draft.missingNarrative.name
           ? payload.character.name
           : draft.cultivator.name,
+        title: draft.missingNarrative.title
+          ? payload.character.title
+          : draft.cultivator.title,
         background: draft.missingNarrative.background
           ? payload.character.background
           : draft.cultivator.background,
@@ -235,6 +251,7 @@ export class EnemyGenerationOrchestrator {
       race: input.race,
       difficulty: Math.max(0, Math.min(100, Math.round(input.difficulty ?? 50))),
       name: normalizeOptionalText(input.name),
+      title: normalizeOptionalText(input.title),
       background: normalizeOptionalText(input.background),
       description: normalizeOptionalText(input.description),
       isBoss: Boolean(input.isBoss),
