@@ -10,11 +10,16 @@ import type {
   TowerFloorKind,
 } from './types';
 
-export const TOWER_MAX_FLOOR = 100;
+export const TOWER_MAX_FLOOR = 20;
+export const TOWER_DIFFICULTY_STEP = 5;
 export const TOWER_LEADERBOARD_SCORE_UNIT = 1_000_000_000;
 
 export function clampTowerFloor(floor: number) {
   return Math.max(1, Math.min(TOWER_MAX_FLOOR, Math.floor(floor)));
+}
+
+export function resolveTowerDifficulty(floor: number) {
+  return clampTowerFloor(floor) * TOWER_DIFFICULTY_STEP;
 }
 
 export function resolveTowerFloorKind(floor: number): TowerFloorKind {
@@ -35,20 +40,15 @@ export function resolveTowerRealmStage(floor: number): RealmStage {
 export function resolveTowerMilestoneTier(
   floor: number,
 ): TowerMilestoneTier | null {
-  switch (clampTowerFloor(floor)) {
-    case 10:
-    case 20:
+  const normalizedFloor = Math.floor(floor);
+  switch (normalizedFloor) {
+    case 5:
       return 'C';
-    case 30:
-    case 40:
+    case 10:
       return 'B';
-    case 50:
-    case 60:
-    case 70:
+    case 15:
       return 'A';
-    case 80:
-    case 90:
-    case 100:
+    case 20:
       return 'S';
     default:
       return null;

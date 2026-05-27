@@ -8,9 +8,11 @@ import {
   getTowerSeasonMeta,
   isTowerSeasonKeyCurrent,
   pickTowerRace,
+  resolveTowerDifficulty,
   resolveTowerFloorKind,
   resolveTowerMilestoneTier,
   resolveTowerRealmStage,
+  TOWER_MAX_FLOOR,
   type TowerBattleContext,
   type TowerBlessingId,
   type TowerEncounter,
@@ -172,7 +174,7 @@ export class TowerService {
     return {
       floor,
       kind,
-      difficulty: floor,
+      difficulty: resolveTowerDifficulty(floor),
       race: pickTowerRace(state.runId, floor),
       realm: cultivator.realm,
       realmStage: resolveTowerRealmStage(floor),
@@ -287,7 +289,10 @@ export class TowerService {
       state,
       settlement:
         state?.status === 'FINISHED'
-          ? buildTowerSettlement(state, state.currentFloor >= 100 ? 'clear' : 'defeat')
+          ? buildTowerSettlement(
+              state,
+              state.currentFloor >= TOWER_MAX_FLOOR ? 'clear' : 'defeat',
+            )
           : undefined,
     };
   }
@@ -525,17 +530,15 @@ export class TowerService {
         firstReachedAt: now.toISOString(),
       });
 
-      if (payload.session.encounter.kind === 'boss') {
-        milestoneReward = await this.grantMilestoneReward({
-          cultivatorId,
-          cultivator: cultivatorBundle.cultivator,
-          state,
-          floor: clearedFloor,
-          now,
-        });
-      }
+      milestoneReward = await this.grantMilestoneReward({
+        cultivatorId,
+        cultivator: cultivatorBundle.cultivator,
+        state,
+        floor: clearedFloor,
+        now,
+      });
 
-      if (clearedFloor >= 100) {
+      if (clearedFloor >= TOWER_MAX_FLOOR) {
         state.pendingBlessingChoices = [];
         state.status = 'FINISHED';
         await this.saveState(cultivatorId, state);

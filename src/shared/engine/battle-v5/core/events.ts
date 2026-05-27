@@ -175,6 +175,7 @@ export interface HealEvent extends CombatEvent {
   ability?: Ability;
   buff?: Buff; // 如果是 Buff 造成的治疗（如 HOT），记录来源 Buff
   healAmount: number;
+  healType?: 'hp' | 'mp'; // 默认 'hp'
 }
 
 // ===== 焚元应用事件 =====

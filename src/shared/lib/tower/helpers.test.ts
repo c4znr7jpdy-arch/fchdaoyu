@@ -2,19 +2,26 @@ import { describe, expect, it } from 'vitest';
 import {
   buildTowerBlessingChoices,
   packTowerLeaderboardScore,
+  resolveTowerDifficulty,
   resolveTowerFloorKind,
   resolveTowerMilestoneTier,
   resolveTowerRealmStage,
+  TOWER_MAX_FLOOR,
   unpackTowerLeaderboardScore,
 } from './helpers';
 import { getTowerBlessingEffectPreview } from './presentation';
 
 describe('tower helpers', () => {
   it('maps floor kinds and realm stages deterministically', () => {
+    expect(TOWER_MAX_FLOOR).toBe(20);
+    expect(resolveTowerDifficulty(1)).toBe(5);
+    expect(resolveTowerDifficulty(10)).toBe(50);
+    expect(resolveTowerDifficulty(20)).toBe(100);
+
     expect(resolveTowerFloorKind(1)).toBe('normal');
     expect(resolveTowerFloorKind(5)).toBe('elite');
     expect(resolveTowerFloorKind(10)).toBe('boss');
-    expect(resolveTowerFloorKind(100)).toBe('boss');
+    expect(resolveTowerFloorKind(20)).toBe('boss');
 
     expect(resolveTowerRealmStage(1)).toBe('初期');
     expect(resolveTowerRealmStage(4)).toBe('中期');
@@ -23,12 +30,12 @@ describe('tower helpers', () => {
     expect(resolveTowerRealmStage(11)).toBe('初期');
   });
 
-  it('maps milestone tiers by boss floor', () => {
-    expect(resolveTowerMilestoneTier(10)).toBe('C');
-    expect(resolveTowerMilestoneTier(40)).toBe('B');
-    expect(resolveTowerMilestoneTier(70)).toBe('A');
-    expect(resolveTowerMilestoneTier(100)).toBe('S');
-    expect(resolveTowerMilestoneTier(35)).toBeNull();
+  it('maps milestone tiers every five floors', () => {
+    expect(resolveTowerMilestoneTier(5)).toBe('C');
+    expect(resolveTowerMilestoneTier(10)).toBe('B');
+    expect(resolveTowerMilestoneTier(15)).toBe('A');
+    expect(resolveTowerMilestoneTier(20)).toBe('S');
+    expect(resolveTowerMilestoneTier(12)).toBeNull();
   });
 
   it('forces recovery blessings when hp or mp is low', () => {
@@ -80,19 +87,19 @@ describe('tower helpers', () => {
   it('packs and unpacks leaderboard scores while preserving rank tie ordering', () => {
     const seasonEndAtMs = Date.parse('2026-06-07T16:00:00.000Z');
     const earlier = packTowerLeaderboardScore(
-      37,
+      17,
       Date.parse('2026-06-02T12:00:00.000Z'),
       seasonEndAtMs,
     );
     const later = packTowerLeaderboardScore(
-      37,
+      17,
       Date.parse('2026-06-03T12:00:00.000Z'),
       seasonEndAtMs,
     );
 
     expect(earlier).toBeGreaterThan(later);
     expect(unpackTowerLeaderboardScore(earlier, seasonEndAtMs)).toEqual({
-      highestFloor: 37,
+      highestFloor: 17,
       firstReachedAtMs: Date.parse('2026-06-02T12:00:00.000Z'),
     });
   });

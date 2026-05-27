@@ -132,7 +132,7 @@ describe('tower leaderboard', () => {
       seasonEndAt,
       cultivatorId: 'cultivator-1',
       recordedRealm: '筑基',
-      highestFloor: 21,
+      highestFloor: 20,
       firstReachedAt: '2026-06-04T12:00:00.000Z',
     });
 
@@ -146,7 +146,7 @@ describe('tower leaderboard', () => {
 
     expect(leaderboard[0]).toMatchObject({
       cultivatorId: 'cultivator-1',
-      highestFloor: 21,
+      highestFloor: 20,
       firstReachedAt: '2026-06-04T12:00:00.000Z',
     });
   });

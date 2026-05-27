@@ -74,10 +74,11 @@ describe('TowerLeaderboard', () => {
 
     expect(html).toContain('第 1 名');
     expect(html).toContain('韩立');
-    expect(html).toContain('28 重');
-    expect(html).toContain('记入 筑基 榜');
+    expect(html).toContain('28 层');
+    expect(html).toContain('境界：筑基 后期');
     expect(html).toContain('overflow-y-auto');
     expect(html).toContain('overflow-hidden');
-    expect(html).not.toContain('flex-col');
+    expect(html).toContain('overflow-x-hidden');
+    expect(html).toContain('grid-cols-[minmax(0,1fr)_auto]');
   });
 });

@@ -43,6 +43,7 @@ export class HealEffect extends GameplayEffect {
       ability,
       buff,
       healAmount,
+      healType: this.params.target === 'mp' ? 'mp' : 'hp',
     });
   }
 }

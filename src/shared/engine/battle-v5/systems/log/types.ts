@@ -37,8 +37,10 @@ export interface DamageEntryData {
 export interface HealEntryData {
   value: number;
   remainHp: number;
+  remainMp?: number;
   targetName: string;
   sourceBuff?: string;
+  healType?: 'hp' | 'mp';
 }
 
 export interface ShieldEntryData {

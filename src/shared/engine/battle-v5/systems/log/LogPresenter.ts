@@ -42,7 +42,7 @@ export class LogPresenter {
       case 'battle_end':
         return this.formatBattleEnd(span);
       case 'round_start':
-        return [`【第 ${span.turn} 回合】`];
+        return this.formatRoundStart(span);
       case 'action_pre':
         return this.formatActionPre(span);
       case 'action':
@@ -76,6 +76,28 @@ export class LogPresenter {
   private formatBattleEnd(span: LogSpan): string[] {
     const winner = this.formatName(span.actor?.name ?? '未知');
     return [`【战斗结束】${winner} 获胜！`];
+  }
+
+  private formatRoundStart(span: LogSpan): string[] {
+    const lines: string[] = [`【第 ${span.turn} 回合】`];
+
+    const healEntries = this.findEntries(span.entries, 'heal');
+    for (const entry of healEntries) {
+      const resourceLabel = entry.data.healType === 'mp' ? '法力' : '气血';
+      lines.push(
+        `${this.formatName(entry.data.targetName)}恢复 ${this.formatNumber(entry.data.value)} 点${resourceLabel}`,
+      );
+    }
+
+    const dispelEntries = this.findEntries(span.entries, 'dispel');
+    for (const entry of dispelEntries) {
+      const buffNames = this.formatQuotedList(entry.data.buffs);
+      lines.push(
+        `${this.formatName(entry.data.targetName)}驱散了${buffNames}`,
+      );
+    }
+
+    return lines;
   }
 
   private formatAction(span: LogSpan): string[] {
@@ -266,13 +288,23 @@ export class LogPresenter {
         resultParts.push(`${this.formatName(death.data.targetName)}被击败！`);
       }
     } else {
-      const healTotal = healEntries.reduce((sum, e) => sum + e.data.value, 0);
+      const hpHealEntries = healEntries.filter((e) => e.data.healType !== 'mp');
+      const mpHealEntries = healEntries.filter((e) => e.data.healType === 'mp');
+      const hpHealTotal = hpHealEntries.reduce((sum, e) => sum + e.data.value, 0);
+      const mpHealTotal = mpHealEntries.reduce((sum, e) => sum + e.data.value, 0);
       const shieldTotal = shieldEntries.reduce((sum, e) => sum + e.data.value, 0);
 
-      // 情况 4: 治疗
-      if (healTotal > 0 && healEntries[0]) {
+      // 情况 4: 治疗（气血）
+      if (hpHealTotal > 0 && hpHealEntries[0]) {
         resultParts.push(
-          `为${this.formatName(healEntries[0].data.targetName)}恢复 ${this.formatNumber(healTotal)} 点气血`,
+          `为${this.formatName(hpHealEntries[0].data.targetName)}恢复 ${this.formatNumber(hpHealTotal)} 点气血`,
+        );
+      }
+
+      // 情况 4b: 治疗（法力）
+      if (mpHealTotal > 0 && mpHealEntries[0]) {
+        resultParts.push(
+          `为${this.formatName(mpHealEntries[0].data.targetName)}恢复 ${this.formatNumber(mpHealTotal)} 点法力`,
         );
       }
 
@@ -481,7 +513,8 @@ export class LogPresenter {
     }
 
     if (heal?.data.sourceBuff) {
-      return `${actor}身上的「${heal.data.sourceBuff}」生效，恢复 ${this.formatNumber(heal.data.value)} 点气血`;
+      const resourceLabel = heal.data.healType === 'mp' ? '法力' : '气血';
+      return `${actor}身上的「${heal.data.sourceBuff}」生效，恢复 ${this.formatNumber(heal.data.value)} 点${resourceLabel}`;
     }
 
     return undefined;

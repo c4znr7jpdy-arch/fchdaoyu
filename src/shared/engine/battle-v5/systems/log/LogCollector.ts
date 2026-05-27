@@ -172,14 +172,19 @@ export class LogCollector {
     });
 
     this._addHandler(eventBus, 'HealEvent', (e: HealEvent) => {
+      const healType = e.healType ?? 'hp';
       this._aggregator.addEntry({
         id: this._generateId(),
         type: 'heal',
         data: {
           value: Math.round(e.healAmount),
           remainHp: Math.round(e.target.getCurrentHp()),
+          ...(healType === 'mp'
+            ? { remainMp: Math.round(e.target.getCurrentMp()) }
+            : {}),
           targetName: e.target.name,
           sourceBuff: e.buff?.name,
+          healType,
         },
         timestamp: Date.now(),
       });

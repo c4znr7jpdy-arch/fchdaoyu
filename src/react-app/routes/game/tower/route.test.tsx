@@ -99,6 +99,10 @@ const mockedUseTowerState = vi.mocked(useTowerState);
 const mockedUseTowerActions = vi.mocked(useTowerActions);
 const mockedUseTowerLeaderboard = vi.mocked(useTowerLeaderboard);
 
+function countOccurrences(source: string, target: string) {
+  return source.split(target).length - 1;
+}
+
 function createCultivator(overrides: Partial<Cultivator> = {}): Cultivator {
   return {
     id: 'cultivator-1',
@@ -189,9 +193,24 @@ describe('TowerPage', () => {
     const html = renderToStaticMarkup(<TowerPage />);
 
     expect(html).toContain('蜃楼幻境');
+    expect(html).toContain('下次境门改换');
+    expect(html).toContain('当前层数');
     expect(html).toContain('本周未入境');
+    expect(html).toContain('本周最高');
+    expect(html).toContain('未留痕');
+    expect(html).toContain('查看境规与机缘');
+    expect(html).toContain('当前事件');
     expect(html).toContain('踏入本周幻境');
     expect(html).toContain('leaderboard:筑基:0');
+    expect(html).not.toContain('蜃气本周方聚');
+    expect(html).not.toContain('境门时刻');
+
+    expect(html.indexOf('下次境门改换')).toBeLessThan(html.indexOf('当前层数'));
+    expect(html.indexOf('当前层数')).toBeLessThan(html.indexOf('当前事件'));
+    expect(html.indexOf('当前事件')).toBeLessThan(html.indexOf('踏入本周幻境'));
+    expect(html.indexOf('踏入本周幻境')).toBeLessThan(
+      html.indexOf('leaderboard:筑基:0'),
+    );
   });
 
   it('renders a probe fallback card while waiting battle details are still missing', () => {
@@ -252,8 +271,13 @@ describe('TowerPage', () => {
 
     const html = renderToStaticMarkup(<TowerPage />);
 
-    expect(html).toContain('眼前幻影');
+    expect(html).toContain('当前事件');
     expect(html).toContain('照见前路幻影');
+    expect(html).toContain('境内状态');
+    expect(html).toContain('查看境规与机缘');
+    expect(countOccurrences(html, '第 4 层')).toBe(1);
+    expect(countOccurrences(html, '本周最高')).toBe(1);
+    expect(html.indexOf('当前事件')).toBeLessThan(html.indexOf('境内状态'));
   });
 
   it('renders blessing selection state with isolated tower resources', () => {
@@ -324,14 +348,93 @@ describe('TowerPage', () => {
 
     const html = renderToStaticMarkup(<TowerPage />);
 
-    expect(html).toContain('塔中留痕');
+    expect(html).toContain('下次境门改换');
+    expect(html).toContain('当前事件');
+    expect(html).toContain('境内状态');
     expect(html).toContain('第 6 层');
     expect(html).toContain('境内气血');
     expect(html).toContain('境内法力');
     expect(html).toContain('188 / 360');
     expect(html).toContain('73 / 180');
-    expect(html).toContain('残留机缘');
     expect(html).toContain('玉骨');
+    expect(html).toContain('最大气血 +10%');
     expect(html).toContain('承此机缘');
+    expect(html).not.toContain('本场之前，道骨先稳一寸。');
+    expect(html.indexOf('当前事件')).toBeLessThan(html.indexOf('境内状态'));
+  });
+
+  it('renders finished runs with restart only in the primary settlement card', () => {
+    mockedUseTowerState.mockReturnValue({
+      payload: {
+        season: {
+          seasonKey: '2026-W22@Asia/Shanghai',
+          seasonStartedAt: '2026-05-25T16:00:00.000Z',
+          seasonEndsAt: '2026-06-01T16:00:00.000Z',
+          nextResetAt: '2026-06-01T16:00:00.000Z',
+        },
+        settlement: {
+          seasonKey: '2026-W22@Asia/Shanghai',
+          highestFloorCleared: 8,
+          finalFloor: 9,
+          endReason: 'defeat',
+          milestoneRewards: [],
+          blessings: {},
+        },
+        state: {
+          runId: 'run-1',
+          seasonKey: '2026-W22@Asia/Shanghai',
+          status: 'FINISHED',
+          currentFloor: 9,
+          highestFloorCleared: 8,
+          condition: {
+            version: 1,
+            resources: {
+              hp: { current: 44 },
+              mp: { current: 12 },
+            },
+            gauges: { pillToxicity: 0 },
+            tracks: {
+              tempering: {
+                vitality: { level: 0, progress: 0 },
+                spirit: { level: 0, progress: 0 },
+                wisdom: { level: 0, progress: 0 },
+                speed: { level: 0, progress: 0 },
+                willpower: { level: 0, progress: 0 },
+              },
+              marrowWash: { level: 0, progress: 0 },
+            },
+            counters: {
+              longTermPillUsesByRealm: {},
+              cultivationPillUsesByRealm: {},
+            },
+            statuses: [],
+            timestamps: {
+              lastRecoveryAt: '2026-05-26T00:00:00.000Z',
+            },
+            metrics: {
+              totalRecoveredHp: 0,
+              totalRecoveredMp: 0,
+            },
+          },
+          blessings: {},
+          pendingBlessingChoices: [],
+          claimedMilestones: [],
+          milestoneRewardLog: [],
+        },
+      },
+      setPayload: vi.fn(),
+      loading: false,
+    });
+
+    const html = renderToStaticMarkup(<TowerPage />);
+
+    expect(html).toContain('最终止步');
+    expect(html).toContain('此行止于第 9 层。');
+    expect(html).toContain('重开本周幻境');
+    expect(html).toContain('境内状态');
+    expect(html).not.toContain('此行回响');
+    expect(html).not.toContain('再启此境');
+    expect(countOccurrences(html, '本周最高')).toBe(1);
+    expect(html.indexOf('当前事件')).toBeLessThan(html.indexOf('境内状态'));
   });
 });

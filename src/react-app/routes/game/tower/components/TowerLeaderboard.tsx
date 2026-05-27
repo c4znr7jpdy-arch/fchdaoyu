@@ -19,7 +19,7 @@ export function TowerLeaderboard({
 }: TowerLeaderboardProps) {
   return (
     <GameSceneSection title="留名榜">
-      <InkCard className="min-w-0 space-y-4 overflow-hidden p-4">
+      <InkCard className="min-w-0 w-full space-y-4 overflow-hidden p-4">
         <div className="md:hidden">
           <InkSelect
             value={activeRealm}
@@ -51,11 +51,11 @@ export function TowerLeaderboard({
             本周此境尚无人留名。
           </p>
         ) : (
-          <div className="max-h-80 space-y-3 overflow-y-auto pr-1 md:max-h-120">
+          <div className="max-h-80 space-y-3 overflow-x-hidden overflow-y-auto pr-1 md:max-h-120">
             {entries.map((entry) => (
               <div
                 key={`${entry.recordedRealm}:${entry.cultivatorId}`}
-                className="border-ink/15 flex items-start justify-between gap-4 border-b border-dashed pb-3 last:border-b-0 last:pb-0"
+                className="border-ink/15 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-4 border-b border-dashed pb-3 last:border-b-0 last:pb-0"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
