@@ -1,4 +1,4 @@
-import type { ElementType } from '@shared/types/constants';
+import type { ElementType, Quality } from '@shared/types/constants';
 import { QUALITY_ORDER } from '@shared/types/constants';
 import {
   CREATION_PROJECTION_BALANCE,
@@ -213,7 +213,7 @@ function reProjectPassive(
 
 function reProjectSkill(
   affixes: RolledAffix[],
-  projectionQuality: string,
+  projectionQuality: Quality,
   elementBias: ElementType | undefined,
   projectionBasisEnergy: number | undefined,
   registry: AffixRegistry = DEFAULT_AFFIX_REGISTRY,

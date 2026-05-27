@@ -84,7 +84,7 @@ export interface ProductDisplayModel {
   affixes: AffixView[];
   modifiers: AttributeModifierView[];
   projection?: AbilityProjectionSummary;
-  rawModel: CreationProductModel;
+  rawModel?: CreationProductModel;
 }
 
 // ===== 通用格式化 =====

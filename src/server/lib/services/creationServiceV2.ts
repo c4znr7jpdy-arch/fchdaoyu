@@ -34,7 +34,13 @@ import { cultivators, materials } from '@server/lib/drizzle/schema';
 import { redis } from '@server/lib/redis';
 import { parseRedisJson } from '@server/lib/redis/json';
 import * as creationProductRepository from '@server/lib/repositories/creationProductRepository';
-import type { EquipmentSlot, Quality, RealmStage, RealmType } from '@shared/types/constants';
+import type {
+  ElementType,
+  EquipmentSlot,
+  Quality,
+  RealmStage,
+  RealmType,
+} from '@shared/types/constants';
 import type { Material, PreHeavenFate } from '@shared/types/cultivator';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { getCultivatorByIdUnsafe } from './cultivatorService';
