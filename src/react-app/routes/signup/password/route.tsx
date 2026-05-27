@@ -12,10 +12,11 @@ import { InkButton } from '@app/components/ui/InkButton';
 import { InkInput } from '@app/components/ui/InkInput';
 import { useAuth, type AuthActionError } from '@app/lib/auth/authContext';
 import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 export default function SignupPasswordRoute() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { signUpWithPassword } = useAuth();
   const { showErrorDialog } = useAuthFeedback();
   const {
@@ -77,6 +78,8 @@ export default function SignupPasswordRoute() {
       if (error) {
         throw error;
       }
+
+      navigate('/game', { replace: true });
     } catch (error) {
       showErrorDialog(
         toErrorMessage(error as AuthActionError, '注册失败，请稍后重试'),

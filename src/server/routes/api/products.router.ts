@@ -3,7 +3,9 @@ import {
 } from '@server/lib/hono/middleware';
 import type { AppEnv } from '@server/lib/hono/types';
 import * as creationProductRepository from '@server/lib/repositories/creationProductRepository';
+import { rehydrateStoredProductModel } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import type { CreationProductType } from '@shared/engine/creation-v2/types';
+import type { ElementType } from '@shared/types/constants';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
@@ -13,6 +15,24 @@ const EquipSchema = z.object({
 });
 
 const router = new Hono<AppEnv>();
+
+function withRehydratedProductModel<
+  T extends { productModel?: unknown; element?: string | null },
+>(product: T): T {
+  const productModel = rehydrateStoredProductModel(
+    (product.productModel ?? null) as Record<string, unknown> | null,
+    (product.element as ElementType | null) ?? undefined,
+  );
+
+  if (!productModel) {
+    return product;
+  }
+
+  return {
+    ...product,
+    productModel,
+  };
+}
 
 router.get('/', requireActiveCultivator(), async (c) => {
   const cultivator = c.get('cultivator');
@@ -30,7 +50,10 @@ router.get('/', requireActiveCultivator(), async (c) => {
     type as CreationProductType,
   );
 
-  return c.json({ success: true, data: products });
+  return c.json({
+    success: true,
+    data: products.map(withRehydratedProductModel),
+  });
 });
 
 router.get('/equip', requireActiveCultivator(), async (c) => {
@@ -40,7 +63,10 @@ router.get('/equip', requireActiveCultivator(), async (c) => {
   }
 
   const equipped = await creationProductRepository.findEquippedArtifacts(cultivator.id);
-  return c.json({ success: true, data: equipped });
+  return c.json({
+    success: true,
+    data: equipped.map(withRehydratedProductModel),
+  });
 });
 
 router.post('/equip', requireActiveCultivator(), async (c) => {
@@ -87,7 +113,7 @@ router.get('/:id', requireActiveCultivator(), async (c) => {
     return c.json({ error: '产物不存在' }, 404);
   }
 
-  return c.json({ success: true, data: product });
+  return c.json({ success: true, data: withRehydratedProductModel(product) });
 });
 
 router.delete('/:id', requireActiveCultivator(), async (c) => {

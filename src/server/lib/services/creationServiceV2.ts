@@ -10,7 +10,10 @@ import {
   serializeCraftedOutcomeSnapshot,
   snapshotCraftedOutcome,
 } from '@shared/engine/creation-v2/persistence/OutcomeSnapshot';
-import { toRow } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
+import {
+  rehydrateStoredProductModel,
+  toRow,
+} from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import { MaterialRuleSet } from '@shared/engine/creation-v2/rules/material/MaterialRuleSet';
 import { supportsProductType } from '@shared/engine/creation-v2/rules/recipe/ProductSupportRules';
 import type {
@@ -130,6 +133,13 @@ function buildCreationResult(
   row: ReturnType<typeof toRow>,
   id: string,
 ): CreationV2Result {
+  const productModel =
+    rehydrateStoredProductModel(
+      row.productModel as Record<string, unknown>,
+      (row.element as ElementType | null) ?? undefined,
+    ) ??
+    (row.productModel as Record<string, unknown>);
+
   return {
     id,
     productType: row.productType as CreationProductType,
@@ -139,7 +149,7 @@ function buildCreationResult(
     quality: row.quality ?? null,
     slot: row.slot ?? null,
     score: row.score ?? 0,
-    productModel: row.productModel as Record<string, unknown>,
+    productModel: productModel as unknown as Record<string, unknown>,
     affixes: extractAffixSummary(outcome.blueprint.productModel.affixes),
   };
 }
@@ -149,6 +159,13 @@ function buildPendingCreationItem(
   row: ReturnType<typeof toRow>,
   snapshot: string,
 ): PendingCreationItem {
+  const productModel =
+    rehydrateStoredProductModel(
+      row.productModel as Record<string, unknown>,
+      (row.element as ElementType | null) ?? undefined,
+    ) ??
+    (row.productModel as Record<string, unknown>);
+
   return {
     snapshot,
     name: row.name,
@@ -158,7 +175,7 @@ function buildPendingCreationItem(
     quality: row.quality ?? null,
     slot: row.slot ?? null,
     score: row.score ?? 0,
-    productModel: row.productModel as Record<string, unknown>,
+    productModel: productModel as unknown as Record<string, unknown>,
   };
 }
 

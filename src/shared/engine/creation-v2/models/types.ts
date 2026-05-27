@@ -34,6 +34,8 @@ interface BaseProductModel<
   description?: string;
   /** 数值投影品质（权威来源）：用于词条数值、蓝耗/冷却、展示品质等。 */
   projectionQuality: Quality;
+  /** 用于重建数值投影的预算基准值；skill 的 mpCost 等需由此反推。 */
+  projectionBasisEnergy?: number;
   outcomeTags: string[];
   affixes: RolledAffix[];
   balanceMetrics?: BalanceMetrics;

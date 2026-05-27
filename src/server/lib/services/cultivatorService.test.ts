@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { composeProductFromAffixIds } from '@shared/engine/creation-v2/composeProductFromAffixIds';
+import { serializeProductModel } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 
 const {
   findActiveCultivatorRecordByIdMock,
@@ -224,5 +226,81 @@ describe('getCultivatorByIdUnsafe', () => {
       '2026-05-22T00:00:00.000Z',
     );
     expect(tickNaturalRecoveryMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('gracefully hydrates legacy skill products without stored battleProjection', async () => {
+    const legacySkillProduct = serializeProductModel(
+      composeProductFromAffixIds({
+        productType: 'skill',
+        element: '火',
+        name: '残卷火符',
+        affixIds: ['skill-core-damage-fire'],
+      }),
+    ) as Record<string, unknown>;
+    delete legacySkillProduct.projectionBasisEnergy;
+
+    findActiveCultivatorRecordByIdMock.mockResolvedValue({
+      id: 'cultivator-1',
+      userId: 'user-1',
+      name: '韩立',
+      prompt: '谨慎求道',
+      realm: '炼气',
+      realm_stage: '圆满',
+      age: 28,
+      lifespan: 120,
+      status: 'active',
+      closedDoorYearsTotal: 12,
+      vitality: 18,
+      spirit: 22,
+      wisdom: 24,
+      speed: 16,
+      willpower: 25,
+      max_skills: 4,
+      spirit_stones: 320,
+      last_yield_at: new Date('2026-05-21T00:00:00.000Z'),
+      balance_notes: null,
+      cultivation_progress: {
+        cultivation_exp: 100,
+        exp_cap: 100,
+        comprehension_insight: 55,
+        bottleneck_state: true,
+        breakthrough_failures: 0,
+        inner_demon: false,
+        deviation_risk: 0,
+      },
+      condition: createCondition(),
+      updatedAt: new Date('2026-05-21T00:00:00.000Z'),
+    } as any);
+
+    loadCultivatorRelationsMock.mockResolvedValue({
+      spiritualRoots: [],
+      preHeavenFates: [],
+      creationProducts: [
+        {
+          id: 'skill-1',
+          productType: 'skill',
+          name: '残卷火符',
+          description: '旧档导入的技能产物',
+          element: '火',
+          quality: '凡品',
+          slot: null,
+          score: 18,
+          isEquipped: false,
+          productModel: legacySkillProduct,
+        },
+      ],
+      consumables: [],
+      materials: [],
+    });
+
+    const bundle = await getCultivatorByIdUnsafe('cultivator-1');
+
+    expect(bundle?.cultivator.skills).toHaveLength(1);
+    expect(bundle?.cultivator.skills[0]).toMatchObject({
+      id: 'skill-1',
+      name: '残卷火符',
+      cost: 80,
+      cooldown: 2,
+    });
   });
 });

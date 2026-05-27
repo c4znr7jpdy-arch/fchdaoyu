@@ -9,7 +9,7 @@ import {
   getCharacterGenerationPrompt,
   getCharacterGenerationUserPrompt,
 } from './prompts';
-import { CultivatorAISchema } from './types';
+import { CultivatorAIRawSchema, normalizeCultivatorAIData } from './types';
 import { generateAttributes, generateSpiritualRoots } from './utils';
 
 export class CharacterGenerator {
@@ -28,13 +28,13 @@ export class CharacterGenerator {
       prompt,
       userPrompt,
       {
-        schema: CultivatorAISchema,
+        schema: CultivatorAIRawSchema,
         schemaName: '修仙真形骨架',
       },
       false,
     );
 
-    const data = aiResponse.object;
+    const data = normalizeCultivatorAIData(aiResponse.object);
 
     // 2. 数值化生成
     const attributes = generateAttributes(data.aptitude_score);

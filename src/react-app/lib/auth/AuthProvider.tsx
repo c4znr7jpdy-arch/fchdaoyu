@@ -14,6 +14,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const session = sessionState.data?.session ?? null;
   const user = sessionState.data?.user ?? null;
 
+  const syncSessionState = async () => {
+    await sessionState.refetch();
+  };
+
   const signUpWithPassword: AuthContextType['signUpWithPassword'] = async (
     name,
     email,
@@ -26,6 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       fetchOptions: getCaptchaFetchOptions(captchaToken),
     });
+
+    if (!error) {
+      await syncSessionState();
+    }
 
     return {
       error: toAuthActionError(error),
@@ -42,6 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       fetchOptions: getCaptchaFetchOptions(captchaToken),
     });
+
+    if (!error) {
+      await syncSessionState();
+    }
 
     return {
       error: toAuthActionError(error),
@@ -73,6 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       otp: otp.trim(),
       name: name?.trim() || undefined,
     });
+
+    if (!error) {
+      await syncSessionState();
+    }
 
     return {
       error: toAuthActionError(error),
@@ -125,6 +141,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut: AuthContextType['signOut'] = async () => {
     const { error } = await authClient.signOut();
+
+    if (!error) {
+      await syncSessionState();
+    }
 
     return {
       error: toAuthActionError(error),

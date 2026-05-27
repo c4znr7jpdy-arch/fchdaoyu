@@ -1,4 +1,4 @@
-import { deserializeAndRehydrate } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
+import { rehydrateStoredProductModel } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import { projectAbilityConfig } from '@shared/engine/creation-v2/models/AbilityProjection';
 import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
 import { getExecutor } from '@server/lib/drizzle/db';
@@ -40,6 +40,7 @@ import type { ItemRankingEntry } from '@shared/types/rankings';
 import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import type { ElementType } from '@shared/types/constants';
 
 const ChallengeSchema = z.object({
   targetId: z.string().optional().nullable(),
@@ -52,6 +53,16 @@ const ChallengeBattleSchema = z.object({
 const router = new Hono<AppEnv>();
 const publicRouter = new Hono<AppEnv>();
 const challengeRouter = new Hono<AppEnv>();
+
+function getRehydratedProductModel(
+  productModel: unknown,
+  element?: string | null,
+) {
+  return rehydrateStoredProductModel(
+    (productModel ?? null) as Record<string, unknown> | null,
+    (element as ElementType | null) ?? undefined,
+  );
+}
 
 publicRouter.get('/', async (c) => {
   try {
@@ -100,21 +111,28 @@ publicRouter.get('/items', async (c) => {
         .orderBy(desc(creationProducts.score))
         .limit(limit);
 
-      items = rows.map(({ item, owner }, index) => ({
-        id: item.id,
-        rank: index + 1,
-        name: item.name,
-        itemType: 'artifact',
-        type: getEquipmentSlotLabel(item.slot as EquipmentSlot),
-        quality: item.quality ?? undefined,
-        ownerName: owner?.name || '未知',
-        score: item.score || 0,
-        description: item.description || '',
-        title: item.quality ?? undefined,
-        element: item.element ?? undefined,
-        slot: item.slot ?? undefined,
-        productModel: item.productModel ?? undefined,
-      }));
+      items = rows.map(({ item, owner }, index) => {
+        const productModel =
+          getRehydratedProductModel(item.productModel, item.element) ??
+          item.productModel ??
+          undefined;
+
+        return {
+          id: item.id,
+          rank: index + 1,
+          name: item.name,
+          itemType: 'artifact',
+          type: getEquipmentSlotLabel(item.slot as EquipmentSlot),
+          quality: item.quality ?? undefined,
+          ownerName: owner?.name || '未知',
+          score: item.score || 0,
+          description: item.description || '',
+          title: item.quality ?? undefined,
+          element: item.element ?? undefined,
+          slot: item.slot ?? undefined,
+          productModel,
+        };
+      });
     } else if (type === 'skill') {
       const rows = await getExecutor()
         .select({ item: creationProducts, owner: cultivators })
@@ -133,16 +151,19 @@ publicRouter.get('/items', async (c) => {
       items = rows.map(({ item, owner }, index) => {
         let cooldown = 0;
         let cost = 0;
-        if (item.productModel) {
+        const productModel = getRehydratedProductModel(
+          item.productModel,
+          item.element,
+        );
+
+        if (productModel) {
           try {
-            const rehydrated = deserializeAndRehydrate(
-              item.productModel as Record<string, unknown>,
-              (item.element as import('@shared/types/constants').ElementType) || undefined,
-            );
-            const abilityConfig = projectAbilityConfig(rehydrated);
+            const abilityConfig = projectAbilityConfig(productModel);
             cooldown = abilityConfig.cooldown ?? 0;
             cost = abilityConfig.mpCost || 0;
-          } catch { /* fallback to defaults */ }
+          } catch {
+            // fallback to defaults
+          }
         }
 
         return {
@@ -159,7 +180,7 @@ publicRouter.get('/items', async (c) => {
           element: item.element ?? undefined,
           cooldown,
           cost,
-          productModel: item.productModel ?? undefined,
+          productModel: productModel ?? item.productModel ?? undefined,
         };
       });
     } else if (type === 'elixir') {
@@ -206,19 +227,26 @@ publicRouter.get('/items', async (c) => {
         .orderBy(desc(creationProducts.score))
         .limit(limit);
 
-      items = rows.map(({ item, owner }, index) => ({
-        id: item.id,
-        rank: index + 1,
-        name: item.name,
-        itemType: 'technique',
-        type: '功法',
-        quality: (item.quality as string | undefined) || undefined,
-        ownerName: owner?.name || '未知',
-        score: item.score || 0,
-        description: item.description || '',
-        title: item.quality || '未知品阶',
-        productModel: item.productModel ?? undefined,
-      }));
+      items = rows.map(({ item, owner }, index) => {
+        const productModel =
+          getRehydratedProductModel(item.productModel, item.element) ??
+          item.productModel ??
+          undefined;
+
+        return {
+          id: item.id,
+          rank: index + 1,
+          name: item.name,
+          itemType: 'technique',
+          type: '功法',
+          quality: (item.quality as string | undefined) || undefined,
+          ownerName: owner?.name || '未知',
+          score: item.score || 0,
+          description: item.description || '',
+          title: item.quality || '未知品阶',
+          productModel,
+        };
+      });
     }
 
     return c.json({

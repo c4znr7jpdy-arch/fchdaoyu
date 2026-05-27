@@ -47,7 +47,7 @@ export function toErrorMessage(
     return fallback;
   }
 
-  if (error.message.toLowerCase().includes('rate')) {
+  if (error.status === 429 || error.code === 'TOO_MANY_ATTEMPTS') {
     return '请求过于频繁，请一个时辰后再试';
   }
 

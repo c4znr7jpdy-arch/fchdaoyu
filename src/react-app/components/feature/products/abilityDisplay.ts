@@ -19,6 +19,7 @@ import type {
   GongFaProductModel,
   SkillProductModel,
 } from '@shared/engine/creation-v2/models/types';
+import { rehydrateStoredProductModel } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import type { RolledAffix } from '@shared/engine/creation-v2/types';
 import {
   renderAffixLine,
@@ -190,6 +191,7 @@ function collectModifiers(
     | ArtifactProductModel['battleProjection']
     | GongFaProductModel['battleProjection']
     | SkillProductModel['battleProjection'];
+  if (!projection) return [];
   if (
     projection.projectionKind === 'artifact_passive' ||
     projection.projectionKind === 'gongfa_passive'
@@ -254,6 +256,15 @@ export function formatTargetPolicyValue(
 
 const DEFAULT_QUALITY: Quality = '凡品';
 
+function normalizeProductModel(
+  record: ProductRecordLike,
+): CreationProductModel | undefined {
+  return rehydrateStoredProductModel(
+    (record.productModel ?? null) as Record<string, unknown> | null,
+    record.element ?? undefined,
+  );
+}
+
 /**
  * 将 `/api/v2/products` 的原始行转换为 UI 视图态。
  * `productModel` 是 battle-v5 与 creation-v2 的权威来源；其余列字段只作为冗余兜底。
@@ -261,7 +272,7 @@ const DEFAULT_QUALITY: Quality = '凡品';
 export function toProductDisplayModel(
   record: ProductRecordLike,
 ): ProductDisplayModel {
-  const rawModel = record.productModel as CreationProductModel;
+  const rawModel = normalizeProductModel(record);
   const quality =
     (rawModel?.projectionQuality as Quality | undefined) ??
     ((record.quality as Quality | null) ?? DEFAULT_QUALITY);

@@ -4,6 +4,7 @@ import type {
   CreationProductModel,
 } from '../models/types';
 import type { CraftedOutcome } from '../types';
+import type { ElementType } from '@shared/types/constants';
 import { extractElement } from './elementExtractor';
 import { rehydrateProductModel } from './ProductRehydrator';
 import { calculateProductScore } from './ScoreCalculator';
@@ -87,4 +88,14 @@ export function deserializeAndRehydrate(
     return slim;
   }
   return rehydrateProductModel(slim, elementBias);
+}
+
+export function rehydrateStoredProductModel(
+  json: Record<string, unknown> | null | undefined,
+  elementBias?: ElementType,
+): CreationProductModel | undefined {
+  if (!json || !json.productType) {
+    return undefined;
+  }
+  return deserializeAndRehydrate(json, elementBias);
 }

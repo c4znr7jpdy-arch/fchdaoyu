@@ -1,6 +1,6 @@
 import type { AbilityConfig } from '@shared/engine/creation-v2/contracts/battle';
 import {
-  deserializeAndRehydrate,
+  rehydrateStoredProductModel,
   serializeProductModel,
 } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import { projectAbilityConfig } from '@shared/engine/creation-v2/models/AbilityProjection';
@@ -110,23 +110,33 @@ async function assembleCultivatorFromRelations(
     (product) => product.productType === 'artifact',
   );
 
+  const toProductModel = (
+    productModel: Record<string, unknown> | null | undefined,
+    element: string | null | undefined,
+  ) =>
+    rehydrateStoredProductModel(
+      productModel as Record<string, unknown>,
+      (element as import('@shared/types/constants').ElementType) || undefined,
+    );
+
   const toAbilityConfig = (
     productModel: Record<string, unknown> | null | undefined,
     element: string | null | undefined,
     id: string,
   ): AbilityConfig => {
-    if (!productModel || !productModel.productType) {
+    const rehydrated = toProductModel(productModel, element);
+    if (!rehydrated) {
       return { slug: id } as AbilityConfig;
     }
-    const rehydrated = deserializeAndRehydrate(
-      productModel as Record<string, unknown>,
-      (element as import('@shared/types/constants').ElementType) || undefined,
-    );
     const config = projectAbilityConfig(rehydrated);
     return { ...config, slug: id };
   };
 
   const cultivations = gongfaProducts.map((product) => {
+    const rehydratedModel = toProductModel(
+      product.productModel as Record<string, unknown>,
+      product.element,
+    );
     const abilityConfig = toAbilityConfig(
       product.productModel as Record<string, unknown>,
       product.element,
@@ -142,11 +152,15 @@ async function assembleCultivatorFromRelations(
       description: product.description || undefined,
       attributeModifiers: abilityConfig.modifiers ?? [],
       abilityConfig,
-      productModel: product.productModel ?? undefined,
+      productModel: rehydratedModel ?? product.productModel ?? undefined,
     };
   });
 
   const skills = skillProducts.map((product) => {
+    const rehydratedModel = toProductModel(
+      product.productModel as Record<string, unknown>,
+      product.element,
+    );
     const abilityConfig = toAbilityConfig(
       product.productModel as Record<string, unknown>,
       product.element,
@@ -164,11 +178,15 @@ async function assembleCultivatorFromRelations(
         abilityConfig.targetPolicy?.team === 'self' ? true : undefined,
       description: product.description || undefined,
       abilityConfig,
-      productModel: product.productModel ?? undefined,
+      productModel: rehydratedModel ?? product.productModel ?? undefined,
     };
   });
 
   const artifacts = artifactProducts.map((product) => {
+    const rehydratedModel = toProductModel(
+      product.productModel as Record<string, unknown>,
+      product.element,
+    );
     const abilityConfig = toAbilityConfig(
       product.productModel as Record<string, unknown>,
       product.element,
@@ -186,7 +204,7 @@ async function assembleCultivatorFromRelations(
       description: product.description || '',
       attributeModifiers: abilityConfig.modifiers ?? [],
       abilityConfig,
-      productModel: product.productModel ?? undefined,
+      productModel: rehydratedModel ?? product.productModel ?? undefined,
       isEquipped: product.isEquipped ?? false,
       score: product.score ?? 0,
     };

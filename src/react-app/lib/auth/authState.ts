@@ -9,6 +9,7 @@ type AuthUser = SessionPayload['user'];
 export type AuthActionError = {
   code?: string;
   message: string;
+  originalMessage?: string;
   status?: number;
   statusText?: string;
 };
@@ -89,7 +90,14 @@ export function toAuthActionError(error: unknown): AuthActionError | null {
     return {
       code:
         typeof error.error?.code === 'string' ? error.error.code : undefined,
-      message: error.message,
+      message:
+        typeof error.error?.message === 'string'
+          ? error.error.message
+          : error.message,
+      originalMessage:
+        typeof error.error?.originalMessage === 'string'
+          ? error.error.originalMessage
+          : undefined,
       status: error.status,
       statusText: error.statusText,
     };
@@ -111,6 +119,18 @@ export function toAuthActionError(error: unknown): AuthActionError | null {
           ? error.code
           : undefined,
       message: error.message,
+      originalMessage:
+        'originalMessage' in error && typeof error.originalMessage === 'string'
+          ? error.originalMessage
+          : undefined,
+      status:
+        'status' in error && typeof error.status === 'number'
+          ? error.status
+          : undefined,
+      statusText:
+        'statusText' in error && typeof error.statusText === 'string'
+          ? error.statusText
+          : undefined,
     };
   }
 

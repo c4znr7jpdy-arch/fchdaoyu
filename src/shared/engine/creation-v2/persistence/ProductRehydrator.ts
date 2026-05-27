@@ -1,5 +1,10 @@
 import type { ElementType } from '@shared/types/constants';
 import { QUALITY_ORDER } from '@shared/types/constants';
+import {
+  CREATION_PROJECTION_BALANCE,
+  CREATION_PROJECTION_QUALITY_TIERS,
+  CREATION_SKILL_DEFAULTS,
+} from '../config/CreationBalance';
 import { AffixEffectTranslator } from '../affixes/AffixEffectTranslator';
 import {
   DEFAULT_AFFIX_REGISTRY,
@@ -210,7 +215,7 @@ function reProjectSkill(
   affixes: RolledAffix[],
   projectionQuality: string,
   elementBias: ElementType | undefined,
-  storedProjection: ActiveSkillBattleProjection,
+  projectionBasisEnergy: number | undefined,
   registry: AffixRegistry = DEFAULT_AFFIX_REGISTRY,
 ): ActiveSkillBattleProjection {
   const directEffects: import('../contracts/battle').EffectConfig[] = [];
@@ -254,16 +259,60 @@ function reProjectSkill(
     elementBias,
   });
 
+  const qualityOrder = QUALITY_ORDER[projectionQuality] ?? 0;
+  const coreAffix = affixes.find((affix) => affix.category === 'skill_core');
+  const coreDef = coreAffix ? registry.queryById(coreAffix.id) : undefined;
+  const coreType = coreDef?.effectTemplate.type;
+  const fallbackCooldownBase =
+    coreType === 'heal'
+      ? CREATION_SKILL_DEFAULTS.healCooldown
+      : coreType === 'apply_buff'
+        ? CREATION_SKILL_DEFAULTS.buffCooldown
+        : CREATION_SKILL_DEFAULTS.damageCooldown;
+  const fallbackTargetPolicy = {
+    team:
+      coreDef?.targetPolicyConstraint?.team ??
+      (coreType === 'heal' ? ('self' as const) : ('enemy' as const)),
+    scope: coreDef?.targetPolicyConstraint?.scope ?? ('single' as const),
+  };
+  const basisEnergy =
+    projectionBasisEnergy ?? inferBasisEnergyFromQuality(projectionQuality);
+  const qualityMultiplier = Math.pow(2, qualityOrder);
+  const baseMpCost = Math.round(
+    basisEnergy / CREATION_PROJECTION_BALANCE.mpCostDivisor,
+  );
+
   return {
     projectionKind: 'active_skill',
     abilityTags,
-    mpCost: storedProjection.mpCost,
-    cooldown: storedProjection.cooldown,
-    priority: storedProjection.priority,
-    targetPolicy: storedProjection.targetPolicy,
+    mpCost: Math.max(
+      CREATION_SKILL_DEFAULTS.minMpCost * qualityMultiplier,
+      baseMpCost * qualityMultiplier,
+    ),
+    cooldown:
+      Math.min(
+        10,
+        fallbackCooldownBase +
+          (CREATION_PROJECTION_BALANCE.qualityCooldownBonus[qualityOrder] ?? 0),
+      ),
+    priority: CREATION_PROJECTION_BALANCE.skillPriorityBase + affixes.length,
+    targetPolicy: fallbackTargetPolicy,
     effects: directEffects,
     ...(extraListeners.length > 0 ? { listeners: extraListeners } : {}),
   };
+}
+
+function inferBasisEnergyFromQuality(projectionQuality: string): number {
+  let minEnergy = 0;
+
+  for (const tier of CREATION_PROJECTION_QUALITY_TIERS) {
+    if (tier.quality === projectionQuality) {
+      return minEnergy;
+    }
+    minEnergy = tier.maxEnergy;
+  }
+
+  return 0;
 }
 
 /**
@@ -327,13 +376,11 @@ export function rehydrateProductModel(
     }
 
     case 'skill': {
-      const storedProjection =
-        stored.battleProjection as ActiveSkillBattleProjection;
       const battleProjection = reProjectSkill(
         hydratedAffixes,
         stored.projectionQuality,
         elementBias,
-        storedProjection,
+        stored.projectionBasisEnergy,
         registry,
       );
 

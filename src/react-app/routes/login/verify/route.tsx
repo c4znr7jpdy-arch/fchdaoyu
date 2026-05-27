@@ -8,7 +8,7 @@ import { InkButton } from '@app/components/ui/InkButton';
 import { InkInput } from '@app/components/ui/InkInput';
 import { useAuth, type AuthActionError } from '@app/lib/auth/authContext';
 import { useState } from 'react';
-import { Navigate, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 export default function LoginVerifyRoute() {
   const [searchParams] = useSearchParams();
@@ -22,6 +22,7 @@ export default function LoginVerifyRoute() {
 }
 
 function LoginVerifyPage({ email }: { email: string }) {
+  const navigate = useNavigate();
   const { verifyEmailOtp } = useAuth();
   const { showErrorDialog } = useAuthFeedback();
   const [otp, setOtp] = useState('');
@@ -44,6 +45,8 @@ function LoginVerifyPage({ email }: { email: string }) {
       if (error) {
         throw error;
       }
+
+      navigate('/game', { replace: true });
     } catch (error) {
       showErrorDialog(
         toErrorMessage(error as AuthActionError, '召符有误或已失效'),
