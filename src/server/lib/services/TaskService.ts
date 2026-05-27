@@ -5,7 +5,12 @@ import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry'
 import type { BattleRecord } from '@shared/types/battle';
 import type { ConditionStatusKey } from '@shared/types/condition';
 import type { Consumable, CultivationProgress, Cultivator } from '@shared/types/cultivator';
-import { QUALITY_ORDER, type Quality, type RealmType } from '@shared/types/constants';
+import {
+  QUALITY_ORDER,
+  REALM_ORDER,
+  type Quality,
+  type RealmType,
+} from '@shared/types/constants';
 import type {
   TaskActionLink,
   TaskEvent,
@@ -84,10 +89,35 @@ function getTaskResetKey(now: Date = new Date()): string {
   }).format(now);
 }
 
+function getDailyTaskSpiritStoneReward(realm: RealmType): number {
+  return (REALM_ORDER[realm] + 1) * 1000;
+}
+
+function resolveTaskRewardAttachments(
+  definition: Pick<RuntimeTaskDefinition, 'category' | 'rewardAttachments'>,
+  realm?: RealmType,
+) {
+  const attachments = definition.rewardAttachments ?? [];
+  if (definition.category !== 'daily' || !realm) {
+    return attachments;
+  }
+
+  const spiritStoneReward = getDailyTaskSpiritStoneReward(realm);
+  return attachments.map((attachment) =>
+    attachment.type === 'spirit_stones'
+      ? {
+          ...attachment,
+          quantity: spiritStoneReward,
+        }
+      : attachment,
+  );
+}
+
 function formatTaskRewardSummary(
-  definition: Pick<RuntimeTaskDefinition, 'rewardAttachments'>,
+  definition: Pick<RuntimeTaskDefinition, 'category' | 'rewardAttachments'>,
+  realm?: RealmType,
 ): string[] {
-  return (definition.rewardAttachments ?? []).map((attachment) => {
+  return resolveTaskRewardAttachments(definition, realm).map((attachment) => {
     switch (attachment.type) {
       case 'spirit_stones':
         return `${attachment.name} x${attachment.quantity}`;
@@ -100,8 +130,9 @@ function formatTaskRewardSummary(
 function createTaskMetadata(
   definition: RuntimeTaskDefinition,
   resetKey: string,
+  realm?: RealmType,
 ): TaskInstanceMetadata {
-  const rewardSummary = formatTaskRewardSummary(definition);
+  const rewardSummary = formatTaskRewardSummary(definition, realm);
 
   if (definition.category === 'daily') {
     return {
@@ -645,7 +676,7 @@ function buildTaskSnapshot(
           .filter((objective) => !objective.completed)
           .map((objective) => `${objective.title}：${objective.progressText}`)
       : [];
-  const rewardSummary = formatTaskRewardSummary(definition);
+  const rewardSummary = formatTaskRewardSummary(definition, context.realm);
 
   return {
     snapshot: {
@@ -738,7 +769,7 @@ async function createTaskRecordIfMissing(
       status: 'active',
       currentStage: definition.stages[0]?.id ?? null,
       objectives: buildDefaultObjectiveStates(definition),
-      metadata: createTaskMetadata(definition, resetKey),
+      metadata: createTaskMetadata(definition, resetKey, context.realm),
     });
   } catch (error) {
     if (
@@ -782,7 +813,11 @@ async function resetRepeatableTaskRecordIfNeeded(
   }
 
   const nextObjectives = buildDefaultObjectiveStates(definition);
-  const nextMetadata = createTaskMetadata(definition, currentResetKey);
+  const nextMetadata = createTaskMetadata(
+    definition,
+    currentResetKey,
+    context.realm,
+  );
 
   return (
     (await updateCultivatorTask(record.id, context.cultivatorId, {
@@ -822,10 +857,22 @@ async function syncTaskRecord(
     normalizeObjectiveStates(preparedRecord.objectives),
   );
   const serializedNext = serializeObjectiveStates(resolved.objectiveStates);
+  const currentMetadata =
+    (preparedRecord.metadata as TaskInstanceMetadata | null | undefined) ?? null;
+  const nextMetadata = isDailyTaskDefinition(definition)
+    ? createTaskMetadata(
+        definition,
+        currentMetadata?.resetKey ?? getTaskResetKey(),
+        context.realm,
+      )
+    : currentMetadata;
+  const metadataNeedsUpdate =
+    JSON.stringify(currentMetadata) !== JSON.stringify(nextMetadata);
   const needsUpdate =
     serializedCurrent !== serializedNext ||
     preparedRecord.status !== resolved.status ||
     preparedRecord.currentStage !== resolved.currentStage ||
+    metadataNeedsUpdate ||
     (resolved.status === 'completed' && !preparedRecord.completedAt);
 
   const nextRecord =
@@ -838,6 +885,7 @@ async function syncTaskRecord(
             resolved.status === 'completed'
               ? preparedRecord.completedAt ?? new Date(nowIso)
               : null,
+          ...(metadataNeedsUpdate ? { metadata: nextMetadata } : {}),
         })) ?? {
           ...preparedRecord,
           status: resolved.status,
@@ -847,6 +895,7 @@ async function syncTaskRecord(
             resolved.status === 'completed'
               ? preparedRecord.completedAt ?? new Date(nowIso)
               : null,
+          ...(metadataNeedsUpdate ? { metadata: nextMetadata } : {}),
         }
       : preparedRecord;
 
@@ -1065,7 +1114,11 @@ export const TaskService = {
         continue;
       }
 
-      const nextMetadata = createTaskMetadata(definition, currentResetKey);
+      const nextMetadata = createTaskMetadata(
+        definition,
+        currentResetKey,
+        context.realm,
+      );
       record =
         (await updateCultivatorTask(record.id, cultivatorId, {
           objectives: nextStates,
@@ -1078,12 +1131,16 @@ export const TaskService = {
       const task = await syncTaskRecord(context, record);
       changedAny = true;
 
-      if (task.status === 'completed' && (definition.rewardAttachments?.length ?? 0) > 0) {
+      const rewardAttachments = resolveTaskRewardAttachments(
+        definition,
+        context.realm,
+      );
+      if (task.status === 'completed' && rewardAttachments.length > 0) {
         await MailService.sendMail(
           cultivatorId,
           `【今日日常】${task.snapshot.title}`,
           `道友已办妥“${task.snapshot.title}”，这份薄礼已由传音玉简送达。`,
-          definition.rewardAttachments,
+          rewardAttachments,
           'reward',
         );
       }
@@ -1143,10 +1200,8 @@ export const TaskService = {
       throw new Error('试炼配置不存在');
     }
 
-    const battleResult = simulateBattleV5(
-      cultivator,
-      challengeProfile.buildOpponent(cultivator),
-    );
+    const opponent = await challengeProfile.buildOpponent(cultivator);
+    const battleResult = simulateBattleV5(cultivator, opponent);
     const isWin = battleResult.winner.id === cultivator.id;
 
     if (isWin) {

@@ -1,4 +1,4 @@
-import { enemyGenerator } from '@shared/engine/enemyGenerator';
+import { EnemyGenerator } from '@shared/engine/enemyGenerator';
 import type { Cultivator } from '@shared/types/cultivator';
 import type {
   TaskDailyKind,
@@ -6,6 +6,13 @@ import type {
   TaskInstanceMetadata,
   TaskStageDefinition,
 } from '@shared/types/task';
+import { ServerEnemyCopyProvider } from '@server/lib/services/ServerEnemyCopyProvider';
+
+const challengeEnemyGenerator = new EnemyGenerator({
+  copyProvider: new ServerEnemyCopyProvider({
+    enabled: process.env.NODE_ENV !== 'test',
+  }),
+});
 
 type TaskLinkKind =
   | 'alchemy'
@@ -45,7 +52,7 @@ export type RuntimeTaskDefinition = BreakthroughTaskDefinition | DailyTaskDefini
 export interface TaskChallengeProfile {
   id: string;
   title: string;
-  buildOpponent: (cultivator: Cultivator) => Cultivator;
+  buildOpponent: (cultivator: Cultivator) => Cultivator | Promise<Cultivator>;
 }
 
 function cloneMirrorOpponent(
@@ -83,24 +90,27 @@ function cloneMirrorOpponent(
   };
 }
 
-function buildGeneratedChallengeOpponent(
+async function buildGeneratedChallengeOpponent(
   cultivator: Cultivator,
   options: {
     name: string;
     race: '灵族' | '魔族' | '古兽';
     difficulty: number;
+    narrativeHint: string;
   },
-): Cultivator {
-  return enemyGenerator.buildDraft({
+): Promise<Cultivator> {
+  const draft = challengeEnemyGenerator.buildDraft({
     realm: cultivator.realm,
     realmStage: cultivator.realm_stage,
     race: options.race,
     difficulty: options.difficulty,
     isBoss: true,
     name: options.name,
-    background: `${options.name}自劫光与魔念中凝形而出，只为阻断你的道途。`,
+    background: options.narrativeHint,
     description: `${options.name}杀机炽盛，专为破境试炼而来。`,
-  }).cultivator;
+  });
+  const enriched = await challengeEnemyGenerator.enrichNarrative(draft);
+  return enriched.cultivator;
 }
 
 const challengeProfiles: TaskChallengeProfile[] = [
@@ -123,6 +133,7 @@ const challengeProfiles: TaskChallengeProfile[] = [
         name: '天劫投影',
         race: '灵族',
         difficulty: 5,
+        narrativeHint: '天劫降临时凝聚而成的劫影，通体天罚雷光流转，奉天命阻断化神之路。',
       }),
   },
   {
@@ -133,6 +144,7 @@ const challengeProfiles: TaskChallengeProfile[] = [
         name: '法则残影',
         race: '灵族',
         difficulty: 5,
+        narrativeHint: '法则碎片凝化的残影，举手投足间隐现天地规则之力，试探悟道者能否承受法则之重。',
       }),
   },
   {
@@ -143,6 +155,7 @@ const challengeProfiles: TaskChallengeProfile[] = [
         name: '劫雷化身',
         race: '古兽',
         difficulty: 6,
+        narrativeHint: '劫雷凝形的太古兽体，浑身雷弧缠绕，以雷霆之势淬炼渡劫者的道体根基。',
       }),
   },
   {
@@ -164,6 +177,7 @@ const challengeProfiles: TaskChallengeProfile[] = [
         name: '天道劫影',
         race: '古兽',
         difficulty: 7,
+        narrativeHint: '天道意志所化的终极劫影，承载末法时代最后一缕天威，誓要将不配渡劫者碾为齑粉。',
       }),
   },
 ];
@@ -241,7 +255,7 @@ const breakthroughDefinitions: BreakthroughTaskDefinition[] = [
           {
             id: 'craft-pill',
             kind: 'craft_breakthrough_pill',
-            title: '炼出结丹丹药',
+            title: '炼出降尘丹',
             description: '炼成一枚可用于结丹的大丹。',
             targetRealm: '金丹',
           },

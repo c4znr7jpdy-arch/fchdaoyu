@@ -15,7 +15,7 @@ export function getBreakthroughPillLabel(targetRealm: RealmType | null): string 
     case '筑基':
       return '筑基丹';
     case '金丹':
-      return '结丹丹药';
+      return '降尘丹';
     case '元婴':
       return '护婴丹';
     case '化神':
