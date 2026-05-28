@@ -715,10 +715,14 @@ export class CreationOrchestrator {
       ['skill_core', 'gongfa_foundation', 'artifact_core'].includes(a.category),
     );
     if (needsCore && !hasCore) {
+      const message =
+        selection.exhaustionReason === 'budget_exhausted'
+          ? '当前材料灵力不足，无法凝成核心词条。请提高材料品阶、增加投入数量，或更换更契合的主材。'
+          : '当前材料无法凝成核心词条。请更换更契合该造物类型的主材。';
       throw new CreationError(
         'Selection',
         'NO_CORE_AFFIX',
-        `未能抽选到核心词缀 (已选: ${selection.affixes.length}, 耗尽原因: ${selection.exhaustionReason})`,
+        message,
         { decision: selection },
       );
     }

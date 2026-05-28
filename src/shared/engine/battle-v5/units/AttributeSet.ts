@@ -50,7 +50,9 @@ class Attribute {
   }
 
   getFinalValue(): number {
-    const override = this._modifiers.find((m) => m.type === ModifierType.OVERRIDE);
+    const override = this._modifiers.find(
+      (m) => m.type === ModifierType.OVERRIDE,
+    );
     if (override) {
       return this._isFloat
         ? Math.max(0, override.value)
@@ -172,29 +174,49 @@ export class AttributeSet {
     // ── 派生型二级属性（base 由主属性公式推算）──
     this._attributes.set(
       AttributeType.ATK,
-      new Attribute(AttributeType.ATK, 0, true, () =>
-        this.getValue(AttributeType.VITALITY) * 4 + this.getValue(AttributeType.SPEED) * 1,
+      new Attribute(
+        AttributeType.ATK,
+        0,
+        true,
+        () =>
+          this.getValue(AttributeType.VITALITY) * 4 +
+          this.getValue(AttributeType.SPEED) * 1,
       ),
     );
 
     this._attributes.set(
       AttributeType.DEF,
-      new Attribute(AttributeType.DEF, 0, true, () =>
-        this.getValue(AttributeType.VITALITY) * 3 + this.getValue(AttributeType.SPEED) * 1,
+      new Attribute(
+        AttributeType.DEF,
+        0,
+        true,
+        () =>
+          this.getValue(AttributeType.VITALITY) * 3 +
+          this.getValue(AttributeType.SPEED) * 1,
       ),
     );
 
     this._attributes.set(
       AttributeType.MAGIC_ATK,
-      new Attribute(AttributeType.MAGIC_ATK, 0, true, () =>
-        this.getValue(AttributeType.SPIRIT) * 4 + this.getValue(AttributeType.WILLPOWER) * 1,
+      new Attribute(
+        AttributeType.MAGIC_ATK,
+        0,
+        true,
+        () =>
+          this.getValue(AttributeType.SPIRIT) * 4 +
+          this.getValue(AttributeType.WILLPOWER) * 1,
       ),
     );
 
     this._attributes.set(
       AttributeType.MAGIC_DEF,
-      new Attribute(AttributeType.MAGIC_DEF, 0, true, () =>
-        this.getValue(AttributeType.SPIRIT) * 3 + this.getValue(AttributeType.WILLPOWER) * 1,
+      new Attribute(
+        AttributeType.MAGIC_DEF,
+        0,
+        true,
+        () =>
+          this.getValue(AttributeType.SPIRIT) * 3 +
+          this.getValue(AttributeType.WILLPOWER) * 1,
       ),
     );
 
@@ -240,17 +262,24 @@ export class AttributeSet {
 
     this._attributes.set(
       AttributeType.MAX_HP,
-      new Attribute(AttributeType.MAX_HP, 0, false, () =>
-        200 + this.getValue(AttributeType.VITALITY) * 16,
+      new Attribute(
+        AttributeType.MAX_HP,
+        0,
+        false,
+        () => 200 + this.getValue(AttributeType.VITALITY) * 16,
       ),
     );
 
     this._attributes.set(
       AttributeType.MAX_MP,
-      new Attribute(AttributeType.MAX_MP, 0, false, () =>
-        100 +
-        this.getValue(AttributeType.SPIRIT) * 5 +
-        this.getValue(AttributeType.WILLPOWER) * 3,
+      new Attribute(
+        AttributeType.MAX_MP,
+        0,
+        false,
+        () =>
+          200 +
+          this.getValue(AttributeType.SPIRIT) * 10 +
+          this.getValue(AttributeType.WILLPOWER) * 6,
       ),
     );
 

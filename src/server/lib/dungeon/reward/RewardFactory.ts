@@ -11,6 +11,10 @@
  */
 
 import type { ResourceOperation } from '@shared/engine/resource/types';
+import {
+  buildMaterialAlchemyProfile,
+  isAlchemyMaterialType,
+} from '@shared/lib/materialAlchemy';
 import { YieldCalculator } from '@shared/engine/yield/YieldCalculator';
 import type {
   ElementType,
@@ -245,6 +249,15 @@ export class RewardFactory {
       multiplier,
       dangerBonus,
     );
+    const details = isAlchemyMaterialType(materialType)
+      ? {
+          alchemyProfile: buildMaterialAlchemyProfile(
+            materialType,
+            quality,
+            element,
+          ),
+        }
+      : undefined;
 
     const material: Material = {
       name: bp.name || '未知材料',
@@ -252,6 +265,7 @@ export class RewardFactory {
       rank: quality,
       element,
       description: bp.description || '',
+      details,
       price: Math.floor(basePrice * (1 + dangerBonus * 0.1)), // 危险分数增加价值
       quantity: 1,
     };

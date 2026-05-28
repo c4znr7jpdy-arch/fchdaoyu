@@ -755,7 +755,80 @@ describe('CreationOrchestrator', () => {
       },
     ]);
     expect(() => orchestrator.rollAffixesWithDefaults(session)).toThrow(
-      /未能抽选到核心词缀/,
+      /核心词条/,
+    );
+  });
+
+  it('应在事件工作流中把核心词条预算不足翻译为玩家可读失败原因', async () => {
+    const orchestrator = new CreationOrchestrator();
+
+    orchestrator.phaseActionRegistry.override('analyzeSync', (session) => {
+      orchestrator.recordMaterialAnalysis(session, []);
+    });
+    orchestrator.phaseActionRegistry.override('resolveIntent', (session) => {
+      orchestrator.resolveIntent(session, {
+        productType: 'skill',
+        dominantTags: ['Material.Semantic.Burst'],
+      });
+    });
+    orchestrator.phaseActionRegistry.override('validateRecipe', (session) => {
+      orchestrator.validateRecipe(session, {
+        recipeId: 'skill-preview',
+        valid: true,
+        matchedTags: ['Recipe.Crafter.Skill'],
+        unlockedAffixCategories: ['skill_core'],
+        reservedEnergy: 0,
+      });
+    });
+    orchestrator.phaseActionRegistry.override('budgetEnergy', (session) => {
+      orchestrator.budgetEnergy(session, {
+        baseTotal: 9,
+        effectiveTotal: 9,
+        reserved: 0,
+        spent: 0,
+        remaining: 9,
+        initialRemaining: 9,
+        allocations: [],
+        rejections: [],
+        sources: [{ source: '残诀', amount: 9 }],
+      });
+    });
+    orchestrator.phaseActionRegistry.override('buildAffixPool', (session) => {
+      orchestrator.buildAffixPool(session, [
+        {
+          id: 'skill-core-damage',
+          name: '基础伤害',
+          category: 'skill_core',
+          match: matchAll([]),
+          tags: ['Material.Semantic.Burst'],
+          weight: 100,
+          energyCost: 10,
+          effectTemplate: { type: 'damage', params: { value: 10 } } as any,
+        },
+      ]);
+    });
+
+    const session = orchestrator.createSession({
+      sessionId: 'session-event-driven-core-budget-failure',
+      productType: 'skill',
+      materials: [
+        {
+          id: 'mat-remnant-manual',
+          name: '残诀',
+          type: 'skill_manual',
+          rank: '凡品',
+          quantity: 1,
+        },
+      ],
+    });
+    session.state.intentCraftMeta = { suppressLogs: true };
+
+    orchestrator.runEventDrivenWorkflow(session, { autoMaterialize: false });
+    await orchestrator.waitForWorkflowCompletion(session.id);
+
+    expect(session.state.phase).toBe('failed');
+    expect(session.state.failureReason).toBe(
+      '当前材料灵力不足，无法凝成核心词条。请提高材料品阶、增加投入数量，或更换更契合的主材。',
     );
   });
 

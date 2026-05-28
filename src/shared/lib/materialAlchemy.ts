@@ -184,6 +184,28 @@ export function readMaterialAlchemyProfile(
   };
 }
 
+export function resolveMaterialAlchemyProfile(material: {
+  type: MaterialType;
+  rank: Quality;
+  element?: ElementType | null;
+  details?: MaterialDetails | Record<string, unknown> | null;
+}): MaterialAlchemyProfile | null {
+  const storedProfile = readMaterialAlchemyProfile(material.details);
+  if (storedProfile) {
+    return storedProfile;
+  }
+
+  if (!material.element || !isAlchemyMaterialType(material.type)) {
+    return null;
+  }
+
+  return buildMaterialAlchemyProfile(
+    material.type,
+    material.rank,
+    material.element,
+  );
+}
+
 export function getMaterialAlchemyTagFamily(
   tag: MaterialAlchemyEffectTag,
 ): Exclude<PillFamily, 'hybrid'> {

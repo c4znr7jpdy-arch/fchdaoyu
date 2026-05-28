@@ -18,7 +18,7 @@ import {
   getMaterialAlchemyTagFamily,
   getMaterialAlchemyTrackPath,
   isAlchemyMaterialType,
-  readMaterialAlchemyProfile,
+  resolveMaterialAlchemyProfile,
 } from '@shared/lib/materialAlchemy';
 import { getHealingCuredStatus } from '@shared/lib/healingPill';
 import {
@@ -460,10 +460,6 @@ function buildIngredients(
   materialQuantities?: Record<string, number>,
 ): PreparedAlchemyIngredient[] {
   return materialRows.map((material) => {
-    const profile = readMaterialAlchemyProfile(
-      (material.details ?? undefined) as MaterialDetails | undefined,
-    );
-
     if (!material.id) {
       throw new AlchemyServiceError('材料记录缺少主键', 500);
     }
@@ -473,9 +469,15 @@ function buildIngredients(
     if (!isAlchemyMaterialType(material.type as MaterialType)) {
       throw new AlchemyServiceError(`材料 ${material.name} 不可用于炼丹`, 400);
     }
+    const profile = resolveMaterialAlchemyProfile({
+      type: material.type as MaterialType,
+      rank: material.rank as Quality,
+      element: material.element as ElementType | null | undefined,
+      details: (material.details ?? undefined) as MaterialDetails | undefined,
+    });
     if (!profile) {
       throw new AlchemyServiceError(
-        `材料 ${material.name} 缺少药性画像，请清空旧库存后重试。`,
+        `材料 ${material.name} 缺少药性画像。`,
         400,
       );
     }
@@ -801,13 +803,16 @@ function buildSelectionValidation(
       );
     }
 
-    const profile = readMaterialAlchemyProfile(
-      (material.details ?? undefined) as MaterialDetails | undefined,
-    );
+    const profile = resolveMaterialAlchemyProfile({
+      type: material.type as MaterialType,
+      rank: material.rank as Quality,
+      element: material.element as ElementType | null | undefined,
+      details: (material.details ?? undefined) as MaterialDetails | undefined,
+    });
     if (!profile) {
       return createValidation(
         false,
-        `材料 ${material.name} 缺少药性画像，请清空旧库存后重试。`,
+        `材料 ${material.name} 缺少药性画像。`,
       );
     }
   }

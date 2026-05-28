@@ -1,5 +1,8 @@
 import { ELEMENT_VALUES, QUALITY_VALUES } from '@shared/types/constants';
-import { buildMaterialAlchemyProfile } from './materialAlchemy';
+import {
+  buildMaterialAlchemyProfile,
+  resolveMaterialAlchemyProfile,
+} from './materialAlchemy';
 
 describe('buildMaterialAlchemyProfile', () => {
   it('builds valid profiles for every alchemy material type, quality, and element', () => {
@@ -54,5 +57,29 @@ describe('buildMaterialAlchemyProfile', () => {
   it('lets aux ice materials carry both detox and insight direction', () => {
     const profile = buildMaterialAlchemyProfile('aux', '真品', '冰');
     expect(profile.effectTags).toEqual(['detox', 'insight']);
+  });
+
+  it('falls back to a derived profile when stored details are missing', () => {
+    const profile = resolveMaterialAlchemyProfile({
+      type: 'herb',
+      rank: '真品',
+      element: '木',
+    });
+
+    expect(profile).toEqual(buildMaterialAlchemyProfile('herb', '真品', '木'));
+  });
+
+  it('prefers the stored profile when details already provide one', () => {
+    const storedProfile = buildMaterialAlchemyProfile('ore', '灵品', '雷');
+    const profile = resolveMaterialAlchemyProfile({
+      type: 'ore',
+      rank: '真品',
+      element: '木',
+      details: {
+        alchemyProfile: storedProfile,
+      },
+    });
+
+    expect(profile).toEqual(storedProfile);
   });
 });

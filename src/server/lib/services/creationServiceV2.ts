@@ -1,6 +1,7 @@
 import { DefaultMaterialAnalyzer } from '@shared/engine/creation-v2/analysis/DefaultMaterialAnalyzer';
 import { MaterialFactsBuilder } from '@shared/engine/creation-v2/analysis/MaterialFactsBuilder';
 import { CreationOrchestrator } from '@shared/engine/creation-v2/CreationOrchestrator';
+import { CreationSession } from '@shared/engine/creation-v2/CreationSession';
 import { CreationAbilityAdapter } from '@shared/engine/creation-v2/adapters/CreationAbilityAdapter';
 import { getCreationProductTypeFromCraftType } from '@shared/engine/creation-v2/config/CreationCraftPolicy';
 import { CREATION_INPUT_CONSTRAINTS } from '@shared/engine/creation-v2/config/CreationBalance';
@@ -20,6 +21,7 @@ import type {
   CraftedOutcome,
   CreationProductType,
 } from '@shared/engine/creation-v2/types';
+import { CreationError } from '@shared/engine/creation-v2/errors';
 import {
   calculateCraftCost,
   calculateHighestMaterialRank,
@@ -122,6 +124,34 @@ const orchestrator = new CreationOrchestrator();
 const materialAnalyzer = new DefaultMaterialAnalyzer();
 const materialFactsBuilder = new MaterialFactsBuilder();
 const materialRuleSet = new MaterialRuleSet();
+
+class PreviewValidationOrchestrator extends CreationOrchestrator {
+  public analyzeMaterialsWithDefaults(session: CreationSession) {
+    return super.analyzeMaterialsWithDefaults(session);
+  }
+
+  public resolveIntentWithDefaults(session: CreationSession) {
+    return super.resolveIntentWithDefaults(session);
+  }
+
+  public validateRecipeWithDefaults(session: CreationSession) {
+    return super.validateRecipeWithDefaults(session);
+  }
+
+  public budgetEnergyWithDefaults(session: CreationSession) {
+    return super.budgetEnergyWithDefaults(session);
+  }
+
+  public buildAffixPoolWithDefaults(session: CreationSession) {
+    return super.buildAffixPoolWithDefaults(session);
+  }
+
+  public rollAffixesWithDefaults(session: CreationSession) {
+    return super.rollAffixesWithDefaults(session);
+  }
+}
+
+const previewValidationOrchestrator = new PreviewValidationOrchestrator();
 
 const PRODUCT_TYPE_LABELS: Record<CreationProductType, string> = {
   artifact: '法宝',
@@ -272,6 +302,56 @@ function buildCreationPreviewValidation(
   };
 }
 
+function resolvePreviewExecutionBlockingReason(
+  productType: CreationProductType,
+  selectedMaterials: MaterialRow[],
+): string | undefined {
+  const previewMaterials = selectedMaterials.map((material) =>
+    toCreationMaterial(
+      material,
+      CREATION_INPUT_CONSTRAINTS.minQuantityPerMaterial,
+    ),
+  );
+  const session = previewValidationOrchestrator.createSession({
+    productType,
+    materials: previewMaterials,
+  });
+  session.state.intentCraftMeta = {
+    suppressLogs: true,
+  };
+
+  try {
+    previewValidationOrchestrator.submitMaterials(session);
+    previewValidationOrchestrator.analyzeMaterialsWithDefaults(session);
+    previewValidationOrchestrator.resolveIntentWithDefaults(session);
+    previewValidationOrchestrator.validateRecipeWithDefaults(session);
+
+    if (session.state.failureReason) {
+      return session.state.failureReason;
+    }
+
+    previewValidationOrchestrator.budgetEnergyWithDefaults(session);
+    previewValidationOrchestrator.buildAffixPoolWithDefaults(session);
+    previewValidationOrchestrator.rollAffixesWithDefaults(session);
+    return undefined;
+  } catch (error) {
+    if (isPlayerFacingSelectionError(error)) {
+      return error.message;
+    }
+    throw error;
+  } finally {
+    previewValidationOrchestrator.clearSession(session.id);
+  }
+}
+
+function isPlayerFacingSelectionError(error: unknown): error is CreationError {
+  return (
+    error instanceof CreationError &&
+    error.phase === 'Selection' &&
+    error.code === 'NO_CORE_AFFIX'
+  );
+}
+
 export async function previewCreationSelection(
   cultivatorId: string,
   materialIds: string[],
@@ -287,10 +367,26 @@ export async function previewCreationSelection(
   }
 
   const selectedMaterials = await loadOwnedMaterials(cultivatorId, materialIds);
-  const validation = buildCreationPreviewValidation(
+  const baseValidation = buildCreationPreviewValidation(
     productType,
     toCreationMaterials(selectedMaterials),
   );
+  const validation =
+    baseValidation.valid
+      ? (() => {
+          const blockingReason = resolvePreviewExecutionBlockingReason(
+            productType,
+            selectedMaterials,
+          );
+          return blockingReason
+            ? {
+                ...baseValidation,
+                valid: false,
+                blockingReason,
+              }
+            : baseValidation;
+        })()
+      : baseValidation;
 
   return {
     productType,

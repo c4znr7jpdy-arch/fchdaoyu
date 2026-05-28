@@ -639,6 +639,26 @@ describe('DEFAULT_AFFIX_REGISTRY', () => {
     expect(gongfaDefs.length).toBeGreaterThan(0);
   });
 
+  it('功法基础池应包含最大气血与最大法力词条', () => {
+    const hpDef = DEFAULT_AFFIX_REGISTRY.queryById('gongfa-foundation-max-hp');
+    const mpDef = DEFAULT_AFFIX_REGISTRY.queryById('gongfa-foundation-max-mp');
+
+    expect(hpDef?.effectTemplate).toEqual(expect.objectContaining({
+      type: 'attribute_modifier',
+      params: expect.objectContaining({
+        attrType: AttributeType.MAX_HP,
+        modType: ModifierType.ADD,
+      }),
+    }));
+    expect(mpDef?.effectTemplate).toEqual(expect.objectContaining({
+      type: 'attribute_modifier',
+      params: expect.objectContaining({
+        attrType: AttributeType.MAX_MP,
+        modType: ModifierType.ADD,
+      }),
+    }));
+  });
+
   it('显式 matcher 语义：需满足 affix 自身声明的全部条件', () => {
     const defs = DEFAULT_AFFIX_REGISTRY.queryByTags(
       ['Material.Semantic.Flame', 'Material.Element.Fire'],

@@ -264,6 +264,60 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
     },
   },
   {
+    id: 'gongfa-foundation-max-hp',
+    displayName: '养元',
+    displayDescription: '血海绵长，提升最大气血，使续战根基更为深厚',
+    category: 'gongfa_foundation',
+    rarity: 'common',
+    match: {
+      all: [CreationTags.MATERIAL.SEMANTIC_SUSTAIN],
+      any: [
+        CreationTags.MATERIAL.SEMANTIC_BLOOD,
+        CreationTags.MATERIAL.SEMANTIC_LIFE,
+        CreationTags.MATERIAL.TYPE_MANUAL,
+      ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.FOUNDATION_STAT,
+    weight: 85,
+    energyCost: 10,
+    applicableTo: ['gongfa'],
+    effectTemplate: {
+      type: 'attribute_modifier',
+      params: {
+        attrType: AttributeType.MAX_HP,
+        modType: ModifierType.ADD,
+        value: { base: 0.02, scale: 'quality', coefficient: 0.02 },
+      },
+    },
+  },
+  {
+    id: 'gongfa-foundation-max-mp',
+    displayName: '聚炁',
+    displayDescription: '气府深藏，提升最大法力，使灵力储备更为充盈',
+    category: 'gongfa_foundation',
+    rarity: 'common',
+    match: {
+      all: [CreationTags.MATERIAL.SEMANTIC_SPIRIT],
+      any: [
+        CreationTags.MATERIAL.SEMANTIC_QI,
+        CreationTags.MATERIAL.SEMANTIC_WATER,
+        CreationTags.MATERIAL.TYPE_MANUAL,
+      ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.FOUNDATION_STAT,
+    weight: 80,
+    energyCost: 10,
+    applicableTo: ['gongfa'],
+    effectTemplate: {
+      type: 'attribute_modifier',
+      params: {
+        attrType: AttributeType.MAX_MP,
+        modType: ModifierType.ADD,
+        value: { base: 0.02, scale: 'quality', coefficient: 0.02 },
+      },
+    },
+  },
+  {
     id: 'gongfa-foundation-heal-amplify',
     displayName: '生息',
     displayDescription: '长青无极，提升治疗加成，使疗伤手段更为有效',
