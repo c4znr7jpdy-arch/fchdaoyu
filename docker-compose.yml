@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     pull_policy: ${PULL_POLICY:-always}
     env_file:
-      - ${ENV_FILE:-/opt/daoyou/.env.production}
+      - ${ENV_FILE:-/root/daoyou/.env.production}
     ports:
       - "${PORT:-3000}:3000"
     healthcheck:
