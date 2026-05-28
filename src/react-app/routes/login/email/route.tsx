@@ -1,6 +1,7 @@
 import {
   AuthPageShell,
   AuthTurnstileField,
+  buildEmailOtpTarget,
   toErrorMessage,
   useAuthFeedback,
   useTurnstileField,
@@ -17,6 +18,7 @@ export default function LoginEmailRoute() {
   const navigate = useNavigate();
   const { signInWithEmailOtp } = useAuth();
   const { showErrorDialog } = useAuthFeedback();
+  const source = searchParams.get('source') === 'signup' ? 'signup' : 'login';
   const {
     turnstileEnabled,
     turnstileRef,
@@ -26,6 +28,9 @@ export default function LoginEmailRoute() {
     setCaptchaToken,
   } = useTurnstileField();
 
+  const [displayName, setDisplayName] = useState(
+    searchParams.get('name') ?? '',
+  );
   const [email, setEmail] = useState(searchParams.get('email') ?? '');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string }>({});
@@ -55,7 +60,13 @@ export default function LoginEmailRoute() {
         throw error;
       }
 
-      navigate(`/login/verify?email=${encodeURIComponent(email.trim())}`);
+      navigate(
+        buildEmailOtpTarget('/login/verify', {
+          email,
+          displayName,
+          source,
+        }),
+      );
     } catch (error) {
       showErrorDialog(
         toErrorMessage(error as AuthActionError, '发送失败，请稍后重试'),
@@ -69,16 +80,29 @@ export default function LoginEmailRoute() {
 
   return (
     <AuthPageShell
-      title="【邮箱归位】"
-      lead="输入邮箱，领取一次性召符。"
-      backHref="/login"
+      title="【邮箱验证码】"
+      lead="输入邮箱获取验证码。首次使用该邮箱时，可同时填写昵称并自动注册。"
+      backHref={source === 'signup' ? '/signup' : '/login'}
       footer={
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <InkButton href="/login/password" variant="ghost">
-            改用口令登录
+          <InkButton
+            href={
+              source === 'signup'
+                ? buildEmailOtpTarget('/signup/password', {
+                    email,
+                    displayName,
+                  })
+                : buildEmailOtpTarget('/login/password', { email })
+            }
+            variant="ghost"
+          >
+            {source === 'signup' ? '改为密码注册' : '改用密码登录'}
           </InkButton>
-          <InkButton href="/signup" variant="secondary">
-            创建真身
+          <InkButton
+            href={source === 'signup' ? '/login' : '/signup'}
+            variant="secondary"
+          >
+            {source === 'signup' ? '已有账号，去登录' : '还没有账号？去注册'}
           </InkButton>
         </div>
       }
@@ -91,14 +115,24 @@ export default function LoginEmailRoute() {
         }}
       >
         <InkInput
-          label="飞鸽传书地址"
+          label="昵称（可选）"
+          value={displayName}
+          onChange={(value) => {
+            setDisplayName(value);
+          }}
+          placeholder="例：青岚"
+          hint="仅在首次注册时使用，已有账号可留空。"
+          disabled={loading}
+        />
+        <InkInput
+          label="邮箱"
           type="email"
           value={email}
           onChange={(value) => {
             setEmail(value);
             setErrors((current) => ({ ...current, email: undefined }));
           }}
-          placeholder="例：daoyou@xiuxian.com"
+          placeholder="例：player@example.com"
           error={errors.email}
           disabled={loading}
         />
@@ -114,7 +148,7 @@ export default function LoginEmailRoute() {
           disabled={loading}
           className="w-full text-center"
         >
-          {loading ? '发送中…' : '发送召符'}
+          {loading ? '发送中…' : '发送验证码'}
         </InkButton>
       </form>
     </AuthPageShell>

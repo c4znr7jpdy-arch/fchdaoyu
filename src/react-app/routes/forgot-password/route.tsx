@@ -1,6 +1,7 @@
 import {
   AuthPageShell,
   AuthTurnstileField,
+  buildEmailOtpTarget,
   toErrorMessage,
   useAuthFeedback,
   useTurnstileField,
@@ -56,8 +57,8 @@ export default function ForgotPasswordRoute() {
       }
 
       showDialog({
-        title: '飞书已发',
-        message: '若该邮箱已有真身，重设链接已寄出。',
+        title: '邮件已发送',
+        message: '如果该邮箱已注册，重置链接已发送。',
         confirmLabel: '去登录',
         cancelLabel: '留在此页',
         onConfirm: () => navigate('/login/password', { replace: true }),
@@ -75,16 +76,19 @@ export default function ForgotPasswordRoute() {
 
   return (
     <AuthPageShell
-      title="【找回口令】"
-      lead="输入邮箱，接收重设链接。"
+      title="【找回密码】"
+      lead="输入邮箱，接收密码重置链接。"
       backHref="/login/password"
       footer={
         <div className="flex flex-wrap items-center justify-center gap-2">
           <InkButton href="/login/password" variant="ghost">
-            返回口令登录
+            返回密码登录
           </InkButton>
-          <InkButton href="/login/email" variant="secondary">
-            改用邮箱口令
+          <InkButton
+            href={buildEmailOtpTarget('/login/email', { email })}
+            variant="secondary"
+          >
+            改用邮箱验证码
           </InkButton>
         </div>
       }
@@ -97,14 +101,14 @@ export default function ForgotPasswordRoute() {
         }}
       >
         <InkInput
-          label="飞鸽传书地址"
+          label="邮箱"
           type="email"
           value={email}
           onChange={(value) => {
             setEmail(value);
             setErrors({ email: undefined });
           }}
-          placeholder="例：daoyou@xiuxian.com"
+          placeholder="例：player@example.com"
           error={errors.email}
           disabled={loading}
         />

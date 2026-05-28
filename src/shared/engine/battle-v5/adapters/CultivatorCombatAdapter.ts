@@ -81,6 +81,7 @@ export function createCombatUnitFromCultivator(
   const unitId = ((cultivator.id ?? cultivator.name) + (isMirror ? '_mirror' : '')) as UnitId;
   const unitName = isMirror ? `${cultivator.name}的镜像` : cultivator.name;
   const unit = new Unit(unitId, unitName, baseAttrs);
+  unit.setSpiritualRoots(cultivator.spiritual_roots ?? []);
 
   for (const skill of cultivator.skills ?? []) {
     if (!skill.abilityConfig) continue;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AbilityFactory } from '@shared/engine/battle-v5/factories/AbilityFactory';
+import { ELEMENT_TO_RUNTIME_ABILITY_TAG } from '@shared/engine/shared/tag-domain';
 import { BASIC_SKILLS, BASIC_TECHNIQUES } from './config';
 
 describe('starter products', () => {
@@ -20,6 +21,9 @@ describe('starter products', () => {
         expect((skill.productModel as { affixes?: unknown[] }).affixes?.length).toBeGreaterThan(0);
         expect(skill.abilityConfig).toBeDefined();
         expect(() => AbilityFactory.create(skill.abilityConfig!)).not.toThrow();
+        expect(skill.abilityConfig?.tags).toContain(
+          ELEMENT_TO_RUNTIME_ABILITY_TAG[skill.element],
+        );
       }
     }
   });

@@ -36,7 +36,7 @@ function ResetPasswordPage({ resetToken }: { resetToken: string }) {
 
   const handleSubmit = async () => {
     const nextErrors = {
-      password: validateRequiredField(password, '请输入新口令'),
+      password: validateRequiredField(password, '请输入新密码'),
       confirmPassword: validatePasswordConfirmation(password, confirmPassword),
     };
     setErrors(nextErrors);
@@ -55,8 +55,8 @@ function ResetPasswordPage({ resetToken }: { resetToken: string }) {
       }
 
       showDialog({
-        title: '口令已重设',
-        message: '新口令已可使用，请重新归位。',
+        title: '密码已重置',
+        message: '新密码已生效，请重新登录。',
         confirmLabel: '去登录',
         onConfirm: () => navigate('/login/password', { replace: true }),
       });
@@ -72,13 +72,13 @@ function ResetPasswordPage({ resetToken }: { resetToken: string }) {
 
   return (
     <AuthPageShell
-      title="【重设口令】"
-      lead="设置新的口令。"
+      title="【重设密码】"
+      lead="设置新密码。"
       backHref="/login/password"
       footer={
         <div className="flex items-center justify-center">
           <InkButton href="/login/password" variant="ghost">
-            返回口令登录
+            返回密码登录
           </InkButton>
         </div>
       }
@@ -91,19 +91,19 @@ function ResetPasswordPage({ resetToken }: { resetToken: string }) {
         }}
       >
         <InkInput
-          label="新口令"
+          label="新密码"
           type="password"
           value={password}
           onChange={(value) => {
             setPassword(value);
             setErrors((current) => ({ ...current, password: undefined }));
           }}
-          placeholder="请输入新口令"
+          placeholder="请输入新密码"
           error={errors.password}
           disabled={loading}
         />
         <InkInput
-          label="确认新口令"
+          label="确认新密码"
           type="password"
           value={confirmPassword}
           onChange={(value) => {
@@ -113,7 +113,7 @@ function ResetPasswordPage({ resetToken }: { resetToken: string }) {
               confirmPassword: undefined,
             }));
           }}
-          placeholder="请再次输入新口令"
+          placeholder="请再次输入新密码"
           error={errors.confirmPassword}
           disabled={loading}
         />

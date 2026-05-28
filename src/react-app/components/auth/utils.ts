@@ -1,16 +1,20 @@
 import type { AuthActionError } from '@app/lib/auth/authContext';
 
+export type EmailOtpSource = 'login' | 'signup';
+
+const EMAIL_OTP_NAME_REQUIRED_MESSAGE = '首次注册请填写昵称';
+
 export function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
 export function validateEmailField(email: string) {
   if (!email.trim()) {
-    return '请输入飞鸽传书地址';
+    return '请输入邮箱';
   }
 
   if (!isValidEmail(email)) {
-    return '飞鸽传书地址格式有误';
+    return '邮箱格式错误';
   }
 
   return undefined;
@@ -29,11 +33,11 @@ export function validatePasswordConfirmation(
   confirmPassword: string,
 ) {
   if (!confirmPassword.trim()) {
-    return '请再次输入口令';
+    return '请再次输入密码';
   }
 
   if (password !== confirmPassword) {
-    return '两次输入的口令不一致';
+    return '两次输入的密码不一致';
   }
 
   return undefined;
@@ -52,4 +56,62 @@ export function toErrorMessage(
   }
 
   return error.message;
+}
+
+export function buildEmailOtpTarget(
+  pathname: string,
+  {
+    email,
+    displayName,
+    source,
+  }: {
+    email?: string;
+    displayName?: string;
+    source?: EmailOtpSource;
+  } = {},
+) {
+  const searchParams = new URLSearchParams();
+  const trimmedEmail = email?.trim();
+  const trimmedDisplayName = displayName?.trim();
+
+  if (trimmedEmail) {
+    searchParams.set('email', trimmedEmail);
+  }
+
+  if (trimmedDisplayName) {
+    searchParams.set('name', trimmedDisplayName);
+  }
+
+  if (source === 'signup') {
+    searchParams.set('source', source);
+  }
+
+  const query = searchParams.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
+export function isEmailOtpNameRequiredError(
+  error: AuthActionError | null | undefined,
+) {
+  return (
+    error?.message === EMAIL_OTP_NAME_REQUIRED_MESSAGE ||
+    error?.originalMessage === EMAIL_OTP_NAME_REQUIRED_MESSAGE
+  );
+}
+
+export function getEmailOtpVerifyFieldErrors({
+  otp,
+  displayName,
+  displayNameRequired,
+}: {
+  otp: string;
+  displayName: string;
+  displayNameRequired: boolean;
+}) {
+  return {
+    otp: validateRequiredField(otp, '请输入验证码'),
+    displayName: displayNameRequired
+      ? validateRequiredField(displayName, '请输入昵称')
+      : undefined,
+  };
 }

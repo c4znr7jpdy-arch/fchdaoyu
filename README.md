@@ -342,11 +342,9 @@ docker compose up -d
 
 ## 💬 交流群
 
-欢迎加入《万界道友》交流群，与其他道友共同探讨修仙大计：
+欢迎加入《万界道友》QQ交流群，与其他道友共同探讨修仙大计:
 
-<p align="center">
-  <img src="https://free.picui.cn/free/2026/02/24/699d3f0b15dd6.jpg" alt="交流群二维码" width="200" />
-</p>
+- 1群: 1107586928
 
 ## 🤝 致谢
 

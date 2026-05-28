@@ -26,41 +26,41 @@ export default function SignupRoute() {
       setLoading(false);
       showErrorDialog(
         toErrorMessage(error as AuthActionError, 'GitHub 登录失败'),
-        '接引失败',
+        '登录失败',
       );
     }
   };
 
   return (
     <AuthPageShell
-      title="【缔结真身】"
-      lead="选择一种建号方式。"
+      title="【注册】"
+      lead="选择一种注册方式。"
       footer={
         <div className="flex items-center justify-center gap-2">
-          <span className="text-ink-secondary">已有真身？</span>
+          <span className="text-ink-secondary">已有账号？</span>
           <InkButton href="/login" variant="primary">
-            前往登录
+            去登录
           </InkButton>
         </div>
       }
     >
       <div className="space-y-3">
         <AuthChoiceCard
-          href="/signup/email"
-          title="邮箱口令"
-          description="填写邮箱与道号，完成一次性建号。"
+          href="/login/email?source=signup"
+          title="邮箱验证码"
+          description="通过邮箱验证码注册，验证后会自动登录。"
           accent="primary"
         />
         <AuthChoiceCard
           href="/signup/password"
-          title="设置口令"
-          description="以邮箱、道号与口令缔结真身。"
+          title="密码注册"
+          description="使用邮箱、昵称和密码创建账号。"
         />
         <AuthChoiceCard
           onClick={handleGitHubSignIn}
           disabled={loading}
-          title={loading ? 'GitHub 接引中…' : 'GitHub 登录'}
-          description="已有 GitHub 身份时可直接接引并建号。"
+          title={loading ? 'GitHub 登录中…' : 'GitHub 登录'}
+          description="已有 GitHub 账号时可直接登录并创建账号。"
         />
       </div>
     </AuthPageShell>

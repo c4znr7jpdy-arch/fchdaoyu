@@ -12,13 +12,13 @@ describe('authState error mapping', () => {
   it('prefers the nested Better Auth message over HTTP status text', () => {
     const error = new BetterFetchError(401, 'Unauthorized', {
       code: 'INVALID_EMAIL_OR_PASSWORD',
-      message: '飞鸽传书地址或口令有误',
+      message: '邮箱或密码错误',
       originalMessage: 'Invalid email or password',
     });
 
     expect(toAuthActionError(error)).toEqual({
       code: 'INVALID_EMAIL_OR_PASSWORD',
-      message: '飞鸽传书地址或口令有误',
+      message: '邮箱或密码错误',
       originalMessage: 'Invalid email or password',
       status: 401,
       statusText: 'Unauthorized',

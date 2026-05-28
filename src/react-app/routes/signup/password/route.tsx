@@ -1,6 +1,7 @@
 import {
   AuthPageShell,
   AuthTurnstileField,
+  buildEmailOtpTarget,
   toErrorMessage,
   useAuthFeedback,
   useTurnstileField,
@@ -44,9 +45,9 @@ export default function SignupPasswordRoute() {
 
   const handleSubmit = async () => {
     const nextErrors = {
-      displayName: validateRequiredField(displayName, '请输入道号'),
+      displayName: validateRequiredField(displayName, '请输入昵称'),
       email: validateEmailField(email),
-      password: validateRequiredField(password, '请输入口令'),
+      password: validateRequiredField(password, '请输入密码'),
       confirmPassword: validatePasswordConfirmation(password, confirmPassword),
     };
     setErrors(nextErrors);
@@ -83,7 +84,7 @@ export default function SignupPasswordRoute() {
     } catch (error) {
       showErrorDialog(
         toErrorMessage(error as AuthActionError, '注册失败，请稍后重试'),
-        '缔结失败',
+        '注册失败',
       );
     } finally {
       resetCaptcha();
@@ -93,16 +94,23 @@ export default function SignupPasswordRoute() {
 
   return (
     <AuthPageShell
-      title="【口令建号】"
-      lead="设置邮箱、道号与口令。"
+      title="【密码注册】"
+      lead="使用邮箱、昵称和密码创建账号。"
       backHref="/signup"
       footer={
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <InkButton href="/signup/email" variant="ghost">
-            改为邮箱建号
+          <InkButton
+            href={buildEmailOtpTarget('/login/email', {
+              email,
+              displayName,
+              source: 'signup',
+            })}
+            variant="ghost"
+          >
+            改为邮箱验证码
           </InkButton>
           <InkButton href="/login" variant="secondary">
-            我已有真身
+            已有账号，去登录
           </InkButton>
         </div>
       }
@@ -115,42 +123,42 @@ export default function SignupPasswordRoute() {
         }}
       >
         <InkInput
-          label="道号"
+          label="昵称"
           value={displayName}
           onChange={(value) => {
             setDisplayName(value);
             setErrors((current) => ({ ...current, displayName: undefined }));
           }}
-          placeholder="例：青岚道友"
+          placeholder="例：青岚"
           error={errors.displayName}
           disabled={loading}
         />
         <InkInput
-          label="飞鸽传书地址"
+          label="邮箱"
           type="email"
           value={email}
           onChange={(value) => {
             setEmail(value);
             setErrors((current) => ({ ...current, email: undefined }));
           }}
-          placeholder="例：daoyou@xiuxian.com"
+          placeholder="例：player@example.com"
           error={errors.email}
           disabled={loading}
         />
         <InkInput
-          label="口令"
+          label="密码"
           type="password"
           value={password}
           onChange={(value) => {
             setPassword(value);
             setErrors((current) => ({ ...current, password: undefined }));
           }}
-          placeholder="请设置口令"
+          placeholder="请设置密码"
           error={errors.password}
           disabled={loading}
         />
         <InkInput
-          label="确认口令"
+          label="确认密码"
           type="password"
           value={confirmPassword}
           onChange={(value) => {
@@ -160,7 +168,7 @@ export default function SignupPasswordRoute() {
               confirmPassword: undefined,
             }));
           }}
-          placeholder="请再次输入口令"
+          placeholder="请再次输入密码"
           error={errors.confirmPassword}
           disabled={loading}
         />
@@ -176,7 +184,7 @@ export default function SignupPasswordRoute() {
           disabled={loading}
           className="w-full text-center"
         >
-          {loading ? '缔结中…' : '完成建号'}
+          {loading ? '注册中…' : '完成注册'}
         </InkButton>
       </form>
     </AuthPageShell>

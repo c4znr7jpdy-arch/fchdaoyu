@@ -1,6 +1,7 @@
 import {
   AuthPageShell,
   AuthTurnstileField,
+  buildEmailOtpTarget,
   toErrorMessage,
   useAuthFeedback,
   useTurnstileField,
@@ -37,7 +38,7 @@ export default function LoginPasswordRoute() {
   const handleSubmit = async () => {
     const nextErrors = {
       email: validateEmailField(email),
-      password: validateRequiredField(password, '请输入口令'),
+      password: validateRequiredField(password, '请输入密码'),
     };
     setErrors(nextErrors);
 
@@ -67,7 +68,7 @@ export default function LoginPasswordRoute() {
     } catch (error) {
       showErrorDialog(
         toErrorMessage(error as AuthActionError, '登录失败，请稍后重试'),
-        '归位失败',
+        '登录失败',
       );
     } finally {
       resetCaptcha();
@@ -77,16 +78,19 @@ export default function LoginPasswordRoute() {
 
   return (
     <AuthPageShell
-      title="【口令归位】"
-      lead="用邮箱与口令归位。"
+      title="【密码登录】"
+      lead="使用邮箱和密码登录。"
       backHref="/login"
       footer={
         <div className="flex flex-wrap items-center justify-center gap-2">
           <InkButton href="/forgot-password" variant="ghost">
-            忘记口令
+            忘记密码
           </InkButton>
-          <InkButton href="/login/email" variant="secondary">
-            改用邮箱口令
+          <InkButton
+            href={buildEmailOtpTarget('/login/email', { email })}
+            variant="secondary"
+          >
+            改用邮箱验证码
           </InkButton>
         </div>
       }
@@ -99,26 +103,26 @@ export default function LoginPasswordRoute() {
         }}
       >
         <InkInput
-          label="飞鸽传书地址"
+          label="邮箱"
           type="email"
           value={email}
           onChange={(value) => {
             setEmail(value);
             setErrors((current) => ({ ...current, email: undefined }));
           }}
-          placeholder="例：daoyou@xiuxian.com"
+          placeholder="例：player@example.com"
           error={errors.email}
           disabled={loading}
         />
         <InkInput
-          label="口令"
+          label="密码"
           type="password"
           value={password}
           onChange={(value) => {
             setPassword(value);
             setErrors((current) => ({ ...current, password: undefined }));
           }}
-          placeholder="请输入口令"
+          placeholder="请输入密码"
           error={errors.password}
           disabled={loading}
         />
@@ -134,7 +138,7 @@ export default function LoginPasswordRoute() {
           disabled={loading}
           className="w-full text-center"
         >
-          {loading ? '归位中…' : '立即归位'}
+          {loading ? '登录中…' : '立即登录'}
         </InkButton>
       </form>
     </AuthPageShell>

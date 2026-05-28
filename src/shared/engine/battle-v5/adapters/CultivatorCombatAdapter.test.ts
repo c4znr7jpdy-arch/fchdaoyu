@@ -20,7 +20,7 @@ function createCultivatorFixture(): Cultivator {
       speed: 10,
       willpower: 10,
     },
-    spiritual_roots: [],
+    spiritual_roots: [{ element: '火', strength: 82, grade: '真灵根' }],
     pre_heaven_fates: [],
     cultivations: [],
     skills: [],
@@ -79,5 +79,14 @@ describe('CultivatorCombatAdapter', () => {
     // CRIT_RATE is functional attribute and should not be decayed
     expect(unit.attributes.getValue(AttributeType.CRIT_RATE)).toBeCloseTo(0.153, 6);
   });
-});
 
+  it('injects spiritual roots into runtime metadata and preserves them after clone', () => {
+    const unit = createCombatUnitFromCultivator(createCultivatorFixture());
+    const clone = unit.clone();
+
+    expect(unit.getSpiritualRoots()).toEqual([
+      { element: '火', strength: 82, grade: '真灵根' },
+    ]);
+    expect(clone.getSpiritualRoots()).toEqual(unit.getSpiritualRoots());
+  });
+});

@@ -1,8 +1,13 @@
 import { GameplayTagContainer, GameplayTags } from '@shared/engine/shared/tag-domain';
+import type { SpiritualRoot } from '@shared/types/cultivator';
 import { AttributeType, UnitId, UnitSnapshot } from '../core/types';
 import { AbilityContainer } from './AbilityContainer';
 import { AttributeSet } from './AttributeSet';
 import { BuffContainer } from './BuffContainer';
+
+interface UnitRuntimeMeta {
+  spiritualRoots: SpiritualRoot[];
+}
 
 export class Unit {
   readonly id: UnitId;
@@ -19,6 +24,9 @@ export class Unit {
   private currentShield: number = 0; // 当前护盾值
 
   private isDefending: boolean = false;
+  private _runtimeMeta: UnitRuntimeMeta = {
+    spiritualRoots: [],
+  };
 
   constructor(
     id: UnitId,
@@ -176,6 +184,7 @@ export class Unit {
     clone.maxHp = this.maxHp;
     clone.maxMp = this.maxMp;
     clone.currentShield = this.currentShield;
+    clone.setSpiritualRoots(this.getSpiritualRoots());
 
     // Clone tags (clear default tags from constructor, then copy all tags from original)
     clone.tags.clear();
@@ -205,6 +214,18 @@ export class Unit {
 
   resetTurnState(): void {
     this.isDefending = false;
+  }
+
+  setSpiritualRoots(spiritualRoots: SpiritualRoot[]): void {
+    this._runtimeMeta.spiritualRoots = spiritualRoots.map((root) => ({
+      ...root,
+    }));
+  }
+
+  getSpiritualRoots(): SpiritualRoot[] {
+    return this._runtimeMeta.spiritualRoots.map((root) => ({
+      ...root,
+    }));
   }
 
   getCurrentShield(): number {

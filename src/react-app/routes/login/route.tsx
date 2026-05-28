@@ -43,20 +43,20 @@ function LoginChoicePage() {
       setLoading(false);
       showErrorDialog(
         toErrorMessage(error as AuthActionError, 'GitHub 登录失败'),
-        '接引失败',
+        '登录失败',
       );
     }
   };
 
   return (
     <AuthPageShell
-      title="【入界】"
-      lead="选择一种归位方式。"
+      title="【登录】"
+      lead="选择一种登录方式。"
       footer={
         <div className="flex items-center justify-center gap-2">
-          <span className="text-ink-secondary">初次来此？</span>
+          <span className="text-ink-secondary">还没有账号？</span>
           <InkButton href="/signup" variant="primary">
-            创建真身
+            去注册
           </InkButton>
         </div>
       }
@@ -64,20 +64,20 @@ function LoginChoicePage() {
       <div className="space-y-3">
         <AuthChoiceCard
           href="/login/email"
-          title="邮箱口令"
-          description="领取一次性召符，直接归位。"
+          title="邮箱验证码"
+          description="通过邮箱验证码登录。首次使用该邮箱时会自动注册。"
           accent="primary"
         />
         <AuthChoiceCard
           href="/login/password"
           title="密码登录"
-          description="使用邮箱与口令归位。"
+          description="使用邮箱和密码登录。"
         />
         <AuthChoiceCard
           onClick={handleGitHubSignIn}
           disabled={loading}
-          title={loading ? 'GitHub 接引中…' : 'GitHub 登录'}
-          description="已有 GitHub 身份时可直接接引。"
+          title={loading ? 'GitHub 登录中…' : 'GitHub 登录'}
+          description="已有 GitHub 账号时可直接登录。"
         />
       </div>
     </AuthPageShell>

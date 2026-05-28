@@ -66,52 +66,42 @@ export const router = createBrowserRouter(
         <Route
           path="/login"
           lazy={lazyRoute(() => import('@app/routes/login/route'))}
-          handle={title('【入界】')}
+          handle={title('【登录】')}
         />
         <Route
           path="/login/email"
           lazy={lazyRoute(() => import('@app/routes/login/email/route'))}
-          handle={title('【邮箱归位】')}
+          handle={title('【邮箱验证码】')}
         />
         <Route
           path="/login/password"
           lazy={lazyRoute(() => import('@app/routes/login/password/route'))}
-          handle={title('【口令归位】')}
+          handle={title('【密码登录】')}
         />
         <Route
           path="/login/verify"
           lazy={lazyRoute(() => import('@app/routes/login/verify/route'))}
-          handle={title('【口令验证】')}
+          handle={title('【验证码验证】')}
         />
         <Route
           path="/signup"
           lazy={lazyRoute(() => import('@app/routes/signup/route'))}
-          handle={title('【缔结真身】')}
-        />
-        <Route
-          path="/signup/email"
-          lazy={lazyRoute(() => import('@app/routes/signup/email/route'))}
-          handle={title('【邮箱建号】')}
+          handle={title('【注册】')}
         />
         <Route
           path="/signup/password"
           lazy={lazyRoute(() => import('@app/routes/signup/password/route'))}
-          handle={title('【口令建号】')}
-        />
-        <Route
-          path="/signup/verify"
-          lazy={lazyRoute(() => import('@app/routes/signup/verify/route'))}
-          handle={title('【建号验证】')}
+          handle={title('【密码注册】')}
         />
         <Route
           path="/forgot-password"
           lazy={lazyRoute(() => import('@app/routes/forgot-password/route'))}
-          handle={title('【找回口令】')}
+          handle={title('【找回密码】')}
         />
         <Route
           path="/reset-password"
           lazy={lazyRoute(() => import('@app/routes/reset-password/route'))}
-          handle={title('【重设口令】')}
+          handle={title('【重设密码】')}
         />
       </Route>
       <Route

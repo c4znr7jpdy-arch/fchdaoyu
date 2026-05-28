@@ -10,6 +10,7 @@ import {
   UnitDeadEvent,
 } from '../core/events';
 import { AttributeType, DamageSource, DamageType } from '../core/types';
+import { calculateSpiritualRootDamageMultiplier } from './spiritualRootResonance';
 
 /**
  * DamageSystem - 伤害系统
@@ -26,7 +27,7 @@ import { AttributeType, DamageSource, DamageType } from '../core/types';
  * │  反伤等:   其他来源 ──────────────────────→ DamageRequestEvent     │
  * └─────────────────────────────────────────────────────────────────────┘
  *                              ↓
- *         DamageRequestEvent → [增伤修正] → [减伤/随机] → DamageEvent
+ *         DamageRequestEvent → [增伤修正] → [灵根共鸣/减伤/随机] → DamageEvent
  *                              ↓
  *         DamageEvent → [护盾/免疫响应] → 气血更新 → DamageTakenEvent
  *                    （其他系统订阅）      （本系统直接调用）
@@ -147,9 +148,11 @@ export class DamageSystem {
    * 统一结算管道顺序：
    * ① 按伤害类型计算有效防御（物理DEF/法术DEF/真伤）
    * ② 应用减法防御（并保留10%保底穿透）
-   * ③ 暴击判定（减伤后乘算）
-   * ④ 随机浮动 (0.9~1.1)
-   * ⑤ 最小伤害保证 + 四舍五入
+   * ③ 应用现有增伤/减伤乘区
+   * ④ 应用灵根共鸣/失配倍率
+   * ⑤ 暴击判定（减伤后）
+   * ⑥ 随机浮动 (0.9~1.1)
+   * ⑦ 最小伤害保证 + 四舍五入
    */
   private _onDamageRequest(event: DamageRequestEvent): void {
     const { target } = event;
@@ -191,14 +194,17 @@ export class DamageSystem {
     const reducedDamage = preMitigationDamage - effectiveDef;
     event.finalDamage = Math.max(preMitigationDamage * 0.1, reducedDamage);
 
-    // ===== ⓪ 同乘区加算（增伤/减伤） =====
+    // ===== ③ 同乘区加算（增伤/减伤）=====
     // NOTE: 将百分比增减伤放在减防后、暴击判定前，保证增伤不会被减法防御无意削弱。
     const increasePct = Math.max(0, event.damageIncreasePctBucket ?? 0);
     const reductionPct = Math.max(0, event.damageReductionPctBucket ?? 0);
     const damageMultiplier = Math.max(0, 1 + increasePct - reductionPct);
     event.finalDamage *= damageMultiplier;
 
-    // ===== ③ 暴击判定（减伤后） =====
+    // ===== ④ 灵根共鸣/失配倍率 =====
+    event.finalDamage *= calculateSpiritualRootDamageMultiplier(event);
+
+    // ===== ⑤ 暴击判定（减伤后） =====
     // 仅在非 DOT/反伤且有施法者时参与暴击；已由上层标记为暴击的不再重算
     if (
       !event.isCritical &&
@@ -226,11 +232,11 @@ export class DamageSystem {
       }
     }
 
-    // ===== ④ 随机浮动 (0.9 ~ 1.1，降低纯数值比拼的确定性) =====
+    // ===== ⑥ 随机浮动 (0.9 ~ 1.1，降低纯数值比拼的确定性) =====
     const randomFactor = 0.9 + Math.random() * 0.2;
     event.finalDamage = event.finalDamage * randomFactor;
 
-    // ===== ⑤ 最小伤害保证（避免0伤害）并四舍五入 =====
+    // ===== ⑦ 最小伤害保证（避免0伤害）并四舍五入 =====
     event.finalDamage = Math.max(1, Math.round(event.finalDamage));
 
     // 发布伤害应用事件（供护盾/无敌效果订阅）

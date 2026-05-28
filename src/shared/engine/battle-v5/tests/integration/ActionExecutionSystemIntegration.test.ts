@@ -1,6 +1,15 @@
 import { ActiveSkill } from '../../abilities/ActiveSkill';
-import { GameplayTags } from '@shared/engine/shared/tag-domain';
-import { AbilityId, AbilityType, AttributeType, DamageSource, ModifierType } from '../../core/types';
+import { ELEMENT_TO_RUNTIME_ABILITY_TAG, GameplayTags } from '@shared/engine/shared/tag-domain';
+import { Buff, StackRule } from '../../buffs/Buff';
+import {
+  AbilityId,
+  AbilityType,
+  AttributeType,
+  BuffType,
+  DamageSource,
+  DamageType,
+  ModifierType,
+} from '../../core/types';
 import { EventBus } from '../../core/EventBus';
 import { DamageRequestEvent, SkillCastEvent, SkillPreCastEvent } from '../../core/events';
 import { DamageEffect } from '../../effects/DamageEffect';
@@ -8,6 +17,7 @@ import { AbilityFactory } from '../../factories/AbilityFactory';
 import { ActionExecutionSystem } from '../../systems/ActionExecutionSystem';
 import { DamageSystem } from '../../systems/DamageSystem';
 import { Unit } from '../../units/Unit';
+import { vi } from 'vitest';
 
 class TrackingSkill extends ActiveSkill {
   public executeCount = 0;
@@ -84,6 +94,33 @@ describe('DamageSystem direct mitigation', () => {
     EventBus.instance.reset();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function createElementalAbility(
+    slug: string,
+    element: '火' | '水' | '木' | '土' | '金' | '风' | '雷' | '冰',
+  ) {
+    return AbilityFactory.create({
+      slug,
+      name: `${element}系术法`,
+      type: AbilityType.ACTIVE_SKILL,
+      tags: [
+        GameplayTags.ABILITY.FUNCTION.DAMAGE,
+        GameplayTags.ABILITY.CHANNEL.TRUE,
+        ELEMENT_TO_RUNTIME_ABILITY_TAG[element],
+      ],
+      effects: [],
+    });
+  }
+
+  function mockDeterministicDamageRolls() {
+    vi.spyOn(Math, 'random')
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(0.5);
+  }
+
   it('direct damage effects should publish direct source so defenses reduce damage', () => {
     const damageSystem = new DamageSystem();
     const attacker = new Unit('attacker', '攻击者', {});
@@ -117,6 +154,204 @@ describe('DamageSystem direct mitigation', () => {
     expect(receivedRequests).toHaveLength(1);
     expect(receivedRequests[0].damageSource).toBe(DamageSource.DIRECT);
     expect(receivedRequests[0].finalDamage).toBeLessThan(100);
+
+    damageSystem.destroy();
+  });
+
+  it('elemental damage should gain bonus from matching spiritual root strength', () => {
+    const damageSystem = new DamageSystem();
+    const attacker = new Unit('attacker', '攻击者', {});
+    const defender = new Unit('defender', '防御者', {});
+    attacker.setSpiritualRoots([{ element: '火', strength: 80, grade: '真灵根' }]);
+
+    mockDeterministicDamageRolls();
+
+    const event: DamageRequestEvent = {
+      type: 'DamageRequestEvent',
+      timestamp: Date.now(),
+      caster: attacker,
+      target: defender,
+      ability: createElementalAbility('fire-hit', '火'),
+      damageSource: DamageSource.DIRECT,
+      damageType: DamageType.TRUE,
+      baseDamage: 100,
+      finalDamage: 100,
+    };
+
+    EventBus.instance.publish(event);
+
+    expect(event.finalDamage).toBe(116);
+
+    damageSystem.destroy();
+  });
+
+  it('elemental damage should be reduced when caster has no matching spiritual root', () => {
+    const damageSystem = new DamageSystem();
+    const attacker = new Unit('attacker', '攻击者', {});
+    const defender = new Unit('defender', '防御者', {});
+    attacker.setSpiritualRoots([{ element: '水', strength: 90, grade: '真灵根' }]);
+
+    mockDeterministicDamageRolls();
+
+    const event: DamageRequestEvent = {
+      type: 'DamageRequestEvent',
+      timestamp: Date.now(),
+      caster: attacker,
+      target: defender,
+      ability: createElementalAbility('fire-hit', '火'),
+      damageSource: DamageSource.DIRECT,
+      damageType: DamageType.TRUE,
+      baseDamage: 100,
+      finalDamage: 100,
+    };
+
+    EventBus.instance.publish(event);
+
+    expect(event.finalDamage).toBe(85);
+
+    damageSystem.destroy();
+  });
+
+  it('damage without elemental tags should ignore spiritual root modifiers', () => {
+    const damageSystem = new DamageSystem();
+    const attacker = new Unit('attacker', '攻击者', {});
+    const defender = new Unit('defender', '防御者', {});
+    attacker.setSpiritualRoots([{ element: '火', strength: 100, grade: '天灵根' }]);
+
+    mockDeterministicDamageRolls();
+
+    const ability = AbilityFactory.create({
+      slug: 'plain-true-hit',
+      name: '无属性一击',
+      type: AbilityType.ACTIVE_SKILL,
+      tags: [
+        GameplayTags.ABILITY.FUNCTION.DAMAGE,
+        GameplayTags.ABILITY.CHANNEL.TRUE,
+      ],
+      effects: [],
+    });
+
+    const event: DamageRequestEvent = {
+      type: 'DamageRequestEvent',
+      timestamp: Date.now(),
+      caster: attacker,
+      target: defender,
+      ability,
+      damageSource: DamageSource.DIRECT,
+      damageType: DamageType.TRUE,
+      baseDamage: 100,
+      finalDamage: 100,
+    };
+
+    EventBus.instance.publish(event);
+
+    expect(event.finalDamage).toBe(100);
+
+    damageSystem.destroy();
+  });
+
+  it('multi-element damage should use the strongest matching spiritual root', () => {
+    const damageSystem = new DamageSystem();
+    const attacker = new Unit('attacker', '攻击者', {});
+    const defender = new Unit('defender', '防御者', {});
+    attacker.setSpiritualRoots([
+      { element: '火', strength: 40, grade: '真灵根' },
+      { element: '雷', strength: 95, grade: '变异灵根' },
+    ]);
+
+    mockDeterministicDamageRolls();
+
+    const ability = AbilityFactory.create({
+      slug: 'dual-element-hit',
+      name: '双相灵击',
+      type: AbilityType.ACTIVE_SKILL,
+      tags: [
+        GameplayTags.ABILITY.FUNCTION.DAMAGE,
+        GameplayTags.ABILITY.CHANNEL.TRUE,
+        ELEMENT_TO_RUNTIME_ABILITY_TAG['火'],
+        ELEMENT_TO_RUNTIME_ABILITY_TAG['雷'],
+      ],
+      effects: [],
+    });
+
+    const event: DamageRequestEvent = {
+      type: 'DamageRequestEvent',
+      timestamp: Date.now(),
+      caster: attacker,
+      target: defender,
+      ability,
+      damageSource: DamageSource.DIRECT,
+      damageType: DamageType.TRUE,
+      baseDamage: 100,
+      finalDamage: 100,
+    };
+
+    EventBus.instance.publish(event);
+
+    expect(event.finalDamage).toBe(119);
+
+    damageSystem.destroy();
+  });
+
+  it('reflect damage should not receive spiritual root resonance', () => {
+    const damageSystem = new DamageSystem();
+    const attacker = new Unit('attacker', '攻击者', {});
+    const defender = new Unit('defender', '防御者', {});
+    attacker.setSpiritualRoots([{ element: '火', strength: 100, grade: '天灵根' }]);
+
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    const event: DamageRequestEvent = {
+      type: 'DamageRequestEvent',
+      timestamp: Date.now(),
+      caster: attacker,
+      target: defender,
+      ability: createElementalAbility('fire-reflect', '火'),
+      damageSource: DamageSource.REFLECT,
+      damageType: DamageType.TRUE,
+      baseDamage: 100,
+      finalDamage: 100,
+    };
+
+    EventBus.instance.publish(event);
+
+    expect(event.finalDamage).toBe(100);
+
+    damageSystem.destroy();
+  });
+
+  it('elemental buff tags should also trigger spiritual root resonance for non-skill damage', () => {
+    const damageSystem = new DamageSystem();
+    const attacker = new Unit('attacker', '攻击者', {});
+    const defender = new Unit('defender', '防御者', {});
+    attacker.setSpiritualRoots([{ element: '火', strength: 80, grade: '真灵根' }]);
+
+    const sourceBuff = new Buff(
+      'fire-dot' as AbilityId,
+      '灼烧',
+      BuffType.DEBUFF,
+      2,
+      StackRule.REFRESH_DURATION,
+    );
+    sourceBuff.tags.addTags([ELEMENT_TO_RUNTIME_ABILITY_TAG['火']]);
+
+    mockDeterministicDamageRolls();
+
+    const event: DamageRequestEvent = {
+      type: 'DamageRequestEvent',
+      timestamp: Date.now(),
+      caster: attacker,
+      target: defender,
+      buff: sourceBuff,
+      damageSource: DamageSource.DIRECT,
+      damageType: DamageType.TRUE,
+      baseDamage: 100,
+      finalDamage: 100,
+    };
+
+    EventBus.instance.publish(event);
+
+    expect(event.finalDamage).toBe(116);
 
     damageSystem.destroy();
   });
