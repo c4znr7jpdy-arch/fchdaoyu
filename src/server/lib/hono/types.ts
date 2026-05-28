@@ -8,6 +8,13 @@ export type AppVariables = {
   user: AuthUser;
   cultivator: ActiveCultivator;
   executor: DbExecutor;
+  llmConfig: {
+    provider: string;
+    apiKey: string;
+    baseUrl: string | null;
+    model: string;
+    fastModel: string;
+  };
   validatedJson: unknown;
   validatedQuery: unknown;
 };

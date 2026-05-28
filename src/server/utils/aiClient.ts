@@ -1,6 +1,7 @@
 import { AlibabaLanguageModelOptions, createAlibaba } from '@ai-sdk/alibaba';
 import { createDeepSeek, DeepSeekLanguageModelOptions } from '@ai-sdk/deepseek';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { getCurrentContext } from '@server/lib/http/context';
 import { generateText, streamText, ToolSet } from 'ai';
 import { jsonrepair } from 'jsonrepair';
 import z from 'zod';
@@ -18,26 +19,65 @@ ${JSON.stringify(jsonSchema, null, 2)}`;
 };
 
 /**
- * 获取 DeepSeek Provider
+ * 从请求上下文读取用户自定义 LLM 配置
  */
-function getProvider() {
+export type UserLlmConfig = {
+  provider: string;
+  apiKey: string;
+  baseUrl: string | null;
+  model: string;
+  fastModel: string;
+};
+
+function getUserLlmConfig(): UserLlmConfig | undefined {
+  try {
+    const ctx = getCurrentContext();
+    return ctx.get('llmConfig');
+  } catch {
+    return undefined;
+  }
+}
+
+export type LlmOverrideConfig = {
+  provider: string;
+  apiKey: string;
+  baseUrl?: string | null;
+  model: string;
+  fastModel: string;
+};
+
+function getEffectiveProvider(
+  override?: LlmOverrideConfig,
+): string | undefined {
+  return (override ?? getUserLlmConfig())?.provider;
+}
+
+function kimiTemperature(
+  override?: LlmOverrideConfig,
+): number | undefined {
+  return getEffectiveProvider(override) === 'kimi' ? 0.6 : undefined;
+}
+
+/**
+ * 获取 Provider
+ */
+function getProvider(override?: LlmOverrideConfig) {
+  const userConfig = override ?? getUserLlmConfig();
+
+  if (userConfig) {
+    if (userConfig.provider === 'openrouter') {
+      return createOpenRouter({ apiKey: userConfig.apiKey });
+    }
+    return createDeepSeek({
+      apiKey: userConfig.apiKey,
+      baseURL: userConfig.baseUrl ?? undefined,
+    });
+  }
+
   if (process.env.PROVIDER_CHOOSE === 'ark') {
     return createDeepSeek({
       baseURL: process.env.ARK_BASE_URL,
       apiKey: process.env.ARK_API_KEY,
-      // fetch: async (url, init) => {
-      //   console.log('==== LLM REQUEST ====');
-      //   console.log('URL:', url);
-      //   console.log('HEADERS:', init?.headers);
-      //   console.log('BODY:', init?.body);
-
-      //   const res = await fetch(url, init);
-
-      //   const clone = res.clone();
-      //   console.log('==== LLM RESPONSE ====');
-      //   console.log(await clone.text());
-      //   return res;
-      // },
     });
   }
   if (process.env.PROVIDER_CHOOSE === 'kimi') {
@@ -71,8 +111,26 @@ const getArkRandomModel = () => {
 /**
  * 获取 Model 实例
  */
-export function getModel(fast: boolean = false) {
-  const provider = getProvider();
+export function getModel(
+  fast: boolean = false,
+  override?: LlmOverrideConfig,
+) {
+  const userConfig = override ?? getUserLlmConfig();
+
+  if (userConfig) {
+    const model = fast ? userConfig.fastModel : userConfig.model;
+    if (userConfig.provider === 'alibaba') {
+      const alibabaProvider = createAlibaba({
+        apiKey: userConfig.apiKey,
+        baseURL: userConfig.baseUrl ?? undefined,
+      });
+      return alibabaProvider.languageModel(model);
+    }
+    const provider = getProvider(override);
+    return provider(model);
+  }
+
+  const provider = getProvider(override);
   if (process.env.PROVIDER_CHOOSE === 'ark') {
     const model = fast ? process.env.ARK_MODEL_FAST_USE : getArkRandomModel();
     return provider(model!);
@@ -113,12 +171,15 @@ export async function text(
   prompt: string,
   userInput: string,
   fast: boolean = false,
+  override?: LlmOverrideConfig,
 ) {
-  const model = getModel(fast);
+  const model = getModel(fast, override);
+  const temperature = kimiTemperature(override);
   const res = await generateText({
     model,
     system: prompt,
     prompt: userInput,
+    ...(temperature !== undefined && { temperature }),
     providerOptions: {
       deepseek: {
         thinking: { type: 'disabled' },
@@ -142,10 +203,12 @@ export function stream_text(
   thinking: boolean = false,
 ) {
   const model = getModel(fast);
+  const temperature = kimiTemperature();
   return streamText({
     model,
     system: prompt,
     prompt: userInput,
+    ...(temperature !== undefined && { temperature }),
     onFinish: (res) => {
       console.debug('AI生成Text Stream：usage', res.usage);
     },
@@ -180,7 +243,11 @@ async function generateStructuredData<T>(
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     // 每次重试降低温度：1.0 -> 0.7 -> 0.4 (更加稳定)
-    const temperature = Math.max(0, 1 - attempt * 0.3);
+    const kimiTemp = kimiTemperature();
+    const temperature =
+      kimiTemp !== undefined
+        ? Math.max(0, kimiTemp - attempt * 0.2)
+        : Math.max(0, 1 - attempt * 0.3);
     const model = getModel(fast);
     const res = await generateText({
       model,
@@ -274,11 +341,13 @@ export async function tool(
   thinking: boolean = false,
 ) {
   const model = getModel();
+  const temperature = kimiTemperature();
   const res = await generateText({
     model,
     system: prompt,
     prompt: userInput,
     tools,
+    ...(temperature !== undefined && { temperature }),
     providerOptions: {
       deepseek: {
         thinking: { type: thinking ? 'enabled' : 'disabled' },
