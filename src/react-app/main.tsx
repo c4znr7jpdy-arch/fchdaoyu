@@ -4,6 +4,28 @@ import { RouterProvider } from 'react-router';
 import { router } from './router';
 import './index.css';
 
+const originalFetch = window.fetch;
+window.fetch = async (input, init) => {
+  if (typeof input === 'string' && input.startsWith('/api/')) {
+    const raw = localStorage.getItem('daoyou_llm_config');
+    if (raw) {
+      try {
+        const cfg = JSON.parse(raw);
+        const headers = new Headers(init?.headers);
+        headers.set('x-llm-provider', cfg.provider);
+        headers.set('x-llm-api-key', cfg.apiKey);
+        if (cfg.baseUrl) headers.set('x-llm-base-url', cfg.baseUrl);
+        headers.set('x-llm-model', cfg.model);
+        headers.set('x-llm-fast-model', cfg.fastModel);
+        init = { ...init, headers };
+      } catch {
+        // ignore invalid json
+      }
+    }
+  }
+  return originalFetch(input, init);
+};
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <RouterProvider router={router} />

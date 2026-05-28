@@ -9,6 +9,27 @@ import internalRouter from '@server/routes/internal';
 const app = new Hono<AppEnv>();
 
 app.use('*', async (context, next) => runWithContext(context, next));
+
+app.use('*', async (context, next) => {
+  const provider = context.req.header('x-llm-provider');
+  const apiKey = context.req.header('x-llm-api-key');
+  const baseUrl = context.req.header('x-llm-base-url');
+  const model = context.req.header('x-llm-model');
+  const fastModel = context.req.header('x-llm-fast-model');
+
+  if (provider && apiKey && model && fastModel) {
+    context.set('llmConfig', {
+      provider,
+      apiKey,
+      baseUrl: baseUrl || null,
+      model,
+      fastModel,
+    });
+  }
+
+  await next();
+});
+
 app.all('/api/auth/*', handleAuthRequest);
 app.use('/api/*', jsonError());
 app.use('/internal/*', jsonError());

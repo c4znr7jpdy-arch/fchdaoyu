@@ -511,6 +511,20 @@ export const router = createBrowserRouter(
                 '意见反馈',
               )}
             />
+            <Route
+              path="settings/llm-config"
+              lazy={lazyRoute(
+                () => import('@app/routes/game/settings/llm-config/route'),
+              )}
+              handle={scene(
+                {
+                  id: 'llm-config',
+                  presentation: 'service',
+                  summary: '配置你自己的 LLM Provider 与模型参数。',
+                },
+                '模型配置',
+              )}
+            />
           </Route>
 
           <Route element={<GameCombatLayout />}>

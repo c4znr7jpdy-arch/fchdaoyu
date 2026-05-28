@@ -281,6 +281,12 @@ export const gameDockGroups: GameNavGroup[] = [
         href: '/game/settings/feedback',
         expandedDockLabel: '📝 意见反馈',
       },
+      {
+        id: 'llm-config',
+        sceneLabel: '模型配置',
+        href: '/game/settings/llm-config',
+        expandedDockLabel: '⚙️ 模型配置',
+      },
     ],
   },
 ];

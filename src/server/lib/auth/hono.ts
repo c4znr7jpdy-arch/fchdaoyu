@@ -1,6 +1,9 @@
 import { auth } from '@server/lib/auth/auth';
 import { authUsers } from '@server/lib/auth/schema';
-import { verifyTurnstileToken } from '@server/lib/auth/turnstile';
+import {
+  isTurnstileServerEnabled,
+  verifyTurnstileToken,
+} from '@server/lib/auth/turnstile';
 import { db } from '@server/lib/drizzle/db';
 import { eq } from 'drizzle-orm';
 import type { Context } from 'hono';
@@ -52,6 +55,10 @@ function authError(message: string, status = 400) {
 
 async function validateCaptcha(context: Context): Promise<Response | null> {
   if (!CAPTCHA_PROTECTED_PATHS.has(context.req.path)) {
+    return null;
+  }
+
+  if (!isTurnstileServerEnabled()) {
     return null;
   }
 
