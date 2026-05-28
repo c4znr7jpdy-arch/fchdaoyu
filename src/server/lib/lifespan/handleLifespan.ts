@@ -5,6 +5,7 @@ import {
 import type { BreakthroughModifiers } from '@server/utils/breakthroughCalculator';
 import type { LifespanExhaustedStoryPayload } from '@server/utils/prompts';
 import { RealmStage, RealmType } from '@shared/types/constants';
+import { Cultivator } from '@shared/types/cultivator';
 
 export interface ConsumeLifespanResult {
   depleted: boolean;
@@ -53,7 +54,8 @@ export async function consumeLifespanAndHandleDepletion(
     return {
       depleted: true,
       storyPayload: {
-        cultivator: storyCultivator,
+        // todo 修复
+        cultivator: storyCultivator as Cultivator,
         summary: {
           success: false,
           isMajor: false,
