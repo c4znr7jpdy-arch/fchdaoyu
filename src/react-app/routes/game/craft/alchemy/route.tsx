@@ -30,9 +30,9 @@ import {
 } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { CREATION_INPUT_CONSTRAINTS } from '@shared/engine/creation-v2/config/CreationBalance';
+import { formatAlchemyPropertyVector } from '@shared/lib/alchemyProperties';
 import { cn } from '@shared/lib/cn';
 import { isPillConsumable } from '@shared/lib/consumables';
-import { getMaterialAlchemyTagLabel } from '@shared/lib/materialAlchemy';
 import type { MaterialType, RealmType } from '@shared/types/constants';
 import type {
   AlchemyFormula,
@@ -155,9 +155,7 @@ export function getNextSelectedFormulaIdAfterDelete(
 }
 
 function formatFormulaTags(formula: AlchemyFormula): string {
-  return formula.pattern.requiredTags
-    .map(getMaterialAlchemyTagLabel)
-    .join('、');
+  return formatAlchemyPropertyVector(formula.pattern.targetPropertyVector);
 }
 
 export function AlchemyGuideModal({
@@ -179,9 +177,13 @@ export function AlchemyGuideModal({
           <div className="text-battle-muted mb-2 text-[0.75rem] tracking-[0.2em]">
             药路趋向
           </div>
-          <div className="space-y-1 text-ink-secondary">
-            <p>草木多引生机，则丹势常偏疗伤与回元；火雷燥烈，则更易逼出破境之锋。</p>
-            <p>矿骨重躯壳，常把药力牵向炼体与洗髓；若炉中养气之材得势，亦可缓缓积修。</p>
+          <div className="text-ink-secondary space-y-1">
+            <p>
+              草木多引生机，则丹势常偏疗伤与回元；火雷燥烈，则更易逼出破境之锋。
+            </p>
+            <p>
+              矿骨重躯壳，常把药力牵向炼体与洗髓；若炉中养气之材得势，亦可缓缓积修。
+            </p>
             <p>心识澄明之物不必暴烈，若能收束杂念，往往更容易引出启悟之丹。</p>
           </div>
         </section>
@@ -190,9 +192,11 @@ export function AlchemyGuideModal({
           <div className="text-battle-muted mb-2 text-[0.75rem] tracking-[0.2em]">
             材性偏向
           </div>
-          <div className="space-y-1 text-ink-secondary">
+          <div className="text-ink-secondary space-y-1">
             <p>金水草木易养元，若药性不散，常能将炉火化作绵长修为。</p>
-            <p>水冰矿辅多启悟，风寒清材若配得当，往往比烈火之物更能开阔心境。</p>
+            <p>
+              水冰矿辅多启悟，风寒清材若配得当，往往比烈火之物更能开阔心境。
+            </p>
             <p>若一炉兼纳多条药路，丹意虽广，最终多半只会留下最强的一脉。</p>
           </div>
         </section>
@@ -201,10 +205,14 @@ export function AlchemyGuideModal({
           <div className="text-battle-muted mb-2 text-[0.75rem] tracking-[0.2em]">
             炉火提醒
           </div>
-          <div className="space-y-1 text-ink-secondary">
+          <div className="text-ink-secondary space-y-1">
             <p>药性越杂，炉势越浮。稳度若失，成丹虽未必废，却常会折损药力。</p>
-            <p>修为丹可细水长流，但道基自有承载之限，不宜把它当作无穷无尽的捷径。</p>
-            <p>感悟丹不记此限，却也未必次次见效如新，仍需看你此刻心神是否澄明。</p>
+            <p>
+              修为丹可细水长流，但道基自有承载之限，不宜把它当作无穷无尽的捷径。
+            </p>
+            <p>
+              感悟丹不记此限，却也未必次次见效如新，仍需看你此刻心神是否澄明。
+            </p>
           </div>
         </section>
       </div>
@@ -225,20 +233,14 @@ export function FormulaNarrativeBlock({
       <div>核心药性：{formatFormulaTags(formula)}</div>
       <div>
         炉位 {formula.pattern.slotCount} 种
-        {formula.pattern.minQuality ? `，最低 ${formula.pattern.minQuality}` : ''}
+        {formula.pattern.minQuality
+          ? `，最低 ${formula.pattern.minQuality}`
+          : ''}
         {formula.pattern.dominantElement
           ? `，主元素 ${formula.pattern.dominantElement}`
           : ''}
         {showMasteryExp ? `，当前熟练进度 ${formula.mastery.exp}` : ''}
       </div>
-      {formula.pattern.optionalTags?.length ? (
-        <div>
-          辅性药性：
-          {formula.pattern.optionalTags
-            .map(getMaterialAlchemyTagLabel)
-            .join('、')}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -304,9 +306,7 @@ export function AlchemyFormulaListItem({
             <InkBadge tone="default">
               {getPillFamilyLabel(formula.family)}
             </InkBadge>
-            <InkBadge tone="accent">
-              {`Lv.${formula.mastery.level}`}
-            </InkBadge>
+            <InkBadge tone="accent">{`Lv.${formula.mastery.level}`}</InkBadge>
           </div>
           <FormulaNarrativeBlock formula={formula} />
         </div>
@@ -319,7 +319,7 @@ export function AlchemyFormulaListItem({
             variant="ghost"
             onClick={onDelete}
             disabled={isDeleting}
-            className="w-[7em] justify-center text-crimson hover:text-crimson/80"
+            className="text-crimson hover:text-crimson/80 w-[7em] justify-center"
           >
             {isDeleting ? '删除中……' : '删除'}
           </InkButton>
@@ -450,10 +450,7 @@ export function AlchemyFormulaDiscoveryModal({
       descriptionTitle="留方记述"
       footer={
         <InkActionGroup align="right">
-          <InkButton
-            onClick={onRejectDiscovery}
-            disabled={isHandlingDiscovery}
-          >
+          <InkButton onClick={onRejectDiscovery} disabled={isHandlingDiscovery}>
             暂不保存
           </InkButton>
           <InkButton
@@ -950,7 +947,9 @@ export default function AlchemyPage() {
         } catch (error) {
           pushToast({
             message:
-              error instanceof Error ? error.message : '丹方删除失败，请稍后再试。',
+              error instanceof Error
+                ? error.message
+                : '丹方删除失败，请稍后再试。',
             tone: 'danger',
           });
         } finally {

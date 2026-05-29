@@ -1,4 +1,8 @@
-import type { ConditionStatusDuration, ConditionStatusKey, ConditionTrackPath } from './condition';
+import type {
+  ConditionStatusDuration,
+  ConditionStatusKey,
+  ConditionTrackPath,
+} from './condition';
 import type { ElementType, Quality, RealmType } from './constants';
 
 export const PILL_FAMILY_VALUES = [
@@ -23,12 +27,53 @@ export const PILL_QUOTA_CATEGORY_VALUES = [
 
 export type PillQuotaCategory = (typeof PILL_QUOTA_CATEGORY_VALUES)[number];
 
-export const ALCHEMY_MODE_VALUES = [
-  'improvised',
-  'formula',
-] as const;
+export const ALCHEMY_MODE_VALUES = ['improvised', 'formula'] as const;
 
 export type AlchemyMode = (typeof ALCHEMY_MODE_VALUES)[number];
+
+export const ALCHEMY_PROPERTY_KEY_VALUES = [
+  'restore_hp',
+  'heal_wounds',
+  'restore_mp',
+  'detox',
+  'cultivation',
+  'insight',
+  'breakthrough_support',
+  'tempering_vitality',
+  'tempering_spirit',
+  'tempering_wisdom',
+  'tempering_speed',
+  'tempering_willpower',
+  'marrow_wash',
+] as const;
+
+export type AlchemyPropertyKey = (typeof ALCHEMY_PROPERTY_KEY_VALUES)[number];
+
+export interface WeightedAlchemyProperty {
+  key: AlchemyPropertyKey;
+  weight: number;
+}
+
+export interface AlchemyMaterialPropertyVector {
+  materialRef: string;
+  materialName: string;
+  properties: WeightedAlchemyProperty[];
+}
+
+export const ALCHEMY_FOCUS_MODE_VALUES = [
+  'focused',
+  'balanced',
+  'risky',
+] as const;
+
+export type AlchemyFocusMode = (typeof ALCHEMY_FOCUS_MODE_VALUES)[number];
+
+export interface AlchemyRecipePlan {
+  materialVectors: AlchemyMaterialPropertyVector[];
+  intentVector: WeightedAlchemyProperty[];
+  focusMode: AlchemyFocusMode;
+  requestedElementBias?: ElementType;
+}
 
 export interface PillConsumeRules {
   scene: 'out_of_battle_only';
@@ -40,6 +85,9 @@ export type PillAlchemyMeta =
       source: 'improvised';
       formulaId?: never;
       sourceMaterials: string[];
+      analysisVersion: 2;
+      propertyVector: WeightedAlchemyProperty[];
+      sourceMaterialVectors: AlchemyMaterialPropertyVector[];
       dominantElement?: ElementType;
       stability: number;
       toxicityRating: number;
@@ -51,6 +99,11 @@ export type PillAlchemyMeta =
       source: 'formula';
       formulaId: string;
       sourceMaterials: string[];
+      analysisVersion: 2;
+      propertyVector: WeightedAlchemyProperty[];
+      sourceMaterialVectors: AlchemyMaterialPropertyVector[];
+      fitScore: number;
+      fitMultiplier: number;
       dominantElement?: ElementType;
       stability: number;
       toxicityRating: number;
@@ -121,8 +174,7 @@ export interface AlchemyFormulaMastery {
 }
 
 export interface AlchemyFormulaPattern {
-  requiredTags: MaterialAlchemyEffectTag[];
-  optionalTags?: MaterialAlchemyEffectTag[];
+  targetPropertyVector: WeightedAlchemyProperty[];
   dominantElement?: ElementType;
   minQuality?: Quality;
   slotCount: number;
@@ -133,8 +185,7 @@ export const TALISMAN_SESSION_MODE_VALUES = [
   'consume_on_action',
 ] as const;
 
-export type TalismanSessionMode =
-  (typeof TALISMAN_SESSION_MODE_VALUES)[number];
+export type TalismanSessionMode = (typeof TALISMAN_SESSION_MODE_VALUES)[number];
 
 export interface TalismanSpec {
   kind: 'talisman';
@@ -144,32 +195,6 @@ export interface TalismanSpec {
 }
 
 export type ConsumableSpec = PillSpec | TalismanSpec;
-
-export const MATERIAL_ALCHEMY_EFFECT_TAG_VALUES = [
-  'healing',
-  'mana',
-  'detox',
-  'cultivation',
-  'insight',
-  'breakthrough',
-  'tempering_vitality',
-  'tempering_spirit',
-  'tempering_wisdom',
-  'tempering_speed',
-  'tempering_willpower',
-  'marrow_wash',
-] as const;
-
-export type MaterialAlchemyEffectTag =
-  (typeof MATERIAL_ALCHEMY_EFFECT_TAG_VALUES)[number];
-
-export interface MaterialAlchemyProfile {
-  effectTags: MaterialAlchemyEffectTag[];
-  elementBias?: ElementType;
-  potency: number;
-  toxicity: number;
-  stability: number;
-}
 
 export interface AlchemyFormulaBlueprint {
   operations: ConditionOperation[];

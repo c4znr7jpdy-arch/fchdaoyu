@@ -1,5 +1,4 @@
 import type { ElementType, Quality } from '@shared/types/constants';
-import type { MaterialAlchemyEffectTag } from '@shared/types/consumable';
 
 export const ALCHEMY_ALLOWED_MATERIAL_TYPES = [
   'herb',
@@ -48,24 +47,6 @@ export const QUALITY_STABILITY_BONUS: Record<Quality, number> = {
   天品: 20,
   仙品: 24,
   神品: 28,
-};
-
-export const MATERIAL_ALCHEMY_TAG_LABELS: Record<
-  MaterialAlchemyEffectTag,
-  string
-> = {
-  healing: '疗伤',
-  mana: '回元',
-  detox: '解毒',
-  cultivation: '修为',
-  insight: '感悟',
-  breakthrough: '破境',
-  tempering_vitality: '炼体·体魄',
-  tempering_spirit: '炼体·灵力',
-  tempering_wisdom: '炼体·悟性',
-  tempering_speed: '炼体·身法',
-  tempering_willpower: '炼体·神识',
-  marrow_wash: '洗髓',
 };
 
 export const ELEMENT_PREFIX_MAP: Record<ElementType, string> = {

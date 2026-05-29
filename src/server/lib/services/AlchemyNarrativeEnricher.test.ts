@@ -29,9 +29,14 @@ describe('AlchemyNarrativeEnricher', () => {
       dominantElement: '木',
       quality: '真品',
       materialNames: ['青岚草'],
-      targetTags: ['healing'],
+      propertyVector: [{ key: 'restore_hp', weight: 0.7 }],
       operations: [
-        { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
+        {
+          type: 'restore_resource',
+          resource: 'hp',
+          mode: 'percent',
+          value: 0.12,
+        },
       ],
       stability: 78,
       toxicityRating: 6,
@@ -58,9 +63,17 @@ describe('AlchemyNarrativeEnricher', () => {
       dominantElement: '木',
       quality: '真品',
       materialNames: ['青岚草', '灵泉露'],
-      targetTags: ['healing', 'mana'],
+      propertyVector: [
+        { key: 'restore_hp', weight: 0.58 },
+        { key: 'restore_mp', weight: 0.42 },
+      ],
       operations: [
-        { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
+        {
+          type: 'restore_resource',
+          resource: 'hp',
+          mode: 'percent',
+          value: 0.12,
+        },
         { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
       ],
       stability: 78,
@@ -81,7 +94,7 @@ describe('AlchemyNarrativeEnricher', () => {
         qualityText: '真品',
         elementText: '木',
         materialsText: '青岚草、灵泉露',
-        targetTagsText: '疗伤、回元',
+        propertyVectorText: '补充气血 58%、回补法力 42%',
         stabilityText: '78',
         toxicityText: '6',
         userPromptText: '疗伤为主，兼顾回元',
@@ -90,62 +103,31 @@ describe('AlchemyNarrativeEnricher', () => {
     );
   });
 
-  it('builds minimal, readable formula batch prompt variables', () => {
-    const enricher = new AlchemyNarrativeEnricher({ enabled: true });
-
-    const variables = (enricher as any).buildFormulaBatchVariables({
-      formulaName: '回春丹方',
-      formulaDescription: '此方偏走木性生机，炉势圆融而不躁进。',
-      family: 'healing',
-      dominantElement: '木',
-      quality: '玄品',
-      materialNames: ['回春草', '木灵脂'],
-      operations: [
-        { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
-        { type: 'remove_status', status: 'minor_wound' },
-      ],
-      fitMultiplier: 1.08,
-      stability: 81,
-      toxicityRating: 5,
-      masteryLevel: 3,
-    });
-
-    expect(variables).toEqual({
-      formulaNameText: '回春丹方',
-      formulaDescriptionText: '此方偏走木性生机，炉势圆融而不躁进。',
-      familyText: '疗伤丹',
-      qualityText: '玄品',
-      elementText: '木',
-      materialsText: '回春草、木灵脂',
-      operationLinesText: '- 恢复最大气血 12%\n- 化解「轻伤」',
-      fitPercentText: '108%',
-      stabilityText: '81',
-      toxicityText: '5',
-      masteryLevelText: '3',
-    });
-  });
-
   it('returns null when llm generation throws', async () => {
     objectMock.mockRejectedValueOnce(new Error('timeout'));
     const enricher = new AlchemyNarrativeEnricher({ enabled: true });
 
-    const result = await enricher.generateFormulaRecordCopy({
-      fallbackName: '回春丹方',
-      sourcePillName: '回春丹',
-      sourcePillDescription: '丹成时木气圆融，药香沉静。',
+    const result = await enricher.generateImprovisedPillCopy({
       family: 'healing',
       dominantElement: '木',
-      minQuality: '真品',
-      slotCount: 2,
+      quality: '真品',
       materialNames: ['回春草', '木灵脂'],
-      requiredTags: ['healing'],
-      optionalTags: ['mana'],
-      operations: [
-        { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
+      propertyVector: [
+        { key: 'restore_hp', weight: 0.64 },
+        { key: 'heal_wounds', weight: 0.36 },
       ],
-      targetStability: 78,
-      targetToxicity: 6,
+      operations: [
+        {
+          type: 'restore_resource',
+          resource: 'hp',
+          mode: 'percent',
+          value: 0.12,
+        },
+      ],
+      stability: 78,
+      toxicityRating: 6,
       userPrompt: '疗伤为主',
+      focusMode: 'focused',
     });
 
     expect(result).toBeNull();

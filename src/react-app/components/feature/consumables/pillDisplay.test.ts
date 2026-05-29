@@ -115,6 +115,8 @@ describe('toPillDisplayModel', () => {
           source: 'formula',
           formulaId: 'formula-1',
           sourceMaterials: ['凝神芝'],
+          fitScore: 0.58,
+          fitMultiplier: 1.02,
           stability: 80,
           toxicityRating: 36,
           tags: ['breakthrough'],
@@ -130,6 +132,8 @@ describe('toPillDisplayModel', () => {
     expect(model.primaryEffect).not.toContain('breakthrough_focus');
     expect(model.keywordLabels).toContain('护婴丹');
     expect(model.detailGroups[2].lines).toContain('目标大境界：元婴');
+    expect(model.detailGroups[2].lines).toContain('药性拟合：58%');
+    expect(model.detailGroups[2].lines).toContain('丹方倍率：102%');
   });
 
   it('uses track config names for tempering and marrow-wash pills', () => {

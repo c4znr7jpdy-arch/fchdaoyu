@@ -1,18 +1,19 @@
 import { renderPrompt } from '@server/lib/prompts';
 import { object } from '@server/utils/aiClient';
+import { formatAlchemyPropertyVector } from '@shared/lib/alchemyProperties';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
-import { getMaterialAlchemyTagLabel } from '@shared/lib/materialAlchemy';
 import { getResourceLabel, getResourceText } from '@shared/lib/resourceText';
 import { getTrackConfig } from '@shared/lib/trackConfigRegistry';
 import type {
-  ConditionTrackPath,
   ConditionStatusKey,
+  ConditionTrackPath,
 } from '@shared/types/condition';
 import type { ElementType, Quality } from '@shared/types/constants';
 import type {
+  AlchemyFocusMode,
   ConditionOperation,
-  MaterialAlchemyEffectTag,
   PillFamily,
+  WeightedAlchemyProperty,
 } from '@shared/types/consumable';
 import { z } from 'zod';
 
@@ -71,11 +72,6 @@ function describeOperation(operation: ConditionOperation): string {
   }
 }
 
-function formatTagList(tags: MaterialAlchemyEffectTag[]): string {
-  if (tags.length === 0) return '无';
-  return tags.map(getMaterialAlchemyTagLabel).join('、');
-}
-
 function formatLineList(lines: string[]): string {
   if (lines.length === 0) return '无';
   return lines.map((line) => `- ${line}`).join('\n');
@@ -96,78 +92,19 @@ const improvisedPillCopySchema = z.object({
   styleInsight: z.string().max(80).optional(),
 });
 
-const formulaRecordCopySchema = z.object({
-  name: z.string().min(2).max(30).describe('符合修仙丹录气质的丹方名称'),
-  description: z
-    .string()
-    .min(24)
-    .max(120)
-    .describe('丹方描述，说明炉意、药性脉络与适配方向'),
-  discoveryRemark: z
-    .string()
-    .min(16)
-    .max(100)
-    .describe('玩家悟得丹方时看到的顿悟评语'),
-  styleInsight: z.string().max(80).optional(),
-});
-
-const formulaBatchDescriptionSchema = z.object({
-  description: z
-    .string()
-    .min(24)
-    .max(120)
-    .describe('同一丹方本炉次成丹评述，可结合材料与拟合度变化'),
-  styleInsight: z.string().max(80).optional(),
-});
-
 export type ImprovisedPillCopy = z.infer<typeof improvisedPillCopySchema>;
-export type FormulaRecordCopy = z.infer<typeof formulaRecordCopySchema>;
-export type FormulaBatchDescriptionCopy = z.infer<
-  typeof formulaBatchDescriptionSchema
->;
 
 export interface ImprovisedPillCopyFacts {
   family: PillFamily;
   dominantElement?: ElementType;
   quality: Quality;
   materialNames: string[];
-  targetTags: MaterialAlchemyEffectTag[];
+  propertyVector: WeightedAlchemyProperty[];
   operations: ConditionOperation[];
   stability: number;
   toxicityRating: number;
   userPrompt: string;
-  focusMode: 'focused' | 'balanced' | 'risky';
-}
-
-export interface FormulaRecordCopyFacts {
-  fallbackName: string;
-  sourcePillName: string;
-  sourcePillDescription: string;
-  family: PillFamily;
-  dominantElement?: ElementType;
-  minQuality?: Quality;
-  slotCount: number;
-  materialNames: string[];
-  requiredTags: MaterialAlchemyEffectTag[];
-  optionalTags: MaterialAlchemyEffectTag[];
-  operations: ConditionOperation[];
-  targetStability: number;
-  targetToxicity: number;
-  userPrompt?: string;
-}
-
-export interface FormulaBatchDescriptionFacts {
-  formulaName: string;
-  formulaDescription: string;
-  family: PillFamily;
-  dominantElement?: ElementType;
-  quality: Quality;
-  materialNames: string[];
-  operations: ConditionOperation[];
-  fitMultiplier: number;
-  stability: number;
-  toxicityRating: number;
-  masteryLevel: number;
+  focusMode: AlchemyFocusMode;
 }
 
 const DEFAULT_NARRATIVE_TIMEOUT_MS = 30_000;
@@ -195,7 +132,10 @@ export class AlchemyNarrativeEnricher {
 
     try {
       const variables = this.buildImprovisedPillVariables(facts);
-      const { system, user } = renderPrompt('alchemy-improvised-copy', variables);
+      const { system, user } = renderPrompt(
+        'alchemy-improvised-copy',
+        variables,
+      );
       const response = await this.withTimeout(
         object(
           system,
@@ -209,63 +149,8 @@ export class AlchemyNarrativeEnricher {
       );
       return response.object;
     } catch (error) {
-      console.error('[AlchemyNarrativeEnricher] improvised copy failed:', error);
-      return null;
-    }
-  }
-
-  async generateFormulaRecordCopy(
-    facts: FormulaRecordCopyFacts,
-  ): Promise<FormulaRecordCopy | null> {
-    if (!this.enabled) return null;
-
-    try {
-      const variables = this.buildFormulaRecordVariables(facts);
-      const { system, user } = renderPrompt('alchemy-formula-copy', variables);
-      const response = await this.withTimeout(
-        object(
-          system,
-          user,
-          {
-            schema: formulaRecordCopySchema,
-            schemaName: 'AlchemyFormulaRecordCopy',
-          },
-          true,
-        ),
-      );
-      return response.object;
-    } catch (error) {
-      console.error('[AlchemyNarrativeEnricher] formula copy failed:', error);
-      return null;
-    }
-  }
-
-  async generateFormulaBatchDescription(
-    facts: FormulaBatchDescriptionFacts,
-  ): Promise<FormulaBatchDescriptionCopy | null> {
-    if (!this.enabled) return null;
-
-    try {
-      const variables = this.buildFormulaBatchVariables(facts);
-      const { system, user } = renderPrompt(
-        'alchemy-formula-batch-copy',
-        variables,
-      );
-      const response = await this.withTimeout(
-        object(
-          system,
-          user,
-          {
-            schema: formulaBatchDescriptionSchema,
-            schemaName: 'AlchemyFormulaBatchDescription',
-          },
-          true,
-        ),
-      );
-      return response.object;
-    } catch (error) {
       console.error(
-        '[AlchemyNarrativeEnricher] formula batch description failed:',
+        '[AlchemyNarrativeEnricher] improvised copy failed:',
         error,
       );
       return null;
@@ -290,47 +175,14 @@ export class AlchemyNarrativeEnricher {
       qualityText: facts.quality,
       elementText: facts.dominantElement ?? '未显主元素',
       materialsText: formatMaterialList(facts.materialNames),
-      targetTagsText: formatTagList(facts.targetTags),
-      operationLinesText: formatLineList(facts.operations.map(describeOperation)),
+      propertyVectorText: formatAlchemyPropertyVector(facts.propertyVector),
+      operationLinesText: formatLineList(
+        facts.operations.map(describeOperation),
+      ),
       stabilityText: String(facts.stability),
       toxicityText: String(facts.toxicityRating),
       userPromptText: facts.userPrompt.trim(),
       focusModeText: this.getFocusModeText(facts.focusMode),
-    };
-  }
-
-  private buildFormulaRecordVariables(facts: FormulaRecordCopyFacts) {
-    return {
-      fallbackNameText: facts.fallbackName,
-      sourcePillNameText: facts.sourcePillName,
-      sourcePillDescriptionText: facts.sourcePillDescription,
-      familyText: getPillFamilyLabel(facts.family),
-      elementText: facts.dominantElement ?? '未显主元素',
-      minQualityText: facts.minQuality ?? '未限定',
-      slotCountText: String(facts.slotCount),
-      materialsText: formatMaterialList(facts.materialNames),
-      requiredTagsText: formatTagList(facts.requiredTags),
-      optionalTagsText: formatTagList(facts.optionalTags),
-      operationLinesText: formatLineList(facts.operations.map(describeOperation)),
-      targetStabilityText: String(facts.targetStability),
-      targetToxicityText: String(facts.targetToxicity),
-      userPromptText: facts.userPrompt?.trim() || '无',
-    };
-  }
-
-  private buildFormulaBatchVariables(facts: FormulaBatchDescriptionFacts) {
-    return {
-      formulaNameText: facts.formulaName,
-      formulaDescriptionText: facts.formulaDescription,
-      familyText: getPillFamilyLabel(facts.family),
-      qualityText: facts.quality,
-      elementText: facts.dominantElement ?? '未显主元素',
-      materialsText: formatMaterialList(facts.materialNames),
-      operationLinesText: formatLineList(facts.operations.map(describeOperation)),
-      fitPercentText: `${Math.round(facts.fitMultiplier * 100)}%`,
-      stabilityText: String(facts.stability),
-      toxicityText: String(facts.toxicityRating),
-      masteryLevelText: String(facts.masteryLevel),
     };
   }
 

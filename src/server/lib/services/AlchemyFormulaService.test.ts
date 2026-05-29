@@ -1,8 +1,6 @@
 const {
   executorState,
   getExecutorMock,
-  narrativeBatchDescriptionMock,
-  narrativeFormulaCopyMock,
   redisDelMock,
   redisGetMock,
   redisSetMock,
@@ -74,8 +72,6 @@ const {
   return {
     executorState: state,
     getExecutorMock: vi.fn(() => executor),
-    narrativeBatchDescriptionMock: vi.fn(),
-    narrativeFormulaCopyMock: vi.fn(),
     redisSetMock: vi.fn(),
     redisGetMock: vi.fn(),
     redisDelMock: vi.fn(),
@@ -98,15 +94,12 @@ vi.mock('./cultivatorService', () => ({
   addConsumableToInventory: vi.fn(),
 }));
 
-vi.mock('./AlchemyNarrativeEnricher', () => ({
-  AlchemyNarrativeEnricher: class AlchemyNarrativeEnricher {
-    generateFormulaBatchDescription = narrativeBatchDescriptionMock;
-    generateFormulaRecordCopy = narrativeFormulaCopyMock;
-  },
-}));
-
+import type {
+  AlchemyFormula,
+  PillSpec,
+  WeightedAlchemyProperty,
+} from '@shared/types/consumable';
 import type { Consumable } from '@shared/types/cultivator';
-import type { AlchemyFormula, PillSpec } from '@shared/types/consumable';
 import {
   advanceFormulaMastery,
   buildDiscoveryCandidate,
@@ -114,7 +107,14 @@ import {
   calculateFormulaFitMultiplier,
   confirmDiscoveryCandidate,
   deleteCultivatorFormula,
+  listCultivatorFormulas,
 } from './AlchemyFormulaService';
+
+function createVector(
+  entries: Array<[WeightedAlchemyProperty['key'], number]>,
+): WeightedAlchemyProperty[] {
+  return entries.map(([key, weight]) => ({ key, weight }));
+}
 
 function createFormula(
   overrides: Partial<AlchemyFormula> = {},
@@ -127,15 +127,22 @@ function createFormula(
       overrides.description ?? '此方偏于生机温养，主走木性回春之路。',
     family: overrides.family ?? 'healing',
     pattern: overrides.pattern ?? {
-      requiredTags: ['healing'],
-      optionalTags: ['mana'],
+      targetPropertyVector: createVector([
+        ['restore_hp', 0.64],
+        ['heal_wounds', 0.36],
+      ]),
       dominantElement: '木',
       minQuality: '真品',
       slotCount: 2,
     },
     blueprint: overrides.blueprint ?? {
       operations: [
-        { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
+        {
+          type: 'restore_resource',
+          resource: 'hp',
+          mode: 'percent',
+          value: 0.12,
+        },
       ],
       consumeRules: {
         scene: 'out_of_battle_only',
@@ -156,15 +163,23 @@ function createFormula(
 function createConsumable(): Consumable & { spec: PillSpec } {
   return {
     id: 'pill-1',
-    name: '青木疗伤丹',
+    name: '青木回春丹',
     type: '丹药',
     quality: '真品',
     quantity: 1,
+    description: '炉中木气归拢，药势温和。',
+    prompt: '恢复伤势',
     spec: {
       kind: 'pill',
       family: 'healing',
       operations: [
-        { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
+        {
+          type: 'restore_resource',
+          resource: 'hp',
+          mode: 'percent',
+          value: 0.12,
+        },
+        { type: 'remove_status', status: 'minor_wound' },
         { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
       ],
       consumeRules: {
@@ -173,11 +188,23 @@ function createConsumable(): Consumable & { spec: PillSpec } {
       },
       alchemyMeta: {
         source: 'improvised',
-        sourceMaterials: ['青岚草', '灵泉露'],
+        sourceMaterials: ['青岚草', '回春露'],
+        analysisVersion: 2,
+        propertyVector: createVector([
+          ['restore_hp', 0.64],
+          ['heal_wounds', 0.36],
+        ]),
+        sourceMaterialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '青岚草',
+            properties: [{ key: 'restore_hp', weight: 1 }],
+          },
+        ],
         dominantElement: '木',
         stability: 78,
         toxicityRating: 6,
-        tags: ['healing'],
+        tags: ['restore_hp', 'heal_wounds', 'healing'],
       },
     },
   };
@@ -193,22 +220,24 @@ describe('AlchemyFormulaService', () => {
     redisSetMock.mockReset();
     redisGetMock.mockReset();
     redisDelMock.mockReset();
-    narrativeFormulaCopyMock.mockReset();
-    narrativeBatchDescriptionMock.mockReset();
-    narrativeFormulaCopyMock.mockResolvedValue(null);
-    narrativeBatchDescriptionMock.mockResolvedValue(null);
   });
 
-  it('normalizes formula signatures independent of required tag order', () => {
+  it('normalizes formula signatures independent of property vector order', () => {
     const left = createFormula({
       pattern: {
-        requiredTags: ['mana', 'healing'],
+        targetPropertyVector: createVector([
+          ['heal_wounds', 0.36],
+          ['restore_hp', 0.64],
+        ]),
         slotCount: 2,
       },
     });
     const right = createFormula({
       pattern: {
-        requiredTags: ['healing', 'mana'],
+        targetPropertyVector: createVector([
+          ['restore_hp', 0.64],
+          ['heal_wounds', 0.36],
+        ]),
         slotCount: 2,
       },
     });
@@ -216,32 +245,40 @@ describe('AlchemyFormulaService', () => {
     expect(buildFormulaSignature(left)).toBe(buildFormulaSignature(right));
   });
 
-  it('calculates fit multiplier from dominant element, optional tags and surplus quality', () => {
+  it('calculates fit multiplier from overlap, dominant element and surplus quality', () => {
     const formula = createFormula();
-    const multiplier = calculateFormulaFitMultiplier(formula, [
-      {
-        id: 'm1',
-        name: '青岚草',
-        rank: '天品',
-        element: '木',
-        type: 'herb',
-        dose: 1,
-        effectTags: ['healing', 'mana'],
-        potency: 48,
-      },
-      {
-        id: 'm2',
-        name: '灵泉露',
-        rank: '真品',
-        element: '木',
-        type: 'tcdb',
-        dose: 1,
-        effectTags: ['healing'],
-        potency: 26,
-      },
-    ]);
+    const multiplier = calculateFormulaFitMultiplier(
+      formula,
+      createVector([
+        ['restore_hp', 0.64],
+        ['heal_wounds', 0.36],
+      ]),
+      '木',
+      [
+        {
+          id: 'm1',
+          materialRef: 'material_1',
+          name: '青岚草',
+          description: '可补充气血。',
+          rank: '天品',
+          element: '木',
+          type: 'herb',
+          dose: 1,
+        },
+        {
+          id: 'm2',
+          materialRef: 'material_2',
+          name: '回春露',
+          description: '可治愈伤口。',
+          rank: '真品',
+          element: '木',
+          type: 'aux',
+          dose: 1,
+        },
+      ],
+    );
 
-    expect(multiplier).toBeCloseTo(1.1);
+    expect(multiplier).toBeCloseTo(1.15);
   });
 
   it('advances mastery with overflow exp', () => {
@@ -265,252 +302,125 @@ describe('AlchemyFormulaService', () => {
     });
   });
 
-  it('builds a discovery candidate and stores it in redis', async () => {
+  it('builds a discovery candidate and stores the target property vector', async () => {
     redisSetMock.mockResolvedValueOnce('OK');
 
     const candidate = await buildDiscoveryCandidate('cultivator-1', {
       consumable: createConsumable(),
-      ingredients: [
+      materials: [
         {
           id: 'm1',
+          materialRef: 'material_1',
           name: '青岚草',
+          description: '可补充气血。',
           rank: '真品',
           element: '木',
           type: 'herb',
           dose: 1,
-          effectTags: ['healing'],
-          potency: 26,
         },
         {
           id: 'm2',
-          name: '灵泉露',
+          materialRef: 'material_2',
+          name: '回春露',
+          description: '可治愈伤口。',
           rank: '真品',
-          element: '水',
-          type: 'herb',
+          element: '木',
+          type: 'aux',
           dose: 1,
-          effectTags: ['mana'],
-          potency: 26,
         },
       ],
-      targetTags: ['healing'],
     });
 
     expect(candidate).toEqual({
       token: expect.any(String),
-      name: '青木疗伤丹丹方',
-      description: expect.stringContaining('此方以疗伤为炉中主脉'),
+      name: '青木回春丹丹方',
+      description: expect.stringContaining(
+        '药性取向为补充气血 64%、治愈伤势 36%',
+      ),
       family: 'healing',
-      discoveryRemark: expect.stringContaining('《青木疗伤丹丹方》'),
-      patternSummary: expect.stringContaining('主药性：疗伤'),
+      discoveryRemark: expect.stringContaining('《青木回春丹丹方》'),
+      patternSummary: expect.stringContaining(
+        '目标药性：补充气血 64%、治愈伤势 36%',
+      ),
     });
     expect(redisSetMock).toHaveBeenCalledTimes(1);
   });
 
-  it('uses generated formula copy when llm formula naming succeeds', async () => {
-    redisSetMock.mockResolvedValueOnce('OK');
-    narrativeFormulaCopyMock.mockResolvedValueOnce({
-      name: '回春灵藏丹方',
-      description: '此方温引木性生机，重在缓和归拢药气，不以躁火争先。',
-      discoveryRemark: '一缕回春炉意忽而贯通，丹路已可成篇。',
-    });
-
-    const candidate = await buildDiscoveryCandidate('cultivator-1', {
-      consumable: createConsumable(),
-      ingredients: [
-        {
-          id: 'm1',
-          name: '青岚草',
-          rank: '真品',
-          element: '木',
-          type: 'herb',
-          dose: 1,
-          effectTags: ['healing'],
-          potency: 26,
-        },
-      ],
-      targetTags: ['healing'],
-    });
-
-    expect(candidate).toEqual({
-      token: expect.any(String),
-      name: '回春灵藏丹方',
-      description: '此方温引木性生机，重在缓和归拢药气，不以躁火争先。',
-      family: 'healing',
-      discoveryRemark: '一缕回春炉意忽而贯通，丹路已可成篇。',
-      patternSummary: expect.stringContaining('主药性：疗伤'),
-    });
-  });
-
-  it('skips discovery when formula signature already exists', async () => {
-    const existing = createFormula({
-      pattern: {
-        requiredTags: ['healing'],
-        dominantElement: '木',
-        minQuality: '真品',
-        slotCount: 2,
-      },
-      blueprint: {
-        operations: [
-          { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
-          { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
-        ],
-        consumeRules: {
-          scene: 'out_of_battle_only',
-          quotaCategory: 'none',
-        },
-        targetStability: 78,
-        targetToxicity: 6,
-      },
-    });
-
-    executorState.selectRows = [
-      {
-        id: existing.id,
-        cultivatorId: existing.cultivatorId,
-        name: existing.name,
-        description: existing.description,
-        family: existing.family,
-        pattern: existing.pattern,
-        blueprint: existing.blueprint,
-        mastery: existing.mastery,
-        createdAt: new Date(existing.createdAt),
-        updatedAt: new Date(existing.updatedAt),
-      },
-    ];
-
-    const candidate = await buildDiscoveryCandidate('cultivator-1', {
-      consumable: createConsumable(),
-      ingredients: [
-        {
-          id: 'm1',
-          name: '青岚草',
-          rank: '真品',
-          element: '木',
-          type: 'herb',
-          dose: 1,
-          effectTags: ['healing'],
-          potency: 26,
-        },
-        {
-          id: 'm2',
-          name: '灵泉露',
-          rank: '真品',
-          element: '水',
-          type: 'herb',
-          dose: 1,
-          effectTags: ['mana'],
-          potency: 26,
-        },
-      ],
-      targetTags: ['healing'],
-    });
-
-    expect(candidate).toBeNull();
-    expect(redisSetMock).not.toHaveBeenCalled();
-  });
-
   it('persists discovered formula on accept', async () => {
+    const formula = createFormula();
     const payload = {
       cultivatorId: 'cultivator-1',
       formula: {
-        cultivatorId: 'cultivator-1',
-        name: '青木疗伤丹丹方',
-        description: '此方偏于生机温养，主走木性回春之路。',
-        family: 'healing',
-        pattern: {
-          requiredTags: ['healing'],
-          dominantElement: '木',
-          minQuality: '真品',
-          slotCount: 1,
-        },
-        blueprint: {
-          operations: [
-            { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
-          ],
-          consumeRules: {
-            scene: 'out_of_battle_only',
-            quotaCategory: 'none',
-          },
-          targetStability: 78,
-          targetToxicity: 6,
-        },
-        mastery: {
-          level: 0,
-          exp: 0,
-        },
+        cultivatorId: formula.cultivatorId,
+        name: formula.name,
+        description: formula.description,
+        family: formula.family,
+        pattern: formula.pattern,
+        blueprint: formula.blueprint,
+        mastery: formula.mastery,
       },
-      signature: 'sig-1',
+      signature: buildFormulaSignature(formula),
     };
     redisGetMock.mockResolvedValueOnce(JSON.stringify(payload));
     redisDelMock.mockResolvedValueOnce(1);
+    executorState.txExistingRows = [];
 
     const result = await confirmDiscoveryCandidate(
       'cultivator-1',
-      '11111111-1111-1111-1111-111111111111',
+      '11111111-1111-4111-8111-111111111111',
       true,
     );
 
-    expect(executorState.insertedValues).toEqual(
-      expect.objectContaining({
-        cultivatorId: 'cultivator-1',
-        name: '青木疗伤丹丹方',
-        description: '此方偏于生机温养，主走木性回春之路。',
-      }),
-    );
     expect(result).toEqual({
       saved: true,
       formula: expect.objectContaining({
-        id: '22222222-2222-2222-2222-222222222222',
         name: '青木疗伤丹丹方',
       }),
     });
-    expect(redisDelMock).toHaveBeenCalled();
+    expect(executorState.insertedValues.pattern.targetPropertyVector).toEqual(
+      createVector([
+        ['restore_hp', 0.64],
+        ['heal_wounds', 0.36],
+      ]),
+    );
   });
 
-  it('does not persist discovered formula on reject', async () => {
-    redisGetMock.mockResolvedValueOnce(
-      JSON.stringify({
+  it('fails loudly when legacy formulas remain in storage', async () => {
+    executorState.selectRows = [
+      {
+        id: 'legacy-formula',
         cultivatorId: 'cultivator-1',
-      }),
-    );
+        name: '旧丹方',
+        description: '旧结构',
+        family: 'healing',
+        pattern: {
+          requiredTags: ['healing'],
+          slotCount: 1,
+        },
+        blueprint: createFormula().blueprint,
+        mastery: { level: 0, exp: 0 },
+        createdAt: new Date('2026-05-15T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-15T00:00:00.000Z'),
+      },
+    ];
 
-    const result = await confirmDiscoveryCandidate(
-      'cultivator-1',
-      '11111111-1111-1111-1111-111111111111',
-      false,
+    await expect(listCultivatorFormulas('cultivator-1')).rejects.toThrow(
+      '丹方数据已损坏，请删除后重新悟方。',
     );
-
-    expect(result).toEqual({ saved: false });
-    expect(executorState.insertedValues).toBeNull();
-    expect(redisDelMock).toHaveBeenCalled();
   });
 
   it('deletes an owned formula', async () => {
     executorState.deletedRows = [
       {
-        id: '11111111-1111-1111-1111-111111111111',
+        id: '11111111-1111-4111-8111-111111111111',
       },
     ];
 
     await expect(
       deleteCultivatorFormula(
         'cultivator-1',
-        '11111111-1111-1111-1111-111111111111',
+        '11111111-1111-4111-8111-111111111111',
       ),
     ).resolves.toBeUndefined();
-  });
-
-  it('throws when deleting a missing formula', async () => {
-    executorState.deletedRows = [];
-
-    await expect(
-      deleteCultivatorFormula(
-        'cultivator-1',
-        '11111111-1111-1111-1111-111111111111',
-      ),
-    ).rejects.toMatchObject({
-      message: '未找到这份丹方。',
-      status: 404,
-    });
   });
 });

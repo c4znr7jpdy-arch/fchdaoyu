@@ -1,6 +1,6 @@
+import type { AlchemyFormula } from '@shared/types/consumable';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { AlchemyFormula } from '@shared/types/consumable';
 import {
   AlchemyFormulaListItem,
   AlchemyFormulaSummaryCard,
@@ -14,8 +14,10 @@ const summaryFormula: AlchemyFormula = {
   description: '以回元草为引，辅以木行温养之材，可稳固疗伤药脉。',
   family: 'healing',
   pattern: {
-    requiredTags: ['healing'],
-    optionalTags: ['mana'],
+    targetPropertyVector: [
+      { key: 'restore_hp', weight: 0.62 },
+      { key: 'heal_wounds', weight: 0.38 },
+    ],
     dominantElement: '木',
     minQuality: '真品',
     slotCount: 2,

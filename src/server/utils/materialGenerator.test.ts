@@ -14,7 +14,7 @@ describe('MaterialGenerator', () => {
     vi.clearAllMocks();
   });
 
-  it('writes alchemyProfile when AI generation succeeds', async () => {
+  it('does not write legacy alchemy details when AI generation succeeds', async () => {
     objectArrayMock.mockResolvedValueOnce({
       object: [
         {
@@ -29,26 +29,17 @@ describe('MaterialGenerator', () => {
       { type: 'herb', rank: '真品', quantity: 1 } satisfies MaterialSkeleton,
     ]);
 
-    expect(materials[0]?.details?.alchemyProfile).toMatchObject({
-      effectTags: ['healing'],
-      elementBias: '木',
-      potency: 26,
-      toxicity: 2,
-    });
+    expect(materials[0]?.details).toBeUndefined();
   });
 
-  it('writes alchemyProfile when AI generation falls back to presets', async () => {
+  it('does not write legacy alchemy details when AI generation falls back to presets', async () => {
     objectArrayMock.mockRejectedValueOnce(new Error('boom'));
 
     const materials = await MaterialGenerator.generateFromSkeletons([
       { type: 'monster', rank: '真品', quantity: 1 } satisfies MaterialSkeleton,
     ]);
 
-    expect(materials[0]?.details?.alchemyProfile).toMatchObject({
-      effectTags: ['marrow_wash'],
-      potency: 26,
-      toxicity: 8,
-    });
+    expect(materials[0]?.details).toBeUndefined();
   });
 
   it('prefers qualityChanceMap over the global quality table', async () => {

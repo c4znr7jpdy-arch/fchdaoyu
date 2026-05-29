@@ -281,6 +281,12 @@ function buildAlchemyInfoLines(
       ? `目标大境界：${alchemyMeta.breakthroughTargetRealm}`
       : undefined,
     `炼制来源：${alchemyMeta.source === 'formula' ? '丹方炼制' : '即兴炼制'}`,
+    alchemyMeta.source === 'formula'
+      ? `药性拟合：${Math.round(alchemyMeta.fitScore * 100)}%`
+      : undefined,
+    alchemyMeta.source === 'formula'
+      ? `丹方倍率：${Math.round(alchemyMeta.fitMultiplier * 100)}%`
+      : undefined,
     `稳度：${alchemyMeta.stability}`,
     alchemyMeta.dominantElement
       ? `主元素：${alchemyMeta.dominantElement}`

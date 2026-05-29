@@ -60,6 +60,9 @@ function createHealingPill(): Consumable {
       alchemyMeta: {
         source: 'improvised',
         sourceMaterials: ['青木芝'],
+        analysisVersion: 2,
+        propertyVector: [{ key: 'restore_hp', weight: 1 }],
+        sourceMaterialVectors: [],
         dominantElement: '木',
         stability: 72,
         toxicityRating: 8,
@@ -90,6 +93,9 @@ function createCultivationPill(): Consumable {
       alchemyMeta: {
         source: 'improvised',
         sourceMaterials: ['金霞芝'],
+        analysisVersion: 2,
+        propertyVector: [{ key: 'cultivation', weight: 1 }],
+        sourceMaterialVectors: [],
         dominantElement: '金',
         stability: 72,
         toxicityRating: 9,
@@ -124,6 +130,9 @@ function createInsightPill(): Consumable {
       alchemyMeta: {
         source: 'improvised',
         sourceMaterials: ['寒魄晶'],
+        analysisVersion: 2,
+        propertyVector: [{ key: 'insight', weight: 1 }],
+        sourceMaterialVectors: [],
         dominantElement: '冰',
         stability: 76,
         toxicityRating: 5,

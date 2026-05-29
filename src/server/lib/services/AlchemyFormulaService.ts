@@ -1,48 +1,3 @@
-import { calculateCraftCost, calculateHighestMaterialRank } from '@shared/engine/creation-v2/CraftCostCalculator';
-import {
-  getBreakthroughPillLabel,
-  getNextMajorRealm,
-} from '@shared/lib/breakthroughPill';
-import {
-  buildCultivationGain,
-  buildInsightGain,
-  scaleProgressGain,
-} from '@shared/lib/alchemyProgress';
-import {
-  evaluateFateContext,
-  getAlchemySpiritStoneMultiplier,
-  scaleFateAdjustedValue,
-} from '@shared/lib/fates';
-import {
-  getMaterialAlchemyTagFamily,
-  getMaterialAlchemyTagLabel,
-  getTrackPathAlchemyTag,
-  isAlchemyMaterialType,
-  resolveMaterialAlchemyProfile,
-} from '@shared/lib/materialAlchemy';
-import { getHealingCuredStatus } from '@shared/lib/healingPill';
-import type { ConditionTrackPath } from '@shared/types/condition';
-import {
-  QUALITY_ORDER,
-  type ElementType,
-  type MaterialType,
-  type Quality,
-  type RealmType,
-} from '@shared/types/constants';
-import type {
-  MaterialDetails,
-  Consumable,
-  PreHeavenFate,
-} from '@shared/types/cultivator';
-import type {
-  AlchemyFormula,
-  AlchemyFormulaDiscoveryCandidate,
-  AlchemyFormulaMastery,
-  AlchemyFormulaPattern,
-  ConditionOperation,
-  MaterialAlchemyEffectTag,
-  PillSpec,
-} from '@shared/types/consumable';
 import { getExecutor } from '@server/lib/drizzle/db';
 import {
   alchemyFormulas,
@@ -52,11 +7,64 @@ import {
 } from '@server/lib/drizzle/schema';
 import { redis } from '@server/lib/redis';
 import { parseRedisJson } from '@server/lib/redis/json';
+import {
+  aggregateAlchemyProperties,
+  buildAlchemyPreviewWarnings,
+  buildAlchemyPropertyTags,
+  calculatePropertyVectorFit,
+  chooseDominantElement,
+  getQuotaCategoryForFamily,
+  type PreparedAlchemyMaterial,
+} from '@server/lib/services/AlchemyRecipeRules';
 import { calculateSingleElixirScore } from '@server/utils/rankingUtils';
+import {
+  calculateCraftCost,
+  calculateHighestMaterialRank,
+} from '@shared/engine/creation-v2/CraftCostCalculator';
+import {
+  buildCultivationGain,
+  buildInsightGain,
+  scaleProgressGain,
+} from '@shared/lib/alchemyProgress';
+import {
+  formatAlchemyPropertyVector,
+  sortWeightedAlchemyProperties,
+} from '@shared/lib/alchemyProperties';
+import {
+  getBreakthroughPillLabel,
+  getNextMajorRealm,
+} from '@shared/lib/breakthroughPill';
+import {
+  evaluateFateContext,
+  getAlchemySpiritStoneMultiplier,
+  scaleFateAdjustedValue,
+} from '@shared/lib/fates';
+import { getHealingCuredStatus } from '@shared/lib/healingPill';
+import { isAlchemyMaterialType } from '@shared/lib/alchemyMaterials';
+import {
+  QUALITY_ORDER,
+  type ElementType,
+  type MaterialType,
+  type Quality,
+  type RealmType,
+} from '@shared/types/constants';
+import type {
+  AlchemyFormula,
+  AlchemyFormulaDiscoveryCandidate,
+  AlchemyFormulaMastery,
+  AlchemyFormulaPattern,
+  ConditionOperation,
+  PillSpec,
+  WeightedAlchemyProperty,
+} from '@shared/types/consumable';
+import type { Consumable, PreHeavenFate } from '@shared/types/cultivator';
 import { and, desc, eq, inArray } from 'drizzle-orm';
+import { alchemyRecipePlanner } from './AlchemyRecipePlanner';
 import { AlchemyServiceError } from './AlchemyServiceError';
-import { AlchemyNarrativeEnricher } from './AlchemyNarrativeEnricher';
-import { mapConsumableRow, serializeConsumableSpec } from './consumablePersistence';
+import {
+  mapConsumableRow,
+  serializeConsumableSpec,
+} from './consumablePersistence';
 import {
   addConsumableToInventory,
   getCultivatorByIdUnsafe,
@@ -65,26 +73,11 @@ import {
 const DISCOVERY_TTL_SECONDS = 600;
 const FORMULA_LOCK_TTL_SECONDS = 30;
 const DISCOVERY_STABILITY_THRESHOLD = 70;
-const HYBRID_DISCOVERY_TAGS: MaterialAlchemyEffectTag[] = [
-  'healing',
-  'mana',
-  'detox',
-];
-const alchemyNarrativeEnricher = new AlchemyNarrativeEnricher();
+const FIT_BLOCK_THRESHOLD = 0.45;
+const FIT_WARNING_THRESHOLD = 0.65;
 
 type MaterialRow = typeof materials.$inferSelect;
 type AlchemyFormulaRow = typeof alchemyFormulas.$inferSelect;
-
-export interface PreparedFormulaIngredient {
-  id: string;
-  name: string;
-  rank: Quality;
-  element: ElementType;
-  type: Extract<MaterialType, 'herb' | 'ore' | 'monster' | 'tcdb' | 'aux'>;
-  dose: number;
-  effectTags: MaterialAlchemyEffectTag[];
-  potency: number;
-}
 
 export interface FormulaPreviewResult {
   cost: {
@@ -114,8 +107,7 @@ interface DiscoveryPayload {
 
 interface DiscoveryContext {
   consumable: Consumable & { spec: PillSpec };
-  ingredients: PreparedFormulaIngredient[];
-  targetTags: MaterialAlchemyEffectTag[];
+  materials: PreparedAlchemyMaterial[];
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -160,14 +152,6 @@ function stableStringify(value: unknown): string {
   return JSON.stringify(sortJsonValue(value));
 }
 
-function getDiscoveryKey(cultivatorId: string, token: string): string {
-  return `alchemy:formula_discovery:${cultivatorId}:${token}`;
-}
-
-function getFormulaLockKey(cultivatorId: string): string {
-  return `alchemy:lock:${cultivatorId}`;
-}
-
 function normalizeDose(
   material: MaterialRow,
   materialQuantities?: Record<string, number>,
@@ -192,14 +176,37 @@ function sortRowsByRequestedIds(
   });
 }
 
+function isValidFormulaPattern(
+  pattern: unknown,
+): pattern is AlchemyFormulaPattern {
+  if (!pattern || typeof pattern !== 'object') {
+    return false;
+  }
+
+  const record = pattern as Record<string, unknown>;
+  return (
+    Array.isArray(record.targetPropertyVector) &&
+    typeof record.slotCount === 'number'
+  );
+}
+
 function mapAlchemyFormulaRow(row: AlchemyFormulaRow): AlchemyFormula {
+  if (!isValidFormulaPattern(row.pattern)) {
+    throw new AlchemyServiceError('丹方数据已损坏，请删除后重新悟方。', 500);
+  }
+
   return {
     id: row.id,
     cultivatorId: row.cultivatorId,
     name: row.name,
     description: row.description,
     family: row.family,
-    pattern: row.pattern,
+    pattern: {
+      ...row.pattern,
+      targetPropertyVector: sortWeightedAlchemyProperties(
+        row.pattern.targetPropertyVector as WeightedAlchemyProperty[],
+      ),
+    },
     blueprint: row.blueprint,
     mastery: row.mastery,
     createdAt: row.createdAt.toISOString(),
@@ -209,13 +216,10 @@ function mapAlchemyFormulaRow(row: AlchemyFormulaRow): AlchemyFormula {
 
 function getPatternSummary(pattern: AlchemyFormulaPattern): string {
   const segments = [
-    `主药性：${pattern.requiredTags.map(getMaterialAlchemyTagLabel).join('、')}`,
+    `目标药性：${formatAlchemyPropertyVector(pattern.targetPropertyVector)}`,
     `炉位：${pattern.slotCount} 种材料`,
   ];
 
-  if (pattern.optionalTags?.length) {
-    segments.push(`辅药性：${pattern.optionalTags.map(getMaterialAlchemyTagLabel).join('、')}`);
-  }
   if (pattern.dominantElement) {
     segments.push(`主元素：${pattern.dominantElement}`);
   }
@@ -239,14 +243,6 @@ function buildFallbackFormulaName(sourcePillName: string): string {
 function buildFallbackFormulaRecordDescription(
   formula: Pick<AlchemyFormula, 'family' | 'pattern'>,
 ): string {
-  const coreTags = formula.pattern.requiredTags
-    .map(getMaterialAlchemyTagLabel)
-    .join('、');
-  const optionalTags = formula.pattern.optionalTags?.length
-    ? `，辅以${formula.pattern.optionalTags
-        .map(getMaterialAlchemyTagLabel)
-        .join('、')}相济`
-    : '';
   const qualityText = formula.pattern.minQuality
     ? `，宜以至少${formula.pattern.minQuality}之材承炉`
     : '';
@@ -257,11 +253,11 @@ function buildFallbackFormulaRecordDescription(
         ? '积蓄修为，温养道基'
         : formula.family === 'insight'
           ? '澄明心识，引动悟机'
-      : formula.family === 'marrow_wash'
-        ? '引药力洗筋伐髓'
-        : '收束药性归于一脉';
+          : formula.family === 'marrow_wash'
+            ? '引药力洗筋伐髓'
+            : '收束药性归于一脉';
 
-  return `此方以${coreTags}为炉中主脉${optionalTags}，重在${directionText}，${formula.pattern.slotCount}味合炉${qualityText}。`;
+  return `此方重在${directionText}，药性取向为${formatAlchemyPropertyVector(formula.pattern.targetPropertyVector)}，${formula.pattern.slotCount}味合炉${qualityText}。`;
 }
 
 function buildFallbackDiscoveryRemark(formulaName: string): string {
@@ -273,12 +269,19 @@ function buildFormulaDescription(
   sourceMaterials: string[],
   stability: number,
   toxicityRating: number,
+  fitScore: number,
   fitMultiplier: number,
 ): string {
-  return [
+  const lines = [
     `依《${formula.name}》炉意炼成，以${sourceMaterials.join('、')}合炉。`,
-    `成丹稳度 ${stability}，药力拟合 ${(fitMultiplier * 100).toFixed(0)}%。`,
-  ].join('');
+    `成丹稳度 ${stability}，药力拟合 ${(fitMultiplier * 100).toFixed(0)}%，丹毒评定 ${toxicityRating}。`,
+  ];
+
+  if (fitScore < FIT_WARNING_THRESHOLD) {
+    lines.push('本炉药性虽能循方成丹，仍有几分偏离，药力难免散逸。');
+  }
+
+  return lines.join('');
 }
 
 function createValidation(
@@ -293,214 +296,70 @@ function createValidation(
   };
 }
 
-function getRequiredTagsForFamily(
-  spec: PillSpec,
-  tagScores: Map<MaterialAlchemyEffectTag, number>,
-): MaterialAlchemyEffectTag[] {
-  switch (spec.family) {
-    case 'healing':
-    case 'mana':
-    case 'detox':
-    case 'cultivation':
-    case 'insight':
-    case 'breakthrough':
-    case 'marrow_wash':
-      return [spec.family];
-    case 'tempering': {
-      const track = spec.operations.find(
-        (operation): operation is Extract<ConditionOperation, { type: 'advance_track' }> =>
-          operation.type === 'advance_track' &&
-          operation.track.startsWith('tempering.'),
-      );
-      const trackPath = (track?.track ?? 'tempering.vitality') as Extract<
-        ConditionTrackPath,
-        `tempering.${string}`
-      >;
-
-      return [
-        getTrackPathAlchemyTag(trackPath),
-      ];
-    }
-    case 'hybrid': {
-      const ranked = HYBRID_DISCOVERY_TAGS
-        .map((tag) => [tag, tagScores.get(tag) ?? 0] as const)
-        .sort((left, right) => right[1] - left[1]);
-
-      return ranked
-        .filter(([, score]) => score > 0)
-        .slice(0, 2)
-        .map(([tag]) => tag);
-    }
+function buildPreparedMaterial(
+  material: MaterialRow,
+  index: number,
+  materialQuantities?: Record<string, number>,
+): PreparedAlchemyMaterial {
+  if (!material.element) {
+    throw new AlchemyServiceError(`材料 ${material.name} 缺少五行属性`, 400);
   }
-}
-
-function buildTagScores(
-  ingredients: PreparedFormulaIngredient[],
-  targetTags: MaterialAlchemyEffectTag[],
-): Map<MaterialAlchemyEffectTag, number> {
-  const tagScores = new Map<MaterialAlchemyEffectTag, number>();
-  const targetFamilies = new Set(
-    targetTags.map((tag) => getMaterialAlchemyTagFamily(tag)),
-  );
-
-  for (const ingredient of ingredients) {
-    const contribution = ingredient.dose * ingredient.potency;
-    for (const tag of ingredient.effectTags) {
-      const family = getMaterialAlchemyTagFamily(tag);
-      const multiplier = targetTags.includes(tag)
-        ? 1.5
-        : targetFamilies.has(family)
-          ? 1.15
-          : 1;
-      tagScores.set(tag, (tagScores.get(tag) ?? 0) + contribution * multiplier);
-    }
+  if (!isAlchemyMaterialType(material.type as MaterialType)) {
+    throw new AlchemyServiceError(`材料 ${material.name} 不可用于炼丹`, 400);
   }
-
-  return tagScores;
-}
-
-function buildOptionalTags(
-  requiredTags: MaterialAlchemyEffectTag[],
-  tagScores: Map<MaterialAlchemyEffectTag, number>,
-): MaterialAlchemyEffectTag[] | undefined {
-  const strongestRequiredScore = requiredTags.reduce(
-    (highest, tag) => Math.max(highest, tagScores.get(tag) ?? 0),
-    0,
-  );
-  const threshold = strongestRequiredScore * 0.5;
-  const requiredTagSet = new Set(requiredTags);
-
-  const optionalTags = [...tagScores.entries()]
-    .sort((left, right) => right[1] - left[1])
-    .filter(([tag, score]) => !requiredTagSet.has(tag) && score >= threshold)
-    .map(([tag]) => tag);
-
-  return optionalTags.length > 0 ? optionalTags : undefined;
-}
-
-function getLowestQuality(ingredients: PreparedFormulaIngredient[]): Quality {
-  return ingredients.reduce((lowest, ingredient) => {
-    if (!lowest) {
-      return ingredient.rank;
-    }
-    return QUALITY_ORDER[ingredient.rank] < QUALITY_ORDER[lowest]
-      ? ingredient.rank
-      : lowest;
-  }, ingredients[0]!.rank);
-}
-
-function chooseDominantElement(
-  ingredients: PreparedFormulaIngredient[],
-): ElementType {
-  const elementScores = new Map<ElementType, number>();
-
-  for (const ingredient of ingredients) {
-    elementScores.set(
-      ingredient.element,
-      (elementScores.get(ingredient.element) ?? 0) +
-        ingredient.dose * ingredient.potency,
+  if (!material.description?.trim()) {
+    throw new AlchemyServiceError(
+      `材料 ${material.name} 缺少描述，当前无法判明药性。`,
+      400,
     );
   }
 
-  const [dominant] = [...elementScores.entries()].sort((left, right) => {
-    if (right[1] !== left[1]) {
-      return right[1] - left[1];
-    }
-    return left[0].localeCompare(right[0], 'zh-Hans-CN');
-  });
-
-  return dominant?.[0] ?? '土';
+  return {
+    id: material.id,
+    materialRef: `material_${index + 1}`,
+    name: material.name,
+    description: material.description.trim(),
+    rank: material.rank as Quality,
+    element: material.element as ElementType,
+    type: material.type as PreparedAlchemyMaterial['type'],
+    dose: normalizeDose(material, materialQuantities),
+  };
 }
 
-function validateMaterialRows(
-  materialRows: MaterialRow[],
-): { valid: boolean; blockingReason?: string } {
-  for (const material of materialRows) {
-    if (!material.element) {
-      return {
-        valid: false,
-        blockingReason: `材料 ${material.name} 缺少五行属性，当前无法入炉。`,
-      };
-    }
-    if (!isAlchemyMaterialType(material.type as MaterialType)) {
-      return {
-        valid: false,
-        blockingReason: `材料 ${material.name} 不可用于炼丹。`,
-      };
-    }
-    if (
-      !resolveMaterialAlchemyProfile({
-        type: material.type as MaterialType,
-        rank: material.rank as Quality,
-        element: material.element as ElementType | null | undefined,
-        details: (material.details ?? undefined) as MaterialDetails | undefined,
-      })
-    ) {
-      return {
-        valid: false,
-        blockingReason: `材料 ${material.name} 缺少药性画像。`,
-      };
-    }
-  }
-
-  return { valid: true };
-}
-
-function buildPreparedIngredients(
+function buildPreparedMaterials(
   materialRows: MaterialRow[],
   materialQuantities?: Record<string, number>,
-): PreparedFormulaIngredient[] {
-  return materialRows.map((material) => {
-    if (!material.id) {
-      throw new AlchemyServiceError('材料记录缺少主键', 500);
-    }
-    if (!material.element) {
-      throw new AlchemyServiceError(`材料 ${material.name} 缺少五行属性`, 400);
-    }
-    if (!isAlchemyMaterialType(material.type as MaterialType)) {
-      throw new AlchemyServiceError(`材料 ${material.name} 不可用于炼丹`, 400);
-    }
-    const profile = resolveMaterialAlchemyProfile({
-      type: material.type as MaterialType,
-      rank: material.rank as Quality,
-      element: material.element as ElementType | null | undefined,
-      details: (material.details ?? undefined) as MaterialDetails | undefined,
-    });
-    if (!profile) {
-      throw new AlchemyServiceError(
-        `材料 ${material.name} 缺少药性画像。`,
-        400,
-      );
-    }
-
-    return {
-      id: material.id,
-      name: material.name,
-      rank: material.rank as Quality,
-      element: material.element as ElementType,
-      type: material.type as PreparedFormulaIngredient['type'],
-      dose: normalizeDose(material, materialQuantities),
-      effectTags: profile.effectTags,
-      potency: profile.potency,
-    };
-  });
+): PreparedAlchemyMaterial[] {
+  return materialRows.map((material, index) =>
+    buildPreparedMaterial(material, index, materialQuantities),
+  );
 }
 
-function getCoverageTags(
-  ingredients: PreparedFormulaIngredient[],
-): Set<MaterialAlchemyEffectTag> {
-  return new Set(ingredients.flatMap((ingredient) => ingredient.effectTags));
+function getLowestQuality(materialsList: PreparedAlchemyMaterial[]): Quality {
+  return materialsList.reduce((lowest, material) => {
+    if (!lowest) {
+      return material.rank;
+    }
+    return QUALITY_ORDER[material.rank] < QUALITY_ORDER[lowest]
+      ? material.rank
+      : lowest;
+  }, materialsList[0]!.rank);
+}
+
+function getDiscoveryKey(cultivatorId: string, token: string): string {
+  return `alchemy:formula_discovery:${cultivatorId}:${token}`;
+}
+
+function getFormulaLockKey(cultivatorId: string): string {
+  return `alchemy:lock:${cultivatorId}`;
 }
 
 function buildFormulaWarnings(
   formula: AlchemyFormula,
-  ingredients: PreparedFormulaIngredient[],
+  materialsList: PreparedAlchemyMaterial[],
 ): string[] {
-  const warnings: string[] = [];
-  const currentDominantElement = chooseDominantElement(ingredients);
-  const matchedOptionalTags = (formula.pattern.optionalTags ?? []).filter((tag) =>
-    ingredients.some((ingredient) => ingredient.effectTags.includes(tag)),
-  );
+  const warnings = buildAlchemyPreviewWarnings(materialsList);
+  const currentDominantElement = chooseDominantElement(materialsList);
 
   if (
     formula.pattern.dominantElement &&
@@ -509,21 +368,14 @@ function buildFormulaWarnings(
     warnings.push('本炉主元素偏离丹方原意，成丹拟合会略有折损。');
   }
 
-  if (
-    (formula.pattern.optionalTags?.length ?? 0) > 0 &&
-    matchedOptionalTags.length < (formula.pattern.optionalTags?.length ?? 0)
-  ) {
-    warnings.push('辅性药材未尽契合丹方，药力尚有缺口。');
-  }
-
   return warnings;
 }
 
 function validateFormulaIngredients(
   formula: AlchemyFormula,
-  ingredients: PreparedFormulaIngredient[],
+  materialsList: PreparedAlchemyMaterial[],
 ) {
-  if (ingredients.length !== formula.pattern.slotCount) {
+  if (materialsList.length !== formula.pattern.slotCount) {
     return createValidation(
       false,
       `此丹方需投入 ${formula.pattern.slotCount} 种材料。`,
@@ -532,9 +384,10 @@ function validateFormulaIngredients(
 
   if (
     formula.pattern.minQuality &&
-    ingredients.some(
-      (ingredient) =>
-        QUALITY_ORDER[ingredient.rank] < QUALITY_ORDER[formula.pattern.minQuality!],
+    materialsList.some(
+      (material) =>
+        QUALITY_ORDER[material.rank] <
+        QUALITY_ORDER[formula.pattern.minQuality!],
     )
   ) {
     return createValidation(
@@ -543,21 +396,10 @@ function validateFormulaIngredients(
     );
   }
 
-  const coverageTags = getCoverageTags(ingredients);
-  const missingRequiredTags = formula.pattern.requiredTags.filter(
-    (tag) => !coverageTags.has(tag),
-  );
-  if (missingRequiredTags.length > 0) {
-    return createValidation(
-      false,
-      `材料未覆盖丹方核心药性：${missingRequiredTags.map(getMaterialAlchemyTagLabel).join('、')}。`,
-    );
-  }
-
   return createValidation(
     true,
     undefined,
-    buildFormulaWarnings(formula, ingredients),
+    buildFormulaWarnings(formula, materialsList),
   );
 }
 
@@ -569,38 +411,47 @@ export function buildFormulaSignature(
     operations: formula.blueprint.operations,
     consumeRules: formula.blueprint.consumeRules,
     dominantElement: formula.pattern.dominantElement ?? null,
-    requiredTags: [...formula.pattern.requiredTags].sort(),
+    minQuality: formula.pattern.minQuality ?? null,
+    targetPropertyVector: sortWeightedAlchemyProperties(
+      formula.pattern.targetPropertyVector,
+    ),
     slotCount: formula.pattern.slotCount,
   });
 }
 
+function countMaterialsAboveMinQuality(
+  materialsList: PreparedAlchemyMaterial[],
+  minQuality?: Quality,
+): number {
+  if (!minQuality) {
+    return 0;
+  }
+
+  return materialsList.filter(
+    (material) => QUALITY_ORDER[material.rank] > QUALITY_ORDER[minQuality],
+  ).length;
+}
+
 export function calculateFormulaFitMultiplier(
   formula: AlchemyFormula,
-  ingredients: PreparedFormulaIngredient[],
+  currentPropertyVector: WeightedAlchemyProperty[],
+  dominantElement: ElementType,
+  materialsList: PreparedAlchemyMaterial[],
 ): number {
-  let fitMultiplier = 1;
-  const dominantElement = chooseDominantElement(ingredients);
-
-  if (
+  const fit = calculatePropertyVectorFit(
+    currentPropertyVector,
+    formula.pattern.targetPropertyVector,
+  );
+  const elementBonus =
     formula.pattern.dominantElement &&
     dominantElement === formula.pattern.dominantElement
-  ) {
-    fitMultiplier += 0.05;
-  }
+      ? 0.05
+      : 0;
+  const qualityBonus =
+    countMaterialsAboveMinQuality(materialsList, formula.pattern.minQuality) *
+    0.02;
 
-  const optionalMatches = (formula.pattern.optionalTags ?? []).filter((tag) =>
-    ingredients.some((ingredient) => ingredient.effectTags.includes(tag)),
-  );
-  fitMultiplier += optionalMatches.length * 0.03;
-
-  if (formula.pattern.minQuality) {
-    fitMultiplier += ingredients.filter(
-      (ingredient) =>
-        QUALITY_ORDER[ingredient.rank] > QUALITY_ORDER[formula.pattern.minQuality!],
-    ).length * 0.02;
-  }
-
-  return clamp(fitMultiplier, 0.85, 1.15);
+  return clamp(0.85 + fit * 0.3 + elementBonus + qualityBonus, 0.85, 1.15);
 }
 
 function scaleFormulaOperations(
@@ -648,9 +499,10 @@ function scaleFormulaOperations(
   });
 }
 
-export function advanceFormulaMastery(
-  mastery: AlchemyFormulaMastery,
-): { next: AlchemyFormulaMastery; progress: FormulaProgress } {
+export function advanceFormulaMastery(mastery: AlchemyFormulaMastery): {
+  next: AlchemyFormulaMastery;
+  progress: FormulaProgress;
+} {
   let level = mastery.level;
   let exp = mastery.exp + 1;
 
@@ -756,29 +608,24 @@ export async function buildDiscoveryCandidate(
   cultivatorId: string,
   context: DiscoveryContext,
 ): Promise<AlchemyFormulaDiscoveryCandidate | null> {
-  const { consumable, ingredients, targetTags } = context;
+  const { consumable, materials: materialsList } = context;
   const spec = consumable.spec;
 
   if (
+    spec.alchemyMeta.analysisVersion !== 2 ||
     spec.alchemyMeta.stability < DISCOVERY_STABILITY_THRESHOLD ||
-    spec.operations.length === 0
+    spec.operations.length === 0 ||
+    spec.alchemyMeta.propertyVector.length === 0
   ) {
-    return null;
-  }
-
-  const tagScores = buildTagScores(ingredients, targetTags);
-  const requiredTags = getRequiredTagsForFamily(spec, tagScores);
-  if (requiredTags.length === 0) {
     return null;
   }
 
   const fallbackName = buildFallbackFormulaName(consumable.name);
   const pattern = {
-    requiredTags,
-    optionalTags: buildOptionalTags(requiredTags, tagScores),
+    targetPropertyVector: spec.alchemyMeta.propertyVector,
     dominantElement: spec.alchemyMeta.dominantElement,
-    minQuality: getLowestQuality(ingredients),
-    slotCount: ingredients.length,
+    minQuality: getLowestQuality(materialsList),
+    slotCount: materialsList.length,
   };
   const blueprint = {
     operations: spec.operations,
@@ -786,31 +633,13 @@ export async function buildDiscoveryCandidate(
     targetStability: spec.alchemyMeta.stability,
     targetToxicity: spec.alchemyMeta.toxicityRating,
   };
-  const generatedCopy = await alchemyNarrativeEnricher.generateFormulaRecordCopy({
-    fallbackName,
-    sourcePillName: consumable.name,
-    sourcePillDescription: consumable.description ?? '',
-    family: spec.family,
-    dominantElement: spec.alchemyMeta.dominantElement,
-    minQuality: pattern.minQuality,
-    slotCount: pattern.slotCount,
-    materialNames: ingredients.map((ingredient) => ingredient.name),
-    requiredTags: pattern.requiredTags,
-    optionalTags: pattern.optionalTags ?? [],
-    operations: spec.operations,
-    targetStability: blueprint.targetStability,
-    targetToxicity: blueprint.targetToxicity,
-    userPrompt: consumable.prompt,
-  });
   const formula: Omit<AlchemyFormula, 'id' | 'createdAt' | 'updatedAt'> = {
     cultivatorId,
-    name: generatedCopy?.name ?? fallbackName,
-    description:
-      generatedCopy?.description ??
-      buildFallbackFormulaRecordDescription({
-        family: spec.family,
-        pattern,
-      }),
+    name: fallbackName,
+    description: buildFallbackFormulaRecordDescription({
+      family: spec.family,
+      pattern,
+    }),
     family: spec.family,
     pattern,
     blueprint,
@@ -848,8 +677,7 @@ export async function buildDiscoveryCandidate(
     name: formula.name,
     description: formula.description,
     family: formula.family,
-    discoveryRemark:
-      generatedCopy?.discoveryRemark ?? buildFallbackDiscoveryRemark(formula.name),
+    discoveryRemark: buildFallbackDiscoveryRemark(formula.name),
     patternSummary: getPatternSummary(formula.pattern),
   };
 }
@@ -886,9 +714,7 @@ export async function confirmDiscoveryCandidate(
       .where(eq(alchemyFormulas.cultivatorId, cultivatorId));
     const existing = existingRows
       .map(mapAlchemyFormulaRow)
-      .find(
-        (formula) => buildFormulaSignature(formula) === payload.signature,
-      );
+      .find((formula) => buildFormulaSignature(formula) === payload.signature);
 
     if (existing) {
       savedFormula = existing;
@@ -950,16 +776,20 @@ export async function previewFormulaCraft(
     };
   }
 
-  const materialValidation = validateMaterialRows(rows);
-  if (!materialValidation.valid) {
-    return {
-      cost: { spiritStones: 0 },
-      canAfford: true,
-      validation: createValidation(false, materialValidation.blockingReason),
-    };
+  let materialsList: PreparedAlchemyMaterial[];
+  try {
+    materialsList = buildPreparedMaterials(rows);
+  } catch (error) {
+    if (error instanceof AlchemyServiceError) {
+      return {
+        cost: { spiritStones: 0 },
+        canAfford: true,
+        validation: createValidation(false, error.message),
+      };
+    }
+    throw error;
   }
 
-  const ingredients = buildPreparedIngredients(rows);
   const highestMaterialRank = calculateHighestMaterialRank(
     rows as Array<{ rank: Quality }>,
   );
@@ -971,7 +801,7 @@ export async function previewFormulaCraft(
   return {
     cost: { spiritStones },
     canAfford: availableSpiritStones >= spiritStones,
-    validation: validateFormulaIngredients(formula, ingredients),
+    validation: validateFormulaIngredients(formula, materialsList),
   };
 }
 
@@ -982,33 +812,40 @@ export async function craftFromFormula(
   materialQuantities?: Record<string, number>,
 ): Promise<{ consumable: Consumable; formulaProgress: FormulaProgress }> {
   const lockKey = getFormulaLockKey(cultivatorId);
-  const acquired = await redis.set(lockKey, 'locked', 'EX', FORMULA_LOCK_TTL_SECONDS, 'NX');
+  const acquired = await redis.set(
+    lockKey,
+    'locked',
+    'EX',
+    FORMULA_LOCK_TTL_SECONDS,
+    'NX',
+  );
   if (!acquired) {
     throw new AlchemyServiceError('丹炉已开，道友稍候片刻', 429);
   }
 
   try {
-    const [formula, selectedMaterials, cultivator, fullCultivator] = await Promise.all([
-      loadCultivatorFormula(cultivatorId, formulaId),
-      loadOwnedMaterials(cultivatorId, materialIds),
-      getExecutor()
-        .select()
-        .from(cultivators)
-        .where(eq(cultivators.id, cultivatorId))
-        .limit(1)
-        .then((rows) => rows[0]),
-      getCultivatorByIdUnsafe(cultivatorId),
-    ]);
+    const [formula, selectedMaterials, cultivator, fullCultivator] =
+      await Promise.all([
+        loadCultivatorFormula(cultivatorId, formulaId),
+        loadOwnedMaterials(cultivatorId, materialIds),
+        getExecutor()
+          .select()
+          .from(cultivators)
+          .where(eq(cultivators.id, cultivatorId))
+          .limit(1)
+          .then((rows) => rows[0]),
+        getCultivatorByIdUnsafe(cultivatorId),
+      ]);
 
     if (!cultivator) {
       throw new AlchemyServiceError('道友查无此人', 404);
     }
 
-    const ingredients = buildPreparedIngredients(
+    const materialsList = buildPreparedMaterials(
       selectedMaterials,
       materialQuantities,
     );
-    const validation = validateFormulaIngredients(formula, ingredients);
+    const validation = validateFormulaIngredients(formula, materialsList);
     if (!validation.valid) {
       throw new AlchemyServiceError(validation.blockingReason || '丹方不合。');
     }
@@ -1026,8 +863,27 @@ export async function craftFromFormula(
       throw new AlchemyServiceError(`灵石不足，需要 ${cost} 枚`);
     }
 
-    const fitMultiplier = calculateFormulaFitMultiplier(formula, ingredients);
-    const dominantElement = chooseDominantElement(ingredients);
+    const recipePlan = await alchemyRecipePlanner.plan({
+      materials: materialsList,
+    });
+    const aggregated = aggregateAlchemyProperties(materialsList, recipePlan);
+    const fit = calculatePropertyVectorFit(
+      aggregated.rawPropertyVector,
+      formula.pattern.targetPropertyVector,
+    );
+    if (fit < FIT_BLOCK_THRESHOLD) {
+      throw new AlchemyServiceError(
+        '本炉药性与丹方偏差过大，强行开炉只会炸鼎。',
+      );
+    }
+
+    const dominantElement = aggregated.dominantElement;
+    const fitMultiplier = calculateFormulaFitMultiplier(
+      formula,
+      aggregated.rawPropertyVector,
+      dominantElement,
+      materialsList,
+    );
     const masteryBonusStability = formula.mastery.level * 2;
     const masteryBonusToxicity = formula.mastery.level;
     const spec: PillSpec = {
@@ -1039,12 +895,20 @@ export async function craftFromFormula(
         highestMaterialRank,
         cultivator.realm as RealmType,
       ),
-      consumeRules: formula.blueprint.consumeRules,
+      consumeRules: {
+        ...formula.blueprint.consumeRules,
+        quotaCategory: getQuotaCategoryForFamily(formula.family),
+      },
       alchemyMeta: {
         source: 'formula',
         formulaId: formula.id,
-        sourceMaterials: ingredients.map((ingredient) => ingredient.name),
-        dominantElement,
+        sourceMaterials: materialsList.map((material) => material.name),
+        analysisVersion: 2,
+        propertyVector: formula.pattern.targetPropertyVector,
+        sourceMaterialVectors: aggregated.sourceMaterialVectors,
+        fitScore: fit,
+        fitMultiplier,
+        dominantElement: formula.pattern.dominantElement ?? dominantElement,
         stability: clamp(
           formula.blueprint.targetStability + masteryBonusStability,
           15,
@@ -1055,12 +919,9 @@ export async function craftFromFormula(
           0,
           100,
         ),
-        tags: Array.from(
-          new Set([
-            ...formula.pattern.requiredTags,
-            ...(formula.pattern.optionalTags ?? []),
-            formula.family,
-          ]),
+        tags: buildAlchemyPropertyTags(
+          formula.pattern.targetPropertyVector,
+          formula.family,
         ),
       },
     };
@@ -1070,23 +931,10 @@ export async function craftFromFormula(
         : null;
     if (formula.family === 'breakthrough' && breakthroughTargetRealm) {
       spec.alchemyMeta.breakthroughTargetRealm = breakthroughTargetRealm;
-      spec.alchemyMeta.breakthroughLabel =
-        getBreakthroughPillLabel(breakthroughTargetRealm);
+      spec.alchemyMeta.breakthroughLabel = getBreakthroughPillLabel(
+        breakthroughTargetRealm,
+      );
     }
-    const generatedBatchDescription =
-      await alchemyNarrativeEnricher.generateFormulaBatchDescription({
-        formulaName: formula.name,
-        formulaDescription: formula.description,
-        family: formula.family,
-        dominantElement,
-        quality: highestMaterialRank,
-        materialNames: ingredients.map((ingredient) => ingredient.name),
-        operations: spec.operations,
-        fitMultiplier,
-        stability: spec.alchemyMeta.stability,
-        toxicityRating: spec.alchemyMeta.toxicityRating,
-        masteryLevel: formula.mastery.level,
-      });
     const consumable: Consumable = {
       name:
         formula.family === 'breakthrough' && breakthroughTargetRealm
@@ -1096,12 +944,12 @@ export async function craftFromFormula(
       quality: highestMaterialRank,
       quantity: 1,
       description:
-        generatedBatchDescription?.description ??
         buildFormulaDescription(
           formula,
-          ingredients.map((ingredient) => ingredient.name),
+          materialsList.map((material) => material.name),
           spec.alchemyMeta.stability,
           spec.alchemyMeta.toxicityRating,
+          fit,
           fitMultiplier,
         ),
       score: 0,
@@ -1114,18 +962,18 @@ export async function craftFromFormula(
     );
 
     await getExecutor().transaction(async (tx) => {
-      for (const ingredient of ingredients) {
-        const material = selectedMaterials.find((item) => item.id === ingredient.id);
-        if (!material) {
+      for (const material of materialsList) {
+        const row = selectedMaterials.find((item) => item.id === material.id);
+        if (!row) {
           throw new AlchemyServiceError('材料记录异常，无法扣除', 500);
         }
 
-        if (ingredient.dose >= material.quantity) {
+        if (material.dose >= row.quantity) {
           await tx.delete(materials).where(eq(materials.id, material.id));
         } else {
           await tx
             .update(materials)
-            .set({ quantity: material.quantity - ingredient.dose })
+            .set({ quantity: row.quantity - material.dose })
             .where(eq(materials.id, material.id));
         }
       }

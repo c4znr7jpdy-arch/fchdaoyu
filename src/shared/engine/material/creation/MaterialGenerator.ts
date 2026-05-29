@@ -17,10 +17,6 @@ import {
 } from './config';
 import { getFallbackMaterialPreset } from './fallbackPresets';
 import {
-  buildMaterialAlchemyProfile,
-  isAlchemyMaterialType,
-} from '@shared/lib/materialAlchemy';
-import {
   getMaterialGenerationPrompt,
   getMaterialGenerationUserPrompt,
 } from './prompts';
@@ -94,15 +90,6 @@ export class MaterialGenerator {
 
         // 计算价格
         const price = this.calculatePrice(skeleton.rank, skeleton.type);
-        const details = isAlchemyMaterialType(skeleton.type)
-          ? {
-              alchemyProfile: buildMaterialAlchemyProfile(
-                skeleton.type,
-                skeleton.rank,
-                finalElement,
-              ),
-            }
-          : undefined;
 
         return {
           name: aiData.name,
@@ -110,7 +97,6 @@ export class MaterialGenerator {
           rank: skeleton.rank,
           element: finalElement,
           description: aiData.description,
-          details,
           quantity: skeleton.quantity,
           price,
         };
@@ -134,15 +120,6 @@ export class MaterialGenerator {
         rank: skeleton.rank,
         element: finalElement,
         description: preset.description,
-        details: isAlchemyMaterialType(skeleton.type)
-          ? {
-              alchemyProfile: buildMaterialAlchemyProfile(
-                skeleton.type,
-                skeleton.rank,
-                finalElement,
-              ),
-            }
-          : undefined,
         quantity: skeleton.quantity,
         price: this.calculatePrice(skeleton.rank, skeleton.type),
       };

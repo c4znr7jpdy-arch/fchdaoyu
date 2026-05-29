@@ -11,12 +11,13 @@ const {
 }));
 
 vi.mock('@server/lib/hono/middleware', () => ({
-  requireActiveCultivator: () => async (context: any, next: () => Promise<void>) => {
-    context.set('cultivator', {
-      id: 'cultivator-1',
-    });
-    await next();
-  },
+  requireActiveCultivator:
+    () => async (context: any, next: () => Promise<void>) => {
+      context.set('cultivator', {
+        id: 'cultivator-1',
+      });
+      await next();
+    },
 }));
 
 vi.mock('@server/lib/services/AlchemyFormulaService', () => ({
@@ -46,7 +47,7 @@ describe('alchemy formulas router', () => {
         description: '此方偏于生机温养，主走木性回春之路。',
         family: 'healing',
         pattern: {
-          requiredTags: ['healing'],
+          targetPropertyVector: [{ key: 'restore_hp', weight: 0.62 }],
           slotCount: 1,
         },
         blueprint: {
@@ -95,7 +96,7 @@ describe('alchemy formulas router', () => {
         description: '此方偏于生机温养，主走木性回春之路。',
         family: 'healing',
         pattern: {
-          requiredTags: ['healing'],
+          targetPropertyVector: [{ key: 'restore_hp', weight: 0.62 }],
           slotCount: 1,
         },
         blueprint: {

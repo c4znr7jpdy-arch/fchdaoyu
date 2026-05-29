@@ -2,7 +2,7 @@
 
 import type { AbilityConfig } from '@shared/engine/creation-v2/contracts/battle';
 import type { AttributeModifierConfig } from '@shared/engine/battle-v5/core/configs';
-import type { ConsumableSpec, MaterialAlchemyProfile } from '@shared/types/consumable';
+import type { ConsumableSpec } from '@shared/types/consumable';
 import type { CultivatorCondition } from '@shared/types/condition';
 import type {
   ConsumableType,
@@ -211,7 +211,6 @@ export interface Consumable {
 }
 
 export interface MaterialDetails {
-  alchemyProfile?: MaterialAlchemyProfile;
   [key: string]: unknown;
 }
 

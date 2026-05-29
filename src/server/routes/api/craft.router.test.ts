@@ -1,15 +1,16 @@
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { Hono } from 'hono';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 vi.mock('@server/lib/hono/middleware', () => ({
-  requireActiveCultivator: () => async (context: any, next: () => Promise<void>) => {
-    context.set('user', { id: 'user-1' });
-    context.set('cultivator', {
-      id: 'cultivator-1',
-      spirit_stones: 50000,
-    });
-    await next();
-  },
+  requireActiveCultivator:
+    () => async (context: any, next: () => Promise<void>) => {
+      context.set('user', { id: 'user-1' });
+      context.set('cultivator', {
+        id: 'cultivator-1',
+        spirit_stones: 50000,
+      });
+      await next();
+    },
 }));
 
 vi.mock('@server/lib/services/creationServiceV2', () => ({
@@ -58,13 +59,13 @@ vi.mock('@server/lib/services/cultivatorService', () => ({
 }));
 
 import {
-  previewAlchemySelection,
-  processAlchemyCraft,
-} from '@server/lib/services/alchemyServiceV2';
-import {
   craftFromFormula,
   previewFormulaCraft,
 } from '@server/lib/services/AlchemyFormulaService';
+import {
+  previewAlchemySelection,
+  processAlchemyCraft,
+} from '@server/lib/services/alchemyServiceV2';
 import { getCultivatorById } from '@server/lib/services/cultivatorService';
 import { TaskService } from '@server/lib/services/TaskService';
 import craftRouter from './craft.router';
@@ -193,7 +194,12 @@ describe('craft router alchemy routes', () => {
           kind: 'pill',
           family: 'healing',
           operations: [
-            { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
+            {
+              type: 'restore_resource',
+              resource: 'hp',
+              mode: 'percent',
+              value: 0.12,
+            },
           ],
           consumeRules: {
             scene: 'out_of_battle_only',
@@ -202,9 +208,18 @@ describe('craft router alchemy routes', () => {
           alchemyMeta: {
             source: 'improvised',
             sourceMaterials: ['青岚草'],
+            analysisVersion: 2,
+            propertyVector: [{ key: 'restore_hp', weight: 0.64 }],
+            sourceMaterialVectors: [
+              {
+                materialRef: 'material_1',
+                materialName: '青岚草',
+                properties: [{ key: 'restore_hp', weight: 1 }],
+              },
+            ],
             stability: 68,
             toxicityRating: 6,
-            tags: ['healing'],
+            tags: ['restore_hp', 'healing'],
           },
         },
       },
@@ -214,7 +229,7 @@ describe('craft router alchemy routes', () => {
         description: '此方偏于生机温养，主走木性回春之路。',
         family: 'healing',
         discoveryRemark: '炉中药脉渐趋成环，这一路回春炉意已可留存。',
-        patternSummary: '主药性：疗伤；炉位：1 种材料',
+        patternSummary: '目标药性：补充气血 64%；炉位：1 种材料',
       },
     });
 
@@ -249,10 +264,14 @@ describe('craft router alchemy routes', () => {
         }),
       }),
     });
-    expect(processAlchemyCraftMock).toHaveBeenCalledWith('cultivator-1', ['m1'], {
-      materialQuantities: { m1: 2 },
-      userPrompt: '疗伤为主',
-    });
+    expect(processAlchemyCraftMock).toHaveBeenCalledWith(
+      'cultivator-1',
+      ['m1'],
+      {
+        materialQuantities: { m1: 2 },
+        userPrompt: '疗伤为主',
+      },
+    );
     expect(recordTaskEventMock).toHaveBeenCalledWith(
       'cultivator-1',
       'alchemy_crafted',
@@ -271,7 +290,12 @@ describe('craft router alchemy routes', () => {
           kind: 'pill',
           family: 'healing',
           operations: [
-            { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.126 },
+            {
+              type: 'restore_resource',
+              resource: 'hp',
+              mode: 'percent',
+              value: 0.126,
+            },
           ],
           consumeRules: {
             scene: 'out_of_battle_only',
@@ -281,9 +305,20 @@ describe('craft router alchemy routes', () => {
             source: 'formula',
             formulaId: '11111111-1111-4111-8111-111111111111',
             sourceMaterials: ['青岚草'],
+            analysisVersion: 2,
+            propertyVector: [{ key: 'restore_hp', weight: 0.64 }],
+            sourceMaterialVectors: [
+              {
+                materialRef: 'material_1',
+                materialName: '青岚草',
+                properties: [{ key: 'restore_hp', weight: 1 }],
+              },
+            ],
+            fitScore: 1,
+            fitMultiplier: 1.05,
             stability: 72,
             toxicityRating: 5,
-            tags: ['healing'],
+            tags: ['restore_hp', 'healing'],
           },
         },
       },

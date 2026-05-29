@@ -13,298 +13,281 @@ vi.mock('./cultivatorService', () => ({
   addConsumableToInventory: vi.fn(),
 }));
 
-import type { MaterialAlchemyProfile } from '@shared/types/consumable';
-import {
-  buildCultivationGain,
-  buildInsightGain,
-} from '@shared/lib/alchemyProgress';
-import type { PreparedAlchemyIngredient } from './alchemyServiceV2';
+import type { PreparedAlchemyMaterial } from './AlchemyRecipeRules';
 import { synthesizeAlchemy } from './alchemyServiceV2';
 
-function createProfile(
-  effectTags: MaterialAlchemyProfile['effectTags'],
-  overrides: Partial<Omit<MaterialAlchemyProfile, 'effectTags'>> = {},
-): MaterialAlchemyProfile {
-  return {
-    effectTags,
-    elementBias: '木',
-    potency: 26,
-    toxicity: 2,
-    stability: 72,
-    ...overrides,
-  };
-}
-
-function createIngredient(
-  overrides: Partial<PreparedAlchemyIngredient> & Pick<PreparedAlchemyIngredient, 'id' | 'name' | 'element' | 'type' | 'profile'>,
-): PreparedAlchemyIngredient {
+function createMaterial(
+  overrides: Partial<PreparedAlchemyMaterial> &
+    Pick<
+      PreparedAlchemyMaterial,
+      'id' | 'materialRef' | 'name' | 'description' | 'element' | 'type'
+    >,
+): PreparedAlchemyMaterial {
   return {
     id: overrides.id,
+    materialRef: overrides.materialRef,
     name: overrides.name,
-    rank: '真品',
+    description: overrides.description,
+    rank: overrides.rank ?? '真品',
     element: overrides.element,
     type: overrides.type,
     dose: overrides.dose ?? 1,
-    profile: overrides.profile,
   };
 }
 
 describe('synthesizeAlchemy', () => {
-  it('builds a hybrid pill when healing and mana stay close enough', () => {
+  it('keeps recovery materials on a healing route when both hp and wound healing are selected', () => {
     const result = synthesizeAlchemy(
       [
-        createIngredient({
+        createMaterial({
           id: 'm1',
-          name: '青岚草',
+          materialRef: 'material_1',
+          name: '回春草',
+          description: '叶脉温润，常用于补充气血与治愈伤口。',
           element: '木',
           type: 'herb',
-          profile: createProfile(['healing']),
-        }),
-        createIngredient({
-          id: 'm2',
-          name: '灵泉露',
-          element: '水',
-          type: 'herb',
-          profile: createProfile(['mana']),
         }),
       ],
       {
-        targetTags: ['healing', 'mana'],
-        focusMode: 'balanced',
-      },
-      '真品',
-      '金丹',
-    );
-
-    expect(result.family).toBe('hybrid');
-    expect(result.operations).toEqual([
-      { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.1328 },
-      { type: 'restore_resource', resource: 'mp', mode: 'percent', value: 0.0996 },
-      { type: 'change_gauge', gauge: 'pillToxicity', delta: 6 },
-    ]);
-  });
-
-  it('routes tempering pills to the strongest tempering track', () => {
-    const result = synthesizeAlchemy(
-      [
-        createIngredient({
-          id: 'm1',
-          name: '流炎玄矿',
-          element: '火',
-          type: 'ore',
-          profile: createProfile(['tempering_spirit']),
-        }),
-      ],
-      {
-        targetTags: ['tempering_spirit'],
-        focusMode: 'focused',
-      },
-      '真品',
-      '金丹',
-    );
-
-    expect(result.family).toBe('tempering');
-    expect(result.trackPath).toBe('tempering.spirit');
-    expect(result.operations[0]).toEqual({
-      type: 'advance_track',
-      track: 'tempering.spirit',
-      value: 66,
-    });
-  });
-
-  it('applies low-stability penalties to restore and toxicity operations', () => {
-    const result = synthesizeAlchemy(
-      [
-        createIngredient({
-          id: 'm1',
-          name: '裂火草',
-          element: '木',
-          type: 'herb',
-          profile: createProfile(['healing'], {
-            stability: 20,
-            toxicity: 6,
-          }),
-        }),
-        createIngredient({
-          id: 'm2',
-          name: '凝霜露',
-          element: '水',
-          type: 'herb',
-          profile: createProfile(['mana'], {
-            stability: 20,
-            toxicity: 7,
-          }),
-        }),
-        createIngredient({
-          id: 'm3',
-          name: '焚心藤',
-          element: '火',
-          type: 'herb',
-          profile: createProfile(['breakthrough'], {
-            stability: 20,
-            toxicity: 8,
-          }),
-        }),
-      ],
-      {
-        targetTags: ['healing'],
-        focusMode: 'risky',
-      },
-      '真品',
-      '金丹',
-    );
-
-    expect(result.family).toBe('healing');
-    expect(result.stability).toBe(15);
-    expect(result.operations).toEqual([
-      { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.1594 },
-      { type: 'change_gauge', gauge: 'pillToxicity', delta: 8 },
-      { type: 'remove_status', status: 'minor_wound' },
-    ]);
-  });
-
-  it('uses requested element bias as a tie-breaker within ten percent', () => {
-    const result = synthesizeAlchemy(
-      [
-        createIngredient({
-          id: 'm1',
-          name: '青岚草',
-          element: '木',
-          type: 'herb',
-          profile: createProfile(['healing'], {
-            potency: 100,
-          }),
-        }),
-        createIngredient({
-          id: 'm2',
-          name: '灵泉露',
-          element: '水',
-          type: 'herb',
-          profile: createProfile(['mana'], {
-            potency: 95,
-          }),
-        }),
-      ],
-      {
-        targetTags: ['healing'],
-        focusMode: 'focused',
-        requestedElementBias: '水',
-      },
-      '真品',
-      '金丹',
-    );
-
-    expect(result.dominantElement).toBe('水');
-  });
-
-  it('lets high-tier healing pills cure near-death', () => {
-    const result = synthesizeAlchemy(
-      [
-        createIngredient({
-          id: 'm1',
-          name: '青岚草',
-          element: '木',
-          type: 'herb',
-          profile: createProfile(['healing']),
-        }),
-      ],
-      {
-        targetTags: ['healing'],
-        focusMode: 'focused',
-      },
-      '天品',
-      '金丹',
-    );
-
-    expect(result.family).toBe('healing');
-    expect(result.operations).toEqual([
-      { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.252 },
-      { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
-      { type: 'remove_status', status: 'near_death' },
-    ]);
-  });
-
-  it('routes cultivation-tag ingredients into cultivation pills with progress gain', () => {
-    const result = synthesizeAlchemy(
-      [
-        createIngredient({
-          id: 'm1',
-          name: '金霞芝',
-          element: '金',
-          type: 'herb',
-          profile: createProfile(['cultivation']),
-        }),
-      ],
-      {
-        targetTags: ['cultivation'],
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '回春草',
+            properties: [
+              { key: 'restore_hp', weight: 0.6 },
+              { key: 'heal_wounds', weight: 0.4 },
+            ],
+          },
+        ],
+        intentVector: [
+          { key: 'restore_hp', weight: 0.5 },
+          { key: 'heal_wounds', weight: 0.5 },
+        ],
         focusMode: 'focused',
       },
       '真品',
       '筑基',
     );
 
-    expect(result.family).toBe('cultivation');
-    expect(result.operations).toEqual([
-      {
-        type: 'gain_progress',
-        target: 'cultivation_exp',
-        value: buildCultivationGain('筑基', '真品'),
-      },
-      { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
+    expect(result.family).toBe('healing');
+    expect(result.propertyVector.map((property) => property.key)).toEqual([
+      'restore_hp',
+      'heal_wounds',
     ]);
+    expect(result.operations).toContainEqual({
+      type: 'restore_resource',
+      resource: 'hp',
+      mode: 'percent',
+      value: 0.1992,
+    });
+    expect(result.operations).toContainEqual({
+      type: 'remove_status',
+      status: 'minor_wound',
+    });
   });
 
-  it('applies low-stability penalties to insight-pill progress gain', () => {
-    const result = synthesizeAlchemy(
-      [
-        createIngredient({
-          id: 'm1',
-          name: '寒魄晶',
-          element: '冰',
-          type: 'ore',
-          profile: createProfile(['insight'], {
-            stability: 20,
-            toxicity: 7,
-          }),
-        }),
-        createIngredient({
-          id: 'm2',
-          name: '浮风露',
-          element: '风',
-          type: 'aux',
-          profile: createProfile(['insight'], {
-            stability: 20,
-            toxicity: 5,
-          }),
-        }),
-        createIngredient({
-          id: 'm3',
-          name: '裂火藤',
-          element: '火',
-          type: 'herb',
-          profile: createProfile(['breakthrough'], {
-            stability: 20,
-            toxicity: 8,
-          }),
-        }),
-      ],
+  it('changes property vector and operations when the intent direction changes', () => {
+    const materials = [
+      createMaterial({
+        id: 'm1',
+        materialRef: 'material_1',
+        name: '青岚草',
+        description: '生机温润，可补充气血，也能温养灵息。',
+        element: '木',
+        type: 'herb',
+      }),
+      createMaterial({
+        id: 'm2',
+        materialRef: 'material_2',
+        name: '灵泉露',
+        description: '泉气清灵，常用于回元聚气。',
+        element: '水',
+        type: 'aux',
+      }),
+    ];
+
+    const healingResult = synthesizeAlchemy(
+      materials,
       {
-        targetTags: ['insight'],
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '青岚草',
+            properties: [
+              { key: 'restore_hp', weight: 0.55 },
+              { key: 'heal_wounds', weight: 0.45 },
+            ],
+          },
+          {
+            materialRef: 'material_2',
+            materialName: '灵泉露',
+            properties: [
+              { key: 'restore_mp', weight: 0.6 },
+              { key: 'detox', weight: 0.4 },
+            ],
+          },
+        ],
+        intentVector: [
+          { key: 'restore_hp', weight: 0.55 },
+          { key: 'heal_wounds', weight: 0.45 },
+        ],
         focusMode: 'focused',
       },
       '真品',
-      '金丹',
+      '筑基',
+    );
+    const manaResult = synthesizeAlchemy(
+      materials,
+      {
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '青岚草',
+            properties: [
+              { key: 'restore_hp', weight: 0.55 },
+              { key: 'heal_wounds', weight: 0.45 },
+            ],
+          },
+          {
+            materialRef: 'material_2',
+            materialName: '灵泉露',
+            properties: [
+              { key: 'restore_mp', weight: 0.6 },
+              { key: 'detox', weight: 0.4 },
+            ],
+          },
+        ],
+        intentVector: [{ key: 'restore_mp', weight: 1 }],
+        focusMode: 'focused',
+      },
+      '真品',
+      '筑基',
     );
 
-    expect(result.family).toBe('insight');
-    expect(result.stability).toBe(15);
-    expect(result.operations).toEqual([
+    expect(healingResult.propertyVector).not.toEqual(manaResult.propertyVector);
+    expect(healingResult.family).toBe('healing');
+    expect(manaResult.family).toBe('mana');
+    expect(healingResult.operations[0]).toMatchObject({
+      type: 'restore_resource',
+      resource: 'hp',
+    });
+    expect(manaResult.operations[0]).toMatchObject({
+      type: 'restore_resource',
+      resource: 'mp',
+    });
+  });
+
+  it('derives a hybrid family when hp and mp recovery stay close enough', () => {
+    const result = synthesizeAlchemy(
+      [
+        createMaterial({
+          id: 'm1',
+          materialRef: 'material_1',
+          name: '回春草',
+          description: '可补充气血。',
+          element: '木',
+          type: 'herb',
+        }),
+        createMaterial({
+          id: 'm2',
+          materialRef: 'material_2',
+          name: '灵泉露',
+          description: '可回元聚气。',
+          element: '水',
+          type: 'aux',
+        }),
+      ],
       {
-        type: 'gain_progress',
-        target: 'comprehension_insight',
-        value: Math.floor(buildInsightGain('真品') * 0.8),
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '回春草',
+            properties: [{ key: 'restore_hp', weight: 1 }],
+          },
+          {
+            materialRef: 'material_2',
+            materialName: '灵泉露',
+            properties: [{ key: 'restore_mp', weight: 1 }],
+          },
+        ],
+        intentVector: [
+          { key: 'restore_hp', weight: 0.5 },
+          { key: 'restore_mp', weight: 0.5 },
+        ],
+        focusMode: 'balanced',
       },
-      { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
-    ]);
+      '真品',
+      '筑基',
+    );
+
+    expect(result.family).toBe('hybrid');
+    expect(result.operations).toContainEqual({
+      type: 'restore_resource',
+      resource: 'hp',
+      mode: 'percent',
+      value: 0.1992,
+    });
+    expect(result.operations).toContainEqual({
+      type: 'restore_resource',
+      resource: 'mp',
+      mode: 'percent',
+      value: 0.1121,
+    });
+  });
+
+  it('lets risky focus change stability and toxicity without changing the selected properties', () => {
+    const materials = [
+      createMaterial({
+        id: 'm1',
+        materialRef: 'material_1',
+        name: '裂火藤',
+        description: '药性猛烈，却有一线护脉之机。',
+        element: '火',
+        type: 'monster',
+      }),
+    ];
+    const balancedResult = synthesizeAlchemy(
+      materials,
+      {
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '裂火藤',
+            properties: [{ key: 'breakthrough_support', weight: 1 }],
+          },
+        ],
+        intentVector: [{ key: 'breakthrough_support', weight: 1 }],
+        focusMode: 'balanced',
+      },
+      '真品',
+      '筑基',
+    );
+    const riskyResult = synthesizeAlchemy(
+      materials,
+      {
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '裂火藤',
+            properties: [{ key: 'breakthrough_support', weight: 1 }],
+          },
+        ],
+        intentVector: [{ key: 'breakthrough_support', weight: 1 }],
+        focusMode: 'risky',
+      },
+      '真品',
+      '筑基',
+    );
+
+    expect(riskyResult.propertyVector).toEqual(balancedResult.propertyVector);
+    expect(riskyResult.stability).toBeLessThan(balancedResult.stability);
+    expect(riskyResult.toxicityRating).toBeGreaterThan(
+      balancedResult.toxicityRating,
+    );
+    expect(riskyResult.operations).toContainEqual({
+      type: 'add_status',
+      status: 'breakthrough_focus',
+      usesRemaining: 1,
+    });
   });
 });

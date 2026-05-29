@@ -1,13 +1,9 @@
-import {
-  buildMaterialAlchemyProfile,
-  isAlchemyMaterialType,
-} from '@shared/lib/materialAlchemy';
 import type { Material } from '@shared/types/cultivator';
 import { describe, expect, it } from 'vitest';
 import { RewardFactory } from './RewardFactory';
 
 describe('RewardFactory', () => {
-  it('为副本产出的炼丹材料补齐药性画像', () => {
+  it('为副本产出的炼丹材料保留纯文本信息，不再写旧药性画像', () => {
     const [reward] = RewardFactory.materialize(
       [
         {
@@ -24,23 +20,11 @@ describe('RewardFactory', () => {
     expect(reward.type).toBe('material');
 
     const material = reward.data as Material;
-    expect(isAlchemyMaterialType(material.type)).toBe(true);
-    expect(material.details?.alchemyProfile).toBeDefined();
-
-    if (!isAlchemyMaterialType(material.type) || !material.element) {
-      throw new Error('expected alchemy material with element');
-    }
-
-    expect(material.details?.alchemyProfile).toEqual(
-      buildMaterialAlchemyProfile(
-        material.type,
-        material.rank,
-        material.element,
-      ),
-    );
+    expect(material.type).toBe('herb');
+    expect(material.details).toBeUndefined();
   });
 
-  it('为非炼丹材料保留空药性画像', () => {
+  it('为非炼丹材料仍保留空详情', () => {
     const [reward] = RewardFactory.materialize(
       [
         {

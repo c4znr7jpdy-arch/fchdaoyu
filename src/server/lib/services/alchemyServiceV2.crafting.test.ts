@@ -39,7 +39,7 @@ const {
             table &&
             typeof table === 'object' &&
             'rank' in table &&
-            'details' in table
+            'description' in table
           ) {
             return {
               where: async () => state.materialRows,
@@ -55,7 +55,8 @@ const {
             return {
               where() {
                 return {
-                  limit: async () => (state.cultivatorRow ? [state.cultivatorRow] : []),
+                  limit: async () =>
+                    state.cultivatorRow ? [state.cultivatorRow] : [],
                 };
               },
             };
@@ -145,23 +146,17 @@ describe('processAlchemyCraft narrative copy', () => {
         id: 'm1',
         cultivatorId: 'cultivator-1',
         name: '青岚草',
+        description: '草叶清润，常用于补充气血与治愈伤口。',
         rank: '真品',
         quantity: 1,
         element: '木',
         type: 'herb',
-        details: {
-          alchemyProfile: {
-            effectTags: ['healing'],
-            potency: 26,
-            toxicity: 2,
-            stability: 72,
-          },
-        },
       },
     ];
     executorState.cultivatorRow = {
       id: 'cultivator-1',
       userId: 'user-1',
+      realm: '筑基',
       spirit_stones: 50000,
     };
     executorState.consumableRows = [];
@@ -181,8 +176,21 @@ describe('processAlchemyCraft narrative copy', () => {
       description: '木气徐徐归拢，炉息温和，丹成后自有一缕生机护住受损经脉。',
     });
     const service = createAlchemyService({
-      resolve: vi.fn().mockResolvedValue({
-        targetTags: ['healing'],
+      plan: vi.fn().mockResolvedValue({
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '青岚草',
+            properties: [
+              { key: 'restore_hp', weight: 0.6 },
+              { key: 'heal_wounds', weight: 0.4 },
+            ],
+          },
+        ],
+        intentVector: [
+          { key: 'restore_hp', weight: 0.6 },
+          { key: 'heal_wounds', weight: 0.4 },
+        ],
         focusMode: 'focused',
       }),
     } as any);
@@ -199,17 +207,33 @@ describe('processAlchemyCraft narrative copy', () => {
       expect.objectContaining({
         family: 'healing',
         materialNames: ['青岚草'],
-        targetTags: ['healing'],
+        propertyVector: expect.arrayContaining([
+          expect.objectContaining({ key: 'restore_hp' }),
+          expect.objectContaining({ key: 'heal_wounds' }),
+        ]),
         userPrompt: '疗伤为主',
       }),
     );
   });
 
-  it('falls back to rule copy when llm copy is unavailable', async () => {
+  it('falls back to non-family-based copy when llm naming is unavailable', async () => {
     generateImprovisedPillCopyMock.mockResolvedValueOnce(null);
     const service = createAlchemyService({
-      resolve: vi.fn().mockResolvedValue({
-        targetTags: ['healing'],
+      plan: vi.fn().mockResolvedValue({
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '青岚草',
+            properties: [
+              { key: 'restore_hp', weight: 0.6 },
+              { key: 'heal_wounds', weight: 0.4 },
+            ],
+          },
+        ],
+        intentVector: [
+          { key: 'restore_hp', weight: 0.6 },
+          { key: 'heal_wounds', weight: 0.4 },
+        ],
         focusMode: 'focused',
       }),
     } as any);
@@ -218,8 +242,42 @@ describe('processAlchemyCraft narrative copy', () => {
       userPrompt: '疗伤为主',
     });
 
-    expect(result.consumable.name).toBe('青木疗伤丹');
-    expect(result.consumable.description).toContain('以青岚草熔炼而成');
+    expect(result.consumable.name).toBe('青木青岚草丹');
     expect(result.consumable.description).toContain('丹意取向「疗伤为主」');
+    expect(result.consumable.description).toContain(
+      '药性归于补充气血 63%、治愈伤势 37%',
+    );
+  });
+
+  it('uses one planner call and one naming call for improvised crafting', async () => {
+    const planMock = vi.fn().mockResolvedValue({
+      materialVectors: [
+        {
+          materialRef: 'material_1',
+          materialName: '青岚草',
+          properties: [
+            { key: 'restore_hp', weight: 0.6 },
+            { key: 'heal_wounds', weight: 0.4 },
+          ],
+        },
+      ],
+      intentVector: [
+        { key: 'restore_hp', weight: 0.6 },
+        { key: 'heal_wounds', weight: 0.4 },
+      ],
+      focusMode: 'focused',
+    });
+    generateImprovisedPillCopyMock.mockResolvedValueOnce({
+      name: '回春散',
+      description: '木气徐徐归拢，炉息温和，丹成后自有一缕生机护住受损经脉。',
+    });
+    const service = createAlchemyService({ plan: planMock } as any);
+
+    await service.processAlchemyCraft('cultivator-1', ['m1'], {
+      userPrompt: '疗伤为主',
+    });
+
+    expect(planMock).toHaveBeenCalledTimes(1);
+    expect(generateImprovisedPillCopyMock).toHaveBeenCalledTimes(1);
   });
 });
