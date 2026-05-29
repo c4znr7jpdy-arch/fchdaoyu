@@ -733,6 +733,25 @@ export async function listCultivatorFormulas(
   return rows.map(mapAlchemyFormulaRow);
 }
 
+export async function deleteCultivatorFormula(
+  cultivatorId: string,
+  formulaId: string,
+): Promise<void> {
+  const deletedRows = await getExecutor()
+    .delete(alchemyFormulas)
+    .where(
+      and(
+        eq(alchemyFormulas.id, formulaId),
+        eq(alchemyFormulas.cultivatorId, cultivatorId),
+      ),
+    )
+    .returning();
+
+  if (deletedRows.length === 0) {
+    throw new AlchemyServiceError('未找到这份丹方。', 404);
+  }
+}
+
 export async function buildDiscoveryCandidate(
   cultivatorId: string,
   context: DiscoveryContext,

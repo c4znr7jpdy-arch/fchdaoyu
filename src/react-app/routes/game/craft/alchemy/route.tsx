@@ -245,16 +245,12 @@ export function FormulaNarrativeBlock({
 
 export function AlchemyFormulaSummaryCard({
   formula,
-  isDeleting,
-  onDelete,
 }: {
   formula: AlchemyFormula;
-  isDeleting: boolean;
-  onDelete: () => void;
 }) {
   return (
     <InkCard variant="elevated" padding="lg">
-      <div className="space-y-3 text-sm">
+      <div className="space-y-2 text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-base font-semibold">{formula.name}</span>
           <InkBadge tone="default">
@@ -265,18 +261,71 @@ export function AlchemyFormulaSummaryCard({
           </InkBadge>
         </div>
         <FormulaNarrativeBlock formula={formula} showMasteryExp />
-        <InkActionGroup align="right">
+      </div>
+    </InkCard>
+  );
+}
+
+export function AlchemyFormulaListItem({
+  formula,
+  isActive,
+  isDeleting,
+  onSelect,
+  onDelete,
+}: {
+  formula: AlchemyFormula;
+  isActive: boolean;
+  isDeleting: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+      className={cn(
+        'w-full border px-3 py-3 text-left transition-colors',
+        isActive
+          ? 'border-crimson bg-crimson/5'
+          : 'border-ink/10 hover:border-ink/30',
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold">{formula.name}</span>
+            <InkBadge tone="default">
+              {getPillFamilyLabel(formula.family)}
+            </InkBadge>
+            <InkBadge tone="accent">
+              {`Lv.${formula.mastery.level}`}
+            </InkBadge>
+          </div>
+          <FormulaNarrativeBlock formula={formula} />
+        </div>
+        <div
+          className="shrink-0"
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
+        >
           <InkButton
             variant="ghost"
             onClick={onDelete}
             disabled={isDeleting}
-            className="text-crimson hover:text-crimson/80"
+            className="w-[7em] justify-center text-crimson hover:text-crimson/80"
           >
-            {isDeleting ? '删除中……' : '删除丹方'}
+            {isDeleting ? '删除中……' : '删除'}
           </InkButton>
-        </InkActionGroup>
+        </div>
       </div>
-    </InkCard>
+    </div>
   );
 }
 
@@ -1030,28 +1079,14 @@ export default function AlchemyPage() {
               {formulas.map((formula) => {
                 const isActive = formula.id === selectedFormulaId;
                 return (
-                  <button
+                  <AlchemyFormulaListItem
                     key={formula.id}
-                    type="button"
-                    onClick={() => setSelectedFormulaId(formula.id)}
-                    className={cn(
-                      'w-full border px-3 py-3 text-left transition-colors',
-                      isActive
-                        ? 'border-crimson bg-crimson/5'
-                        : 'border-ink/10 hover:border-ink/30',
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold">{formula.name}</span>
-                      <InkBadge tone="default">
-                        {getPillFamilyLabel(formula.family)}
-                      </InkBadge>
-                      <InkBadge tone="accent">
-                        {`Lv.${formula.mastery.level}`}
-                      </InkBadge>
-                    </div>
-                    <FormulaNarrativeBlock formula={formula} />
-                  </button>
+                    formula={formula}
+                    isActive={isActive}
+                    isDeleting={isDeletingFormula}
+                    onSelect={() => setSelectedFormulaId(formula.id)}
+                    onDelete={() => openDeleteFormulaConfirm(formula)}
+                  />
                 );
               })}
             </div>
@@ -1108,11 +1143,7 @@ export default function AlchemyPage() {
       ) : (
         <GameSceneSection title="丹方摘要">
           {selectedFormula ? (
-            <AlchemyFormulaSummaryCard
-              formula={selectedFormula}
-              isDeleting={isDeletingFormula}
-              onDelete={() => openDeleteFormulaConfirm(selectedFormula)}
-            />
+            <AlchemyFormulaSummaryCard formula={selectedFormula} />
           ) : (
             <InkNotice tone="info">
               先从上方选定一份丹方，再安排炉材。

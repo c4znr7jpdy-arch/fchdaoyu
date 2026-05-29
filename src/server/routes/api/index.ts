@@ -23,17 +23,31 @@ import tasksRouter from '@server/routes/api/tasks.router';
 import towerRouter from '@server/routes/api/tower.router';
 import worldChatRouter from '@server/routes/api/world-chat.router';
 import type { AppEnv } from '@server/lib/hono/types';
+import { getRedisHealthStatus } from '@server/lib/redis';
 import playerRouter from '@server/routes/player.router';
 import { Hono } from 'hono';
 
 const apiRouter = new Hono<AppEnv>();
 
-apiRouter.get('/health-check', (c) =>
-  c.json({
+apiRouter.get('/health-check', async (c) => {
+  const redis = await getRedisHealthStatus();
+  if (redis === 'down') {
+    return c.json(
+      {
+        success: false,
+        error: 'Redis unavailable',
+        redis,
+      },
+      503,
+    );
+  }
+
+  return c.json({
     success: true,
     message: 'OK',
-  }),
-);
+    redis,
+  });
+});
 
 apiRouter.route('/player', playerRouter);
 apiRouter.route('/admin', adminRouter);

@@ -10,6 +10,7 @@ const {
   const state = {
     selectRows: [] as any[],
     txExistingRows: [] as any[],
+    deletedRows: [] as any[],
     insertedRow: null as any,
     insertedValues: null as any,
   };
@@ -54,6 +55,15 @@ const {
                 limit: async () => state.selectRows,
               };
             },
+          };
+        },
+      };
+    },
+    delete() {
+      return {
+        where() {
+          return {
+            returning: async () => state.deletedRows,
           };
         },
       };
@@ -103,6 +113,7 @@ import {
   buildFormulaSignature,
   calculateFormulaFitMultiplier,
   confirmDiscoveryCandidate,
+  deleteCultivatorFormula,
 } from './AlchemyFormulaService';
 
 function createFormula(
@@ -176,6 +187,7 @@ describe('AlchemyFormulaService', () => {
   beforeEach(() => {
     executorState.selectRows = [];
     executorState.txExistingRows = [];
+    executorState.deletedRows = [];
     executorState.insertedRow = null;
     executorState.insertedValues = null;
     redisSetMock.mockReset();
@@ -471,5 +483,34 @@ describe('AlchemyFormulaService', () => {
     expect(result).toEqual({ saved: false });
     expect(executorState.insertedValues).toBeNull();
     expect(redisDelMock).toHaveBeenCalled();
+  });
+
+  it('deletes an owned formula', async () => {
+    executorState.deletedRows = [
+      {
+        id: '11111111-1111-1111-1111-111111111111',
+      },
+    ];
+
+    await expect(
+      deleteCultivatorFormula(
+        'cultivator-1',
+        '11111111-1111-1111-1111-111111111111',
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it('throws when deleting a missing formula', async () => {
+    executorState.deletedRows = [];
+
+    await expect(
+      deleteCultivatorFormula(
+        'cultivator-1',
+        '11111111-1111-1111-1111-111111111111',
+      ),
+    ).rejects.toMatchObject({
+      message: '未找到这份丹方。',
+      status: 404,
+    });
   });
 });

@@ -316,6 +316,66 @@ describe('战斗引擎 V5 原子效果全量回归验证 (最终回归版)', () 
     expect(damageRequests[0].damageSource).not.toBe(DamageSource.REFLECT);
   });
 
+  it('6. 验证【眩晕自动 tick】：被控单位应在跳过回合后自然恢复行动', () => {
+    const attacker = createTestUnit('attacker', '雷震霄', {
+      [AttributeType.SPEED]: 200,
+      [AttributeType.VITALITY]: 120,
+    });
+    const defender = createTestUnit('defender', '霜无痕', {
+      [AttributeType.SPEED]: 0,
+      [AttributeType.VITALITY]: 180,
+    });
+
+    const stunBuffCfg: BuffConfig = {
+      id: 'battle_stun',
+      name: '眩晕',
+      type: BuffType.CONTROL,
+      duration: 2,
+      stackRule: 'override',
+      tags: [
+        GameplayTags.BUFF.TYPE.DEBUFF,
+        GameplayTags.BUFF.TYPE.CONTROL,
+      ],
+      statusTags: [GameplayTags.STATUS.CONTROL.STUNNED],
+    };
+
+    attacker.abilities.addAbility(
+      AbilityFactory.create({
+        slug: 'thunder_strike',
+        name: '天劫雷罚',
+        type: AbilityType.ACTIVE_SKILL,
+        priority: 100,
+        cooldown: 99,
+        tags: [
+          GameplayTags.ABILITY.KIND.SKILL,
+          GameplayTags.ABILITY.FUNCTION.CONTROL,
+        ],
+        targetPolicy: { team: 'enemy', scope: 'single' },
+        effects: [{ type: 'apply_buff', params: { buffConfig: stunBuffCfg } }],
+      }),
+    );
+
+    const engine = new BattleEngineV5(attacker, defender);
+    const result = engine.execute();
+
+    console.log(
+      '--- 测试【眩晕自动 tick】：被控单位应在跳过回合后自然恢复行动 ---',
+    );
+    console.log(result.logs.join('\n'));
+
+    const stunnedSkipLogs = result.logs.filter((log) =>
+      log.includes('「霜无痕」陷入眩晕，本回合无法行动'),
+    );
+
+    expect(stunnedSkipLogs).toHaveLength(2);
+    expect(result.logs).toContain('「霜无痕」身上的「眩晕」时效已过');
+    expect(
+      result.logs.some((log) =>
+        log.startsWith('「霜无痕」发起攻击，对「雷震霄」造成'),
+      ),
+    ).toBe(true);
+  });
+
   it('2. 验证【伤害免疫优先于魔法盾】：执行顺序与零伤害处理', () => {
     const attacker = createTestUnit('attacker', '进攻者', {
       [AttributeType.SPIRIT]: 300,

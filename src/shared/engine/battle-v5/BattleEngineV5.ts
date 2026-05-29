@@ -198,17 +198,15 @@ export class BattleEngineV5 {
       if (!actor.isAlive()) continue;
       // ===== 控制状态检查 =====
       // 禁行动：包括紧傅标签（向后兼容）和新式 NO_ACTION 标签
-      const hasControlTag = actor.tags.hasAnyTag([
-        GameplayTags.STATUS.CONTROL.NO_ACTION,
-        GameplayTags.STATUS.CONTROL.STUNNED,
-      ]);
-      if (hasControlTag) {
+      const controlTag = this.getSkipControlTag(actor);
+      if (controlTag) {
         this._eventBus.publish<ControlledSkipEvent>({
           type: 'ControlledSkipEvent',
           timestamp: Date.now(),
           unit: actor,
-          controlTag: GameplayTags.STATUS.CONTROL.NO_ACTION,
+          controlTag,
         });
+        this.finalizeActorTurn(actor);
         continue;
       }
       // 设置当前出手单位
@@ -233,28 +231,44 @@ export class BattleEngineV5 {
       // 清除当前出手单位
       this._stateMachine.clearCurrentCaster();
 
-      // 发布行动后置事件（Buff 过期处理阶段开始）
-      this._eventBus.publish<ActionPostEvent>({
-        type: 'ActionPostEvent',
-        timestamp: Date.now(),
-        caster: actor,
-      });
-
-      // 处理 Buff 过期
-      this.processBuffs(actor);
-
-      // 更新技能冷却
-      actor.abilities.tickAbilitiesCooldown();
-
-      // action_post 帧：技能执行 + Buff 过期 + CD 刷新全部完成后
-      this._stateRecorder.record(
-        'action_post',
-        this.getContext().turn,
-        [this._player, this._opponent],
-        actor.id,
-        this._logSystem.getActiveSpanId(),
-      );
+      this.finalizeActorTurn(actor);
     }
+  }
+
+  private getSkipControlTag(actor: Unit): string | null {
+    if (actor.tags.hasTag(GameplayTags.STATUS.CONTROL.STUNNED)) {
+      return GameplayTags.STATUS.CONTROL.STUNNED;
+    }
+
+    if (actor.tags.hasTag(GameplayTags.STATUS.CONTROL.NO_ACTION)) {
+      return GameplayTags.STATUS.CONTROL.NO_ACTION;
+    }
+
+    return null;
+  }
+
+  private finalizeActorTurn(actor: Unit): void {
+    // 发布行动后置事件（Buff 过期处理阶段开始）
+    this._eventBus.publish<ActionPostEvent>({
+      type: 'ActionPostEvent',
+      timestamp: Date.now(),
+      caster: actor,
+    });
+
+    // 处理 Buff 过期
+    this.processBuffs(actor);
+
+    // 更新技能冷却
+    actor.abilities.tickAbilitiesCooldown();
+
+    // action_post 帧：技能执行 + Buff 过期 + CD 刷新全部完成后
+    this._stateRecorder.record(
+      'action_post',
+      this.getContext().turn,
+      [this._player, this._opponent],
+      actor.id,
+      this._logSystem.getActiveSpanId(),
+    );
   }
 
   /**

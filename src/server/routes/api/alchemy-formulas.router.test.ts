@@ -2,9 +2,11 @@ import { Hono } from 'hono';
 
 const {
   confirmDiscoveryCandidateMock,
+  deleteCultivatorFormulaMock,
   listCultivatorFormulasMock,
 } = vi.hoisted(() => ({
   confirmDiscoveryCandidateMock: vi.fn(),
+  deleteCultivatorFormulaMock: vi.fn(),
   listCultivatorFormulasMock: vi.fn(),
 }));
 
@@ -19,9 +21,11 @@ vi.mock('@server/lib/hono/middleware', () => ({
 
 vi.mock('@server/lib/services/AlchemyFormulaService', () => ({
   confirmDiscoveryCandidate: confirmDiscoveryCandidateMock,
+  deleteCultivatorFormula: deleteCultivatorFormulaMock,
   listCultivatorFormulas: listCultivatorFormulasMock,
 }));
 
+import { AlchemyServiceError } from '@server/lib/services/AlchemyServiceError';
 import router from './alchemy-formulas.router';
 
 function createApp() {
@@ -143,5 +147,44 @@ describe('alchemy formulas router', () => {
       '11111111-1111-4111-8111-111111111111',
       true,
     );
+  });
+
+  it('deletes a cultivator formula via DELETE /api/alchemy/formulas/:formulaId', async () => {
+    deleteCultivatorFormulaMock.mockResolvedValueOnce(undefined);
+
+    const response = await createApp().request(
+      '/api/alchemy/formulas/11111111-1111-4111-8111-111111111111',
+      {
+        method: 'DELETE',
+      },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      message: '丹方已删除',
+    });
+    expect(deleteCultivatorFormulaMock).toHaveBeenCalledWith(
+      'cultivator-1',
+      '11111111-1111-4111-8111-111111111111',
+    );
+  });
+
+  it('surfaces formula deletion errors from the service layer', async () => {
+    deleteCultivatorFormulaMock.mockRejectedValueOnce(
+      new AlchemyServiceError('未找到这份丹方。', 404),
+    );
+
+    const response = await createApp().request(
+      '/api/alchemy/formulas/11111111-1111-4111-8111-111111111111',
+      {
+        method: 'DELETE',
+      },
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      error: '未找到这份丹方。',
+    });
   });
 });
