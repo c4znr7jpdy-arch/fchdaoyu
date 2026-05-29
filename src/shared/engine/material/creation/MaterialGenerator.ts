@@ -158,7 +158,11 @@ export class MaterialGenerator {
     for (let i = 0; i < count; i++) {
       // 1. 确定品质
       const rank =
-        options.guaranteedRank || this.randomQuality(options.rankRange);
+        options.guaranteedRank ||
+        this.randomQuality({
+          qualityChanceMap: options.qualityChanceMap,
+          rankRange: options.rankRange,
+        });
 
       // 2. 确定类型
       const type = options.specifiedType || this.randomType(options.regionTags);
@@ -179,8 +183,13 @@ export class MaterialGenerator {
   }
 
   private static randomQuality(
-    rankRange?: MaterialRandomOptions['rankRange'],
+    options: Pick<MaterialRandomOptions, 'qualityChanceMap' | 'rankRange'> = {},
   ): Quality {
+    if (options.qualityChanceMap) {
+      return this.rollQualityByChanceMap(options.qualityChanceMap);
+    }
+
+    const { rankRange } = options;
     if (rankRange) {
       const minRank = QUALITY_TO_RANK[rankRange.min];
       const maxRank = QUALITY_TO_RANK[rankRange.max];
@@ -192,10 +201,16 @@ export class MaterialGenerator {
       return RANK_TO_QUALITY[roll];
     }
 
+    return this.rollQualityByChanceMap(QUALITY_CHANCE_MAP);
+  }
+
+  private static rollQualityByChanceMap(
+    qualityChanceMap: Record<Quality, number>,
+  ): Quality {
     const rand = Math.random();
     let accumulated = 0;
     for (const quality of QUALITY_VALUES) {
-      accumulated += QUALITY_CHANCE_MAP[quality];
+      accumulated += qualityChanceMap[quality] || 0;
       if (rand <= accumulated) return quality;
     }
     return '凡品';

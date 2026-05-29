@@ -27,6 +27,9 @@ vi.mock('@server/lib/hono/middleware', () => ({
 vi.mock('@server/lib/hono/response', () => ({
   jsonWithStatus: (context: any, body: unknown, status: number) =>
     context.json(body, status),
+}));
+
+vi.mock('@server/lib/http/response', () => ({
   runDetached: vi.fn(),
 }));
 
@@ -128,7 +131,9 @@ vi.mock('@shared/engine/cultivation/CultivationEngine', () => ({
 }));
 
 vi.mock('@shared/engine/material/creation/MaterialGenerator', () => ({
-  MaterialGenerator: class MaterialGenerator {},
+  MaterialGenerator: {
+    generateRandom: vi.fn(),
+  },
 }));
 
 vi.mock('@shared/engine/resource/ResourceEngine', () => ({
@@ -141,12 +146,15 @@ vi.mock('@shared/engine/yield/YieldCalculator', () => ({
   YieldCalculator: {
     calculateYield: vi.fn(),
     calculateMaterialCount: vi.fn(),
+    getMaterialQualityChanceMap: vi.fn(),
   },
 }));
 
 import { getExecutor } from '@server/lib/drizzle/db';
+import { runDetached } from '@server/lib/http/response';
 import { consumeLifespanAndHandleDepletion } from '@server/lib/lifespan/handleLifespan';
 import { renderPrompt } from '@server/lib/prompts';
+import { redis } from '@server/lib/redis';
 import { getLifespanLimiter } from '@server/lib/redis/lifespanLimiter';
 import { InnRecoveryService } from '@server/lib/services/InnRecoveryService';
 import { PillOperationExecutor } from '@server/lib/services/PillOperationExecutor';
@@ -162,12 +170,17 @@ import {
   attemptBreakthrough,
   performCultivation,
 } from '@shared/engine/cultivation/CultivationEngine';
+import { MaterialGenerator } from '@shared/engine/material/creation/MaterialGenerator';
+import { YieldCalculator } from '@shared/engine/yield/YieldCalculator';
 import cultivatorRouter from './cultivator.router';
 
 const getExecutorMock = getExecutor as unknown as Mock;
+const runDetachedMock = runDetached as unknown as Mock;
 const consumeLifespanAndHandleDepletionMock =
   consumeLifespanAndHandleDepletion as unknown as Mock;
 const renderPromptMock = renderPrompt as unknown as Mock;
+const redisSetMock = redis.set as unknown as Mock;
+const redisDelMock = redis.del as unknown as Mock;
 const getLifespanLimiterMock = getLifespanLimiter as unknown as Mock;
 const buildRecoveryResultMock =
   InnRecoveryService.buildRecoveryResult as unknown as Mock;
@@ -183,6 +196,13 @@ const updateCultivatorMock = updateCultivator as unknown as Mock;
 const streamTextMock = stream_text as unknown as Mock;
 const attemptBreakthroughMock = attemptBreakthrough as unknown as Mock;
 const performCultivationMock = performCultivation as unknown as Mock;
+const generateRandomMaterialsMock =
+  MaterialGenerator.generateRandom as unknown as Mock;
+const calculateYieldMock = YieldCalculator.calculateYield as unknown as Mock;
+const calculateMaterialCountMock =
+  YieldCalculator.calculateMaterialCount as unknown as Mock;
+const getMaterialQualityChanceMapMock =
+  YieldCalculator.getMaterialQualityChanceMap as unknown as Mock;
 
 function createApp() {
   return new Hono().route('/api/cultivator', cultivatorRouter);
@@ -316,6 +336,95 @@ function parseSseEvents(raw: string): RetreatStreamEvent[] {
     .filter(Boolean)
     .map((payload) => JSON.parse(payload) as RetreatStreamEvent);
 }
+
+describe('cultivator yield route', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    getExecutorMock.mockReturnValue({
+      transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({}),
+    } as any);
+    redisSetMock.mockResolvedValue('OK');
+    redisDelMock.mockResolvedValue(1);
+    renderPromptMock.mockReturnValue({
+      system: 'system prompt',
+      user: 'user prompt',
+    });
+    streamTextMock.mockReturnValue(createTextStream('福缘乍现，', '清光落袖。'));
+    runDetachedMock.mockImplementation(() => undefined);
+  });
+
+  it('passes realm-based quality chances to material generation', async () => {
+    const cultivator = {
+      ...createCultivator(),
+      realm: '元婴',
+      last_yield_at: new Date(Date.now() - 6 * 60 * 60 * 1000),
+    };
+    const qualityChanceMap = {
+      凡品: 0.18,
+      灵品: 0.24,
+      玄品: 0.23,
+      真品: 0.16,
+      地品: 0.12,
+      天品: 0.06,
+      仙品: 0.01,
+      神品: 0,
+    };
+
+    getCultivatorByIdMock.mockResolvedValue(cultivator);
+    calculateYieldMock.mockReturnValue([
+      { type: 'spirit_stones', value: 1200 },
+      { type: 'cultivation_exp', value: 80 },
+    ]);
+    calculateMaterialCountMock.mockReturnValue(2);
+    getMaterialQualityChanceMapMock.mockReturnValue(qualityChanceMap);
+    generateRandomMaterialsMock.mockResolvedValue([
+      {
+        name: '寒髓晶',
+        type: 'ore',
+        rank: '天品',
+        element: '水',
+        description: '寒气凝髓，晶光自敛。',
+        quantity: 1,
+        price: 50000,
+      },
+    ]);
+
+    const response = await createApp().request('/api/cultivator/yield', {
+      method: 'POST',
+    });
+
+    expect(response.status).toBe(200);
+    const events = parseSseEvents(await response.text()) as any[];
+    expect(events[0]).toEqual({
+      type: 'result',
+      data: expect.objectContaining({
+        cultivatorRealm: '元婴',
+        amount: 1200,
+        expGain: 80,
+        materialCount: 2,
+      }),
+    });
+    expect(events.slice(1)).toEqual([
+      { type: 'chunk', text: '福缘乍现，' },
+      { type: 'chunk', text: '清光落袖。' },
+    ]);
+
+    expect(runDetachedMock).toHaveBeenCalledTimes(1);
+    const detachedTask = runDetachedMock.mock.calls[0]?.[0] as
+      | (() => Promise<void>)
+      | undefined;
+    expect(detachedTask).toBeTypeOf('function');
+
+    await detachedTask?.();
+
+    expect(getMaterialQualityChanceMapMock).toHaveBeenCalledWith('元婴');
+    expect(generateRandomMaterialsMock).toHaveBeenCalledWith(2, {
+      qualityChanceMap,
+    });
+  });
+});
 
 describe('cultivator retreat route', () => {
   let limiterMocks: ReturnType<typeof createLimiterMocks>;

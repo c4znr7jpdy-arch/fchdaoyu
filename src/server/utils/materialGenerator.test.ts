@@ -50,4 +50,64 @@ describe('MaterialGenerator', () => {
       toxicity: 8,
     });
   });
+
+  it('prefers qualityChanceMap over the global quality table', async () => {
+    const randomSpy = vi
+      .spyOn(Math, 'random')
+      .mockReturnValueOnce(0.95)
+      .mockReturnValueOnce(0);
+    objectArrayMock.mockResolvedValueOnce({
+      object: [
+        {
+          name: '凝露砂',
+          description: '砂粒细润，内藏微薄灵机。',
+          element: '水',
+        },
+      ],
+    });
+
+    const materials = await MaterialGenerator.generateRandom(1, {
+      specifiedType: 'ore',
+      qualityChanceMap: {
+        凡品: 0,
+        灵品: 1,
+        玄品: 0,
+        真品: 0,
+        地品: 0,
+        天品: 0,
+        仙品: 0,
+        神品: 0,
+      },
+    });
+
+    expect(materials[0]?.rank).toBe('灵品');
+    randomSpy.mockRestore();
+  });
+
+  it('keeps rankRange behavior when no qualityChanceMap is provided', async () => {
+    const randomSpy = vi
+      .spyOn(Math, 'random')
+      .mockReturnValueOnce(0.8)
+      .mockReturnValueOnce(0);
+    objectArrayMock.mockResolvedValueOnce({
+      object: [
+        {
+          name: '镇岳石',
+          description: '石纹厚重，常见于灵脉深处。',
+          element: '土',
+        },
+      ],
+    });
+
+    const materials = await MaterialGenerator.generateRandom(1, {
+      specifiedType: 'ore',
+      rankRange: {
+        min: '玄品',
+        max: '地品',
+      },
+    });
+
+    expect(materials[0]?.rank).toBe('地品');
+    randomSpy.mockRestore();
+  });
 });

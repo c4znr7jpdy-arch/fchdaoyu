@@ -1021,8 +1021,13 @@ router.post('/yield', requireActiveCultivator(), async (c) => {
           console.log(
             `[Yield] 开始异步生成材料: cultivatorId=${cultivatorId}, count=${materialCount}`,
           );
-          const generatedMaterials =
-            await MaterialGenerator.generateRandom(materialCount);
+          const generatedMaterials = await MaterialGenerator.generateRandom(
+            materialCount,
+            {
+              qualityChanceMap:
+                YieldCalculator.getMaterialQualityChanceMap(realm),
+            },
+          );
           console.log(
             `[Yield] 材料生成完成: ${generatedMaterials.map((material) => `${material.rank}${material.name}`).join(', ')}`,
           );

@@ -45,6 +45,7 @@ export interface MaterialRandomOptions {
   specifiedType?: MaterialType; // 指定类型（可选）
   specifiedElement?: ElementType; // 指定元素（可选）
   regionTags?: string[]; // 区域标签（用于加权）
+  qualityChanceMap?: Record<Quality, number>; // 指定品质权重（可选）
   rankRange?: {
     min: Quality;
     max: Quality;

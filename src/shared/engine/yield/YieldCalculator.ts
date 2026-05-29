@@ -1,7 +1,107 @@
 import { calculateCultivationExp } from '@server/utils/cultivationUtils';
 import type { ResourceOperation } from '@shared/engine/resource/types';
-import { REALM_YIELD_RATES, RealmType } from '@shared/types/constants';
+import {
+  REALM_YIELD_RATES,
+  type Quality,
+  type RealmType,
+} from '@shared/types/constants';
 import type { Cultivator } from '@shared/types/cultivator';
+
+export const YIELD_MATERIAL_QUALITY_CHANCE_BY_REALM: Record<
+  RealmType,
+  Record<Quality, number>
+> = {
+  炼气: {
+    凡品: 0.45,
+    灵品: 0.3,
+    玄品: 0.18,
+    真品: 0.06,
+    地品: 0.01,
+    天品: 0,
+    仙品: 0,
+    神品: 0,
+  },
+  筑基: {
+    凡品: 0.35,
+    灵品: 0.3,
+    玄品: 0.2,
+    真品: 0.1,
+    地品: 0.05,
+    天品: 0,
+    仙品: 0,
+    神品: 0,
+  },
+  金丹: {
+    凡品: 0.25,
+    灵品: 0.28,
+    玄品: 0.22,
+    真品: 0.14,
+    地品: 0.09,
+    天品: 0.02,
+    仙品: 0,
+    神品: 0,
+  },
+  元婴: {
+    凡品: 0.18,
+    灵品: 0.24,
+    玄品: 0.23,
+    真品: 0.16,
+    地品: 0.12,
+    天品: 0.06,
+    仙品: 0.01,
+    神品: 0,
+  },
+  化神: {
+    凡品: 0.12,
+    灵品: 0.2,
+    玄品: 0.23,
+    真品: 0.18,
+    地品: 0.14,
+    天品: 0.09,
+    仙品: 0.03,
+    神品: 0.01,
+  },
+  炼虚: {
+    凡品: 0.08,
+    灵品: 0.16,
+    玄品: 0.22,
+    真品: 0.18,
+    地品: 0.16,
+    天品: 0.12,
+    仙品: 0.06,
+    神品: 0.02,
+  },
+  合体: {
+    凡品: 0.05,
+    灵品: 0.12,
+    玄品: 0.2,
+    真品: 0.18,
+    地品: 0.18,
+    天品: 0.15,
+    仙品: 0.09,
+    神品: 0.03,
+  },
+  大乘: {
+    凡品: 0.03,
+    灵品: 0.09,
+    玄品: 0.16,
+    真品: 0.18,
+    地品: 0.2,
+    天品: 0.18,
+    仙品: 0.12,
+    神品: 0.04,
+  },
+  渡劫: {
+    凡品: 0.02,
+    灵品: 0.06,
+    玄品: 0.12,
+    真品: 0.16,
+    地品: 0.2,
+    天品: 0.22,
+    仙品: 0.16,
+    神品: 0.06,
+  },
+};
 
 /**
  * 历练收益计算器
@@ -9,6 +109,10 @@ import type { Cultivator } from '@shared/types/cultivator';
  * 根据角色境界和历练时长计算奖励
  */
 export class YieldCalculator {
+  static getMaterialQualityChanceMap(realm: RealmType): Record<Quality, number> {
+    return YIELD_MATERIAL_QUALITY_CHANCE_BY_REALM[realm];
+  }
+
   /**
    * 计算历练奖励列表
    * @param realm 角色境界
