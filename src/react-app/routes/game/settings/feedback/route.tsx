@@ -12,7 +12,7 @@ const FEEDBACK_TYPES: { value: FeedbackType; label: string }[] = [
   { value: 'other', label: '其他意见' },
 ];
 
-const GITHUB_ISSUE_URL = 'https://github.com/churchT/daoyou/issues';
+const GITHUB_ISSUE_URL = 'https://github.com/ChurchTao/Daoyou/issues';
 
 export default function FeedbackPage() {
   const [type, setType] = useState<FeedbackType>('bug');

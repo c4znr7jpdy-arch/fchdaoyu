@@ -75,9 +75,9 @@ export function describeEffectCore(effect: EffectConfig): string {
 
     case 'death_prevent':
       if (effect.params.hpFloorPercent === undefined) {
-        return '免死保留 1 点气血';
+        return '免疫死亡保留 1 点气血';
       }
-      return `免死保留 ${formatAffixPercent(effect.params.hpFloorPercent)} 气血`;
+      return `免疫死亡保留 ${formatAffixPercent(effect.params.hpFloorPercent)} 气血`;
 
     case 'damage_immunity':
       return `免疫${prettyTagList(effect.params.tags)}伤害`;
@@ -89,7 +89,7 @@ export function describeEffectCore(effect: EffectConfig): string {
       return `驱散 ${effect.params.maxCount ?? 1} 个状态`;
 
     case 'magic_shield':
-      return `法盾吸收上限 ${formatAffixPercent(effect.params.absorbRatio ?? 0.98)}`;
+      return `优先使用法力吸收受到的伤害，吸收比例 ${formatAffixPercent(effect.params.absorbRatio ?? 0.98)}`;
 
     case 'apply_buff': {
       const chance =

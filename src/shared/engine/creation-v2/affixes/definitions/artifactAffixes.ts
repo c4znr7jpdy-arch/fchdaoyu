@@ -577,7 +577,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
     weight: 50,
     energyCost: 18,
     applicableTo: ['artifact'],
-    applicableArtifactSlots: ['armor', 'accessory'],
+    applicableArtifactSlots: ['armor'],
     effectTemplate: {
       type: 'reflect',
       conditions: [{ type: 'chance', params: { value: 0.3 } }],
@@ -610,7 +610,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
     weight: 20,
     energyCost: 38,
     applicableTo: ['artifact'],
-    applicableArtifactSlots: ['accessory'],
+    applicableArtifactSlots: ['armor'],
     effectTemplate: {
       type: 'death_prevent',
       params: {},
@@ -737,7 +737,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
   // --- 法力护盾 ---
   {
     id: 'artifact-defense-magic-shield',
-    displayName: '玄罡',
+    displayName: '法力护盾',
     displayDescription: '受击时优先以灵力抵挡部分伤害',
     category: 'artifact_defense',
     rarity: 'rare',
@@ -752,11 +752,11 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
     weight: 18,
     energyCost: 35,
     applicableTo: ['artifact'],
-    applicableArtifactSlots: ['weapon', 'accessory'],
+    applicableArtifactSlots: ['accessory'],
     effectTemplate: {
       type: 'magic_shield',
       params: {
-        absorbRatio: { base: 0.5, scale: 'quality', coefficient: 0.48 / 7 },
+        absorbRatio: { base: 0.5, scale: 'quality', coefficient: 0.48 / 8 },
       },
     },
     listenerSpec: {
@@ -1201,7 +1201,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
     weight: 25,
     energyCost: 16,
     applicableTo: ['artifact'],
-    applicableArtifactSlots: ['armor', 'accessory'],
+    applicableArtifactSlots: ['accessory'],
     effectTemplate: {
       type: 'reflect',
       conditions: [{ type: 'is_critical', params: {} }],
@@ -1319,7 +1319,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
     weight: 4,
     energyCost: 55,
     applicableTo: ['artifact'],
-    applicableArtifactSlots: ['armor', 'accessory'],
+    applicableArtifactSlots: ['armor'],
     effectTemplate: {
       type: 'death_prevent',
       params: { hpFloorPercent: 0.3 },
