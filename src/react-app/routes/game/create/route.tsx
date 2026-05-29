@@ -1,15 +1,13 @@
-import { LingGen } from '@app/components/func/LingGen';
 import { FateDetailModal } from '@app/components/feature/fates/FateDetailModal';
-import {
-  FateEffectInlineList,
-} from '@app/components/feature/fates/FateEffectInlineList';
 import { toFateDisplayModel } from '@app/components/feature/fates/FateDisplayAdapter';
+import { FateEffectInlineList } from '@app/components/feature/fates/FateEffectInlineList';
 import {
   AbilityMetaLine,
   AffixInlineList,
   toProductDisplayModel,
   type ProductRecordLike,
 } from '@app/components/feature/products';
+import { LingGen } from '@app/components/func/LingGen';
 import { InkSection } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
@@ -24,16 +22,21 @@ import {
   InkTag,
 } from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
-import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
-import { attrLabel } from '@shared/engine/battle-v5/effects/affixText/attributes';
-import { AttributeType } from '@shared/engine/battle-v5/core/types';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import {
+  CHARACTER_GENERATION_DAILY_LIMIT,
+  type CharacterGenerationQuota,
+  type CharacterGenerationQuotaResponse,
+  type GenerateCharacterResponse,
+} from '@shared/contracts/character-generation';
+import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
+import { AttributeType } from '@shared/engine/battle-v5/core/types';
+import { attrLabel } from '@shared/engine/battle-v5/effects/affixText/attributes';
 import { cn } from '@shared/lib/cn';
 import { getResourceLabel } from '@shared/lib/resourceText';
 import type { Cultivator } from '@shared/types/cultivator';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-
 
 const MIN_PROMPT_LENGTH = 2;
 const MAX_PROMPT_LENGTH = 200;
@@ -139,17 +142,60 @@ export default function CreatePage() {
   const [remainingRerolls, setRemainingRerolls] = useState<number>(0);
   const [isGeneratingFates, setIsGeneratingFates] = useState(false);
   const [showAllAttributes, setShowAllAttributes] = useState(false);
+  const [generationQuota, setGenerationQuota] =
+    useState<CharacterGenerationQuota | null>(null);
   const trimmedPrompt = userPrompt.trim();
   const promptLength = countChars(trimmedPrompt);
   const promptTooLong = promptLength > MAX_PROMPT_LENGTH;
   const promptTooShort =
     trimmedPrompt.length > 0 && promptLength < MIN_PROMPT_LENGTH;
-  const promptHint = `已输入 ${promptLength}/${MAX_PROMPT_LENGTH} 字 · Cmd/Ctrl + Enter 可快速提交`;
+  const quotaExhausted = generationQuota
+    ? generationQuota.remaining <= 0
+    : false;
+  const quotaHint = generationQuota
+    ? `今日剩余 ${generationQuota.remaining}/${generationQuota.dailyLimit} 次 · 按邮箱与当前网络分别计数，取剩余更少者，请珍惜次数`
+    : `每日最多 ${CHARACTER_GENERATION_DAILY_LIMIT} 次 · 按邮箱与当前网络分别计数，请珍惜次数`;
+  const promptHint = `已输入 ${promptLength}/${MAX_PROMPT_LENGTH} 字 · Cmd/Ctrl + Enter 可快速提交 · ${quotaHint}`;
   const promptError = promptTooLong
     ? `角色描述过长（当前 ${promptLength} 字，最多 ${MAX_PROMPT_LENGTH} 字）。`
     : promptTooShort
       ? `角色描述至少需要 ${MIN_PROMPT_LENGTH} 个字。`
       : undefined;
+
+  useEffect(() => {
+    if (isLoading || hasActiveCultivator) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadGenerationQuota() {
+      try {
+        const response = await fetch('/api/generate-character/quota');
+        const result = (await response.json()) as
+          | CharacterGenerationQuotaResponse
+          | { success: false; error?: string };
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            ('error' in result && result.error) || '获取角色推演次数失败',
+          );
+        }
+
+        if (!cancelled) {
+          setGenerationQuota(result.data.quota);
+        }
+      } catch (error) {
+        console.error('Load character generation quota failed:', error);
+      }
+    }
+
+    void loadGenerationQuota();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasActiveCultivator, isLoading]);
 
   // 生成气运
   const handleGenerateFates = async (tempId: string) => {
@@ -190,6 +236,14 @@ export default function CreatePage() {
       return;
     }
 
+    if (quotaExhausted) {
+      pushToast({
+        message: '今日角色推演次数已用尽，请明日再试。',
+        tone: 'warning',
+      });
+      return;
+    }
+
     if (promptLength < MIN_PROMPT_LENGTH) {
       pushToast({
         message: `角色描述至少需要 ${MIN_PROMPT_LENGTH} 个字。`,
@@ -224,15 +278,27 @@ export default function CreatePage() {
         body: JSON.stringify({ userInput: userPrompt }),
       });
 
-      const aiResult = await aiResponse.json();
+      const aiResult = (await aiResponse.json()) as
+        | GenerateCharacterResponse
+        | {
+            success: false;
+            error?: string;
+            quota?: CharacterGenerationQuota;
+          };
 
       if (!aiResponse.ok || !aiResult.success) {
-        throw new Error(aiResult.error || '生成角色失败');
+        if ('quota' in aiResult && aiResult.quota) {
+          setGenerationQuota(aiResult.quota);
+        }
+        throw new Error(
+          ('error' in aiResult && aiResult.error) || '生成角色失败',
+        );
       }
 
       // 保存临时角色ID和角色数据
       setPlayer(aiResult.data.cultivator);
       setTempCultivatorId(aiResult.data.tempCultivatorId);
+      setGenerationQuota(aiResult.data.quota);
 
       pushToast({
         message: '灵气汇聚，真形初现。正在推演气运...',
@@ -383,8 +449,8 @@ export default function CreatePage() {
   }, [player]);
 
   const secondaryVisible = showAllAttributes
-    ? previewStats?.secondaryAll ?? []
-    : previewStats?.secondaryAll.slice(0, 4) ?? [];
+    ? (previewStats?.secondaryAll ?? [])
+    : (previewStats?.secondaryAll.slice(0, 4) ?? []);
   const secondaryRows = chunkPairs(secondaryVisible);
 
   if (isLoading) {
@@ -425,7 +491,10 @@ export default function CreatePage() {
                 hint={promptHint}
                 error={promptError}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                  if (
+                    event.key === 'Enter' &&
+                    (event.metaKey || event.ctrlKey)
+                  ) {
                     event.preventDefault();
                     handleGenerateCharacter();
                   }
@@ -440,7 +509,8 @@ export default function CreatePage() {
                       isGenerating ||
                       !trimmedPrompt ||
                       promptTooLong ||
-                      promptTooShort
+                      promptTooShort ||
+                      quotaExhausted
                     }
                   >
                     {isGenerating ? '灵气汇聚中…' : '凝气成形'}
@@ -504,7 +574,11 @@ export default function CreatePage() {
                             <ItemCard
                               name={fate.name}
                               quality={fate.quality}
-                              meta={<FateEffectInlineList lines={fateDisplay.previewLines} />}
+                              meta={
+                                <FateEffectInlineList
+                                  lines={fateDisplay.previewLines}
+                                />
+                              }
                               description={fate.description}
                               actions={
                                 <div
@@ -562,7 +636,9 @@ export default function CreatePage() {
                         <div className="py-1">
                           <p>身世：{player.origin || '散修'}</p>
                           <p>性格：{player.personality}</p>
-                          {player.background ? <p>背景：{player.background}</p> : null}
+                          {player.background ? (
+                            <p>背景：{player.background}</p>
+                          ) : null}
                           {player.balance_notes ? (
                             <p>天道评语：{player.balance_notes}</p>
                           ) : null}
@@ -573,7 +649,11 @@ export default function CreatePage() {
                           className="mt-2 grid! grid-cols-3! gap-2"
                           items={[
                             { label: '年龄：', value: player.age, icon: '⏳' },
-                            { label: '寿元：', value: player.lifespan, icon: '🔮' },
+                            {
+                              label: '寿元：',
+                              value: player.lifespan,
+                              icon: '🔮',
+                            },
                             {
                               label: '性别：',
                               value: player.gender,
@@ -603,7 +683,7 @@ export default function CreatePage() {
 
               <section className={genesisPanelClassName}>
                 <InkSection title="【根基属性】">
-                  <div className="border-ink/30 bg-bgpaper overflow-x-auto border-dashed border">
+                  <div className="border-ink/30 bg-bgpaper overflow-x-auto border border-dashed">
                     <table className="border-ink/10 w-full border-collapse text-sm">
                       <tbody>
                         {previewStats?.primaryRows.map((item) => (
@@ -611,11 +691,16 @@ export default function CreatePage() {
                             key={item.type}
                             className="border-ink/10 border-b last:border-b-0"
                           >
-                            <td className="text-crimson w-[40%] py-2 pl-3 pr-2 font-semibold">
+                            <td className="text-crimson w-[40%] py-2 pr-2 pl-3 font-semibold">
                               {item.label}
                             </td>
                             <td className="text-ink-secondary py-2 pr-3 text-right">
-                              <span>{formatAttributeValue(item.type, item.baseValue)}</span>
+                              <span>
+                                {formatAttributeValue(
+                                  item.type,
+                                  item.baseValue,
+                                )}
+                              </span>
                               {item.modifier !== 0 && (
                                 <>
                                   {' '}
@@ -644,17 +729,22 @@ export default function CreatePage() {
                                 key={item.type}
                                 colSpan={pair.length === 1 ? 2 : 1}
                                 className={cn(
-                                  'min-w-0 w-1/2 py-2 pl-3 pr-2 align-top',
+                                  'w-1/2 min-w-0 py-2 pr-2 pl-3 align-top',
                                   colIdx === 0 &&
                                     pair.length === 2 &&
                                     'border-ink/10 border-r',
                                 )}
                               >
                                 <div className="flex min-w-0 items-baseline justify-between gap-2">
-                                  <span className="text-ink shrink-0">{item.label}</span>
+                                  <span className="text-ink shrink-0">
+                                    {item.label}
+                                  </span>
                                   <span className="text-ink-secondary min-w-0 text-right">
                                     <span>
-                                      {formatAttributeValue(item.type, item.baseValue)}
+                                      {formatAttributeValue(
+                                        item.type,
+                                        item.baseValue,
+                                      )}
                                     </span>
                                     {item.modifier !== 0 && (
                                       <>
@@ -667,7 +757,10 @@ export default function CreatePage() {
                                               : 'text-violet-700',
                                           )}
                                         >
-                                          {formatModifier(item.type, item.modifier)}
+                                          {formatModifier(
+                                            item.type,
+                                            item.modifier,
+                                          )}
                                         </span>
                                       </>
                                     )}
@@ -714,7 +807,9 @@ export default function CreatePage() {
                             quality={technique.quality}
                             badgeExtra={
                               technique.element ? (
-                                <InkBadge tone="default">{technique.element}</InkBadge>
+                                <InkBadge tone="default">
+                                  {technique.element}
+                                </InkBadge>
                               ) : undefined
                             }
                             meta={<AffixInlineList affixes={product.affixes} />}
@@ -745,12 +840,16 @@ export default function CreatePage() {
                             name={skill.name}
                             quality={skill.quality}
                             badgeExtra={
-                              <InkBadge tone="default">{skill.element}</InkBadge>
+                              <InkBadge tone="default">
+                                {skill.element}
+                              </InkBadge>
                             }
                             meta={
                               <div className="space-y-1">
                                 <AffixInlineList affixes={product.affixes} />
-                                <AbilityMetaLine projection={product.projection} />
+                                <AbilityMetaLine
+                                  projection={product.projection}
+                                />
                               </div>
                             }
                             description={skill.description}
@@ -770,7 +869,9 @@ export default function CreatePage() {
               </div>
               <div className="text-ink mt-3 space-y-3 text-sm leading-7">
                 <p>先以一句心念描出真身，再从天机推演出的命格中择三而取。</p>
-                <p>生成结果会展示根基属性、灵根、功法与神通预览，确认无误后再正式入世。</p>
+                <p>
+                  生成结果会展示根基属性、灵根、功法与神通预览，确认无误后再正式入世。
+                </p>
               </div>
             </section>
           )}
