@@ -141,7 +141,7 @@ const challengeProfiles: TaskChallengeProfile[] = [
       buildGeneratedChallengeOpponent(cultivator, {
         name: '天劫投影',
         race: '灵族',
-        difficulty: 5,
+        difficulty: 7,
         narrativeHint: '天劫降临时凝聚而成的劫影，通体天罚雷光流转，奉天命阻断化神之路。',
       }),
   },
@@ -152,7 +152,7 @@ const challengeProfiles: TaskChallengeProfile[] = [
       buildGeneratedChallengeOpponent(cultivator, {
         name: '法则残影',
         race: '灵族',
-        difficulty: 5,
+        difficulty: 8,
         narrativeHint: '法则碎片凝化的残影，举手投足间隐现天地规则之力，试探悟道者能否承受法则之重。',
       }),
   },
@@ -163,7 +163,7 @@ const challengeProfiles: TaskChallengeProfile[] = [
       buildGeneratedChallengeOpponent(cultivator, {
         name: '劫雷化身',
         race: '古兽',
-        difficulty: 6,
+        difficulty: 9,
         narrativeHint: '劫雷凝形的太古兽体，浑身雷弧缠绕，以雷霆之势淬炼渡劫者的道体根基。',
       }),
   },
@@ -185,7 +185,7 @@ const challengeProfiles: TaskChallengeProfile[] = [
       buildGeneratedChallengeOpponent(cultivator, {
         name: '天道劫影',
         race: '古兽',
-        difficulty: 7,
+        difficulty: 10,
         narrativeHint: '天道意志所化的终极劫影，承载末法时代最后一缕天威，誓要将不配渡劫者碾为齑粉。',
       }),
   },
