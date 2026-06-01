@@ -199,7 +199,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 60, scale: 'quality', coefficient: 12 },
           attribute: AttributeType.ATK,
-          coefficient: 0.72,
+          coefficient: 1.12,
         },
       },
     },
@@ -233,7 +233,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 65, scale: 'quality', coefficient: 13 },
           attribute: AttributeType.ATK,
-          coefficient: 0.78,
+          coefficient: 1.18,
         },
       },
     },
@@ -267,7 +267,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 74, scale: 'quality', coefficient: 13 },
           attribute: AttributeType.MAGIC_ATK,
-          coefficient: 0.84,
+          coefficient: 0.95,
         },
       },
     },
@@ -301,7 +301,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 70, scale: 'quality', coefficient: 12 },
           attribute: AttributeType.MAGIC_ATK,
-          coefficient: 0.8,
+          coefficient: 1.0,
         },
       },
     },
@@ -335,7 +335,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 82, scale: 'quality', coefficient: 14 },
           attribute: AttributeType.ATK,
-          coefficient: 0.88,
+          coefficient: 1.0,
         },
       },
     },
@@ -401,7 +401,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 12, scale: 'quality', coefficient: 4 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.25,
+          coefficient: 1,
         },
       },
     },
@@ -841,10 +841,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_core',
     rarity: 'legendary',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['火'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['火'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_FLAME,
         CreationTags.MATERIAL.SEMANTIC_BURST,
@@ -893,10 +890,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_core',
     rarity: 'legendary',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['风'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['风'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_WIND,
         CreationTags.MATERIAL.SEMANTIC_SPACE,
@@ -946,10 +940,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_core',
     rarity: 'legendary',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['土'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['土'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_EARTH,
         CreationTags.MATERIAL.SEMANTIC_GUARD,
@@ -1080,7 +1071,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
                     value: {
                       base: 8,
                       attribute: AttributeType.MAGIC_ATK,
-                      coefficient: 0.15,
+                      coefficient: 0.12,
                     },
                   },
                 },
@@ -1242,7 +1233,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
                     value: {
                       base: 7,
                       attribute: AttributeType.ATK,
-                      coefficient: 0.12,
+                      coefficient: 0.1,
                     },
                   },
                 },
@@ -1455,9 +1446,9 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
       type: 'mana_burn',
       params: {
         value: {
-          base: { base: 12, scale: 'quality', coefficient: 4 },
+          base: { base: 12, scale: 'quality', coefficient: 12 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.12,
+          coefficient: 1.2,
         },
       },
     },
@@ -1511,10 +1502,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_rare',
     rarity: 'rare',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['雷'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['雷'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_THUNDER,
         CreationTags.MATERIAL.SEMANTIC_ILLUSION,
@@ -1556,10 +1544,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_rare',
     rarity: 'rare',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['水'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['水'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_WATER,
         CreationTags.MATERIAL.SEMANTIC_DIVINE,
@@ -1646,7 +1631,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 90, scale: 'quality', coefficient: 18 },
           attribute: AttributeType.WILLPOWER,
-          coefficient: 1.5,
+          coefficient: 12,
         },
       },
     },
@@ -1660,10 +1645,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_rare',
     rarity: 'rare',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['冰'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['冰'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_FREEZE,
         CreationTags.MATERIAL.SEMANTIC_SPIRIT,
@@ -1713,10 +1695,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_rare',
     rarity: 'rare',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['金'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['金'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_BLADE,
         CreationTags.MATERIAL.SEMANTIC_METAL,
@@ -1766,10 +1745,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_rare',
     rarity: 'rare',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['水'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['水'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_WATER,
         CreationTags.MATERIAL.SEMANTIC_SPIRIT,
@@ -1799,10 +1775,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_rare',
     rarity: 'legendary',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['木'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['木'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_WOOD,
         CreationTags.MATERIAL.SEMANTIC_LIFE,
@@ -1836,10 +1809,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
     category: 'skill_rare',
     rarity: 'legendary',
     match: {
-      all: [
-        ELEMENT_TO_MATERIAL_TAG['土'],
-        CreationTags.MATERIAL.TYPE_SPECIAL,
-      ],
+      all: [ELEMENT_TO_MATERIAL_TAG['土'], CreationTags.MATERIAL.TYPE_SPECIAL],
       any: [
         CreationTags.MATERIAL.SEMANTIC_EARTH,
         CreationTags.MATERIAL.SEMANTIC_GUARD,
@@ -1858,7 +1828,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 28, scale: 'quality', coefficient: 8 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.55,
+          coefficient: 1.5,
         },
       },
     },

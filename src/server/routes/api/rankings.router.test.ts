@@ -162,4 +162,86 @@ describe('rankings router', () => {
     );
     expect(createBattleRecordV2Mock).toHaveBeenCalledTimes(1);
   });
+
+  it('starts ranking challenge battles with full hp/mp instead of persisted resources', async () => {
+    getCultivatorByIdUnsafeMock.mockReset();
+    getCultivatorByIdUnsafeMock
+      .mockResolvedValueOnce({
+        cultivator: {
+          id: 'cultivator-1',
+          name: '韩立',
+          realm: '筑基',
+          realm_stage: '中期',
+          condition: {
+            resources: {
+              hp: { current: 12 },
+              mp: { current: 3 },
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        cultivator: {
+          id: 'target-1',
+          name: '厉飞雨',
+          realm: '筑基',
+          realm_stage: '中期',
+          condition: {
+            resources: {
+              hp: { current: 27 },
+              mp: { current: 8 },
+            },
+          },
+        },
+      });
+
+    const response = await createApp().request(
+      '/api/rankings/challenge-battle/v5',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetId: 'target-1',
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(simulateBattleV5Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'cultivator-1',
+        condition: {
+          resources: {
+            hp: { current: 12 },
+            mp: { current: 3 },
+          },
+        },
+      }),
+      expect.objectContaining({
+        id: 'target-1',
+        condition: {
+          resources: {
+            hp: { current: 27 },
+            mp: { current: 8 },
+          },
+        },
+      }),
+      {
+        player: {
+          resourceState: {
+            hp: { mode: 'percent', value: 1 },
+            mp: { mode: 'percent', value: 1 },
+          },
+        },
+        opponent: {
+          resourceState: {
+            hp: { mode: 'percent', value: 1 },
+            mp: { mode: 'percent', value: 1 },
+          },
+        },
+      },
+    );
+  });
 });

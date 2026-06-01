@@ -651,7 +651,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 15, scale: 'quality', coefficient: 6 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.02,
+          coefficient: 0.55,
         },
       },
     },
@@ -721,9 +721,9 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
       params: {
         target: 'mp',
         value: {
-          base: { base: 5, scale: 'quality', coefficient: 2 },
+          base: { base: 5, scale: 'quality', coefficient: 6 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.01,
+          coefficient: 0.05,
         },
       },
     },
@@ -1172,7 +1172,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 12, scale: 'quality', coefficient: 5 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.02,
+          coefficient: 0.3,
         },
       },
     },
@@ -1241,9 +1241,9 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
       type: 'heal',
       params: {
         value: {
-          base: { base: 6, scale: 'quality', coefficient: 3 },
+          base: { base: 6, scale: 'quality', coefficient: 6 },
           attribute: AttributeType.VITALITY,
-          coefficient: 0.02,
+          coefficient: 0.55,
         },
       },
     },

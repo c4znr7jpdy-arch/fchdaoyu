@@ -10,6 +10,7 @@ import { InkBadge, InkButton, InkInput, InkNotice } from '@app/components/ui';
 import { useRetreatViewModel } from '../hooks/useRetreatViewModel';
 import { BreakthroughConfirmModal } from './BreakthroughConfirmModal';
 import { RetreatResultModal } from './RetreatResultModal';
+import { cn } from '@shared/lib/utils';
 
 function BreakthroughLabel({
   type,
@@ -17,17 +18,11 @@ function BreakthroughLabel({
   type: 'forced' | 'normal' | 'perfect' | null;
 }) {
   if (!type) return null;
-
-  const tone =
-    type === 'perfect' ? '金丹' : type === 'normal' ? '筑基' : '炼气';
-  const text =
-    type === 'perfect'
-      ? '圆满突破'
-      : type === 'normal'
-        ? '常规突破'
-        : '强行突破';
-
-  return <InkBadge tier={tone}>{text}</InkBadge>;
+  return <span className={cn([
+    type === 'perfect' && 'text-red-500',
+    type === 'normal' && 'text-blue-500',
+    type === 'forced' && 'text-green-500',
+  ])}>{getBreakthroughTypeText(type)}</span>
 }
 
 function getBreakthroughTypeText(type: 'forced' | 'normal' | 'perfect' | null) {

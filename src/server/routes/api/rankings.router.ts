@@ -31,6 +31,7 @@ import {
 } from '@server/lib/services/cultivatorService';
 import { simulateBattleV5 } from '@server/lib/services/simulateBattleV5';
 import { TaskService } from '@server/lib/services/TaskService';
+import type { BattleInitConfigV5 } from '@shared/types/battle';
 import {
   EquipmentSlot,
   QUALITY_VALUES,
@@ -53,6 +54,23 @@ const ChallengeBattleSchema = z.object({
 const router = new Hono<AppEnv>();
 const publicRouter = new Hono<AppEnv>();
 const challengeRouter = new Hono<AppEnv>();
+
+function createFullResourcePvpBattleInit(): BattleInitConfigV5 {
+  return {
+    player: {
+      resourceState: {
+        hp: { mode: 'percent', value: 1 },
+        mp: { mode: 'percent', value: 1 },
+      },
+    },
+    opponent: {
+      resourceState: {
+        hp: { mode: 'percent', value: 1 },
+        mp: { mode: 'percent', value: 1 },
+      },
+    },
+  };
+}
 
 function getRehydratedProductModel(
   productModel: unknown,
@@ -444,6 +462,7 @@ challengeRouter.post('/challenge-battle/v5', requireActiveCultivator(), async (c
     const battleResult = simulateBattleV5(
       challengerRecord.cultivator,
       targetRecord.cultivator,
+      createFullResourcePvpBattleInit(),
     );
 
     const isWin = battleResult.winner.id === challenger.id;
