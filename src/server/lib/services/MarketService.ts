@@ -333,7 +333,7 @@ function sanitizeListing(listing: InternalMarketListing): MarketListing {
  */
 function generateFromPresets(
   nodeId: string,
-  layer: 'common' | 'treasure',
+  layer: MarketLayer,
   profile: RegionProfile,
   layerConfig: ResolvedLayerConfig,
 ): InternalMarketListing[] {

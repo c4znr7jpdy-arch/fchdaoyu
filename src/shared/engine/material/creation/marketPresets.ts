@@ -1,10 +1,10 @@
-import type { MaterialType, Quality } from '@shared/types/constants';
+import type { ElementType, MaterialType, Quality } from '@shared/types/constants';
 import marketData from './data/marketPresets.json';
 
 export interface MarketMaterialPreset {
   name: string;
   description: string;
-  element: string;
+  element: ElementType;
 }
 
 type QualityPresets = Record<Quality, MarketMaterialPreset[]>;
