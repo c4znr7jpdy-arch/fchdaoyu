@@ -193,16 +193,16 @@ function getFormulaFitBandTone(
   }
 }
 
-function getFormulaJudgmentTone(
-  verdict: FormulaMaterialJudgment['verdict'],
-): 'accent' | 'default' | 'danger' {
-  switch (verdict) {
-    case 'core':
-      return 'accent';
-    case 'usable':
-      return 'default';
-    case 'conflict':
-      return 'danger';
+function getFormulaAnalysisNarrative(
+  fitBand: FormulaAnalysisResult['fitBand'],
+): string {
+  switch (fitBand) {
+    case 'aligned':
+      return '炉中药脉已顺着丹方主路收束，此刻开炉，最易成丹。';
+    case 'degraded':
+      return '这一炉尚能循方而行，只是药力已有散逸，成丹后难免折损几分。';
+    case 'blocked':
+      return '炉中药路相冲，若此刻强开，鼎中只会先起乱势。';
   }
 }
 
@@ -324,11 +324,7 @@ export function AlchemyFormulaAnalysisCard({
   cooldownRemainingSeconds: number;
 }) {
   if (!analysis) {
-    return (
-      <InkNotice tone="info">
-        静态预检只会校验炉位、品阶与灵石。若要判断这炉材料是否真正循方，请手动按一次“按方辨材”。
-      </InkNotice>
-    );
+    return null;
   }
 
   return (
@@ -346,17 +342,13 @@ export function AlchemyFormulaAnalysisCard({
           </span>
         </div>
         <div className="text-ink-secondary space-y-1 leading-6">
+          <p>{getFormulaAnalysisNarrative(analysis.fitBand)}</p>
           <p>
             熟练越深，越能把偏差药路勉强拢回丹方主脉；但若低于炸炉线，仍不可强开。
           </p>
-          <p>
-            本次辨材结果会在约{' '}
-            {Math.max(1, Math.ceil(analysis.expiresInSeconds / 60))} 分钟后散去
-            {cooldownRemainingSeconds > 0
-              ? `；${cooldownRemainingSeconds} 秒后可再次辨材`
-              : ''}
-            。
-          </p>
+          {cooldownRemainingSeconds > 0 ? (
+            <p>{`${cooldownRemainingSeconds} 秒后可再引炉观脉。`}</p>
+          ) : null}
         </div>
         {analysis.warnings.length > 0 ? (
           <div className="space-y-2">
@@ -367,28 +359,6 @@ export function AlchemyFormulaAnalysisCard({
             ))}
           </div>
         ) : null}
-        <div className="space-y-2">
-          {analysis.materialJudgments.map((judgment) => (
-            <div
-              key={judgment.materialId}
-              className="border-ink/10 bg-ink/5 border p-3"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-semibold">{judgment.materialName}</span>
-                <InkBadge tone={getFormulaJudgmentTone(judgment.verdict)}>
-                  {judgment.verdict === 'core'
-                    ? '契合'
-                    : judgment.verdict === 'usable'
-                      ? '可用'
-                      : '冲方'}
-                </InkBadge>
-              </div>
-              <p className="text-ink-secondary mt-1 leading-6">
-                {judgment.reason}
-              </p>
-            </div>
-          ))}
-        </div>
       </div>
     </InkCard>
   );
@@ -975,6 +945,38 @@ export default function AlchemyPage() {
   const previewError = hasFreshPreview ? previewState.previewError : null;
   const displayValidation = validation;
   const displayCanAfford = canAfford;
+  const isFormulaMode = activeMode === 'formula';
+  const canAnalyzeFormula =
+    !isSubmitting &&
+    !isAnalyzingFormula &&
+    !!selectedFormulaId &&
+    selectedMaterialIds.length > 0 &&
+    hasFreshPreview &&
+    estimatedSpiritStones !== null &&
+    !previewError &&
+    displayCanAfford &&
+    displayValidation?.valid !== false &&
+    analysisCooldownRemaining <= 0;
+  const canCraftFormula =
+    !isSubmitting &&
+    !!selectedFormulaId &&
+    !!formulaAnalysis?.analysisId &&
+    formulaAnalysis.fitBand !== 'blocked' &&
+    !previewError &&
+    estimatedSpiritStones !== null &&
+    displayCanAfford &&
+    displayValidation?.valid !== false;
+  const formulaPrimaryButtonLabel = isSubmitting
+    ? '丹火炼中……'
+    : isAnalyzingFormula
+      ? '观脉中……'
+      : !formulaAnalysis?.analysisId
+      ? analysisCooldownRemaining > 0
+        ? `${analysisCooldownRemaining} 秒后可再观脉`
+        : '辨材定炉'
+      : formulaAnalysis.fitBand === 'blocked'
+        ? '冲方不可开'
+        : '依方成丹';
 
   const handleAnalyzeFormula = async () => {
     if (!cultivator) {
@@ -999,7 +1001,7 @@ export default function AlchemyPage() {
     }
     if (analysisCooldownRemaining > 0) {
       pushToast({
-        message: `炉意未散，请 ${analysisCooldownRemaining} 秒后再按方辨材。`,
+        message: `炉意未散，请 ${analysisCooldownRemaining} 秒后再引炉观脉。`,
         tone: 'warning',
       });
       return;
@@ -1313,6 +1315,18 @@ export default function AlchemyPage() {
         : activeMode === 'formula'
           ? '请先选定丹方，再投入灵材。'
           : '请投入灵材并注入丹意。';
+  const handlePrimaryAction = () => {
+    if (isFormulaMode) {
+      if (formulaAnalysis?.analysisId) {
+        void handleSubmit();
+        return;
+      }
+      void handleAnalyzeFormula();
+      return;
+    }
+
+    void handleSubmit();
+  };
 
   return (
     <GameSceneFrame
@@ -1365,7 +1379,11 @@ export default function AlchemyPage() {
                 <p>已选丹方：{selectedFormula.name}</p>
                 <p>丹方族类：{getPillFamilyLabel(selectedFormula.family)}</p>
                 <p>熟练等级：Lv.{selectedFormula.mastery.level}</p>
-                <p>当前仅完成静态预检；若要判定是否真正循方，请手动按一次方意辨材。</p>
+                <p>
+                  {formulaAnalysis
+                    ? getFormulaAnalysisNarrative(formulaAnalysis.fitBand)
+                    : '丹方已定，只待这一炉药性显出真章。'}
+                </p>
               </div>
             ) : activeMode === 'formula' ? (
               <p>请先选定丹方，再投入灵材。</p>
@@ -1379,9 +1397,6 @@ export default function AlchemyPage() {
               <p className="text-crimson mt-2">
                 {displayValidation.blockingReason}
               </p>
-            ) : null}
-            {formulaAnalysisError ? (
-              <p className="text-crimson mt-2">{formulaAnalysisError}</p>
             ) : null}
           </GameSceneAsideSection>
         </>
@@ -1466,47 +1481,6 @@ export default function AlchemyPage() {
         />
       </GameSceneSection>
 
-      {activeMode === 'formula' && (
-        <GameSceneSection title="按方辨材">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-ink-secondary text-sm leading-6">
-                先过静态预检，再请丹方引炉辨材。辨材结果会保留一段时间，开炉时直接沿用，不会再次耗费推演。
-              </p>
-              <InkButton
-                variant="primary"
-                onClick={() => void handleAnalyzeFormula()}
-                disabled={
-                  isSubmitting ||
-                  isAnalyzingFormula ||
-                  !selectedFormulaId ||
-                  selectedMaterialIds.length === 0 ||
-                  !hasFreshPreview ||
-                  estimatedSpiritStones === null ||
-                  !!previewError ||
-                  !displayCanAfford ||
-                  displayValidation?.valid === false ||
-                  analysisCooldownRemaining > 0
-                }
-              >
-                {isAnalyzingFormula
-                  ? '辨材中……'
-                  : analysisCooldownRemaining > 0
-                    ? `${analysisCooldownRemaining} 秒后可再辨材`
-                    : '按方辨材'}
-              </InkButton>
-            </div>
-            {formulaAnalysisError ? (
-              <InkNotice tone="warning">{formulaAnalysisError}</InkNotice>
-            ) : null}
-            <AlchemyFormulaAnalysisCard
-              analysis={formulaAnalysis}
-              cooldownRemainingSeconds={analysisCooldownRemaining}
-            />
-          </div>
-        </GameSceneSection>
-      )}
-
       {activeMode === 'improvised' ? (
         <GameSceneSection title="注入丹意">
           <InkInput
@@ -1522,7 +1496,21 @@ export default function AlchemyPage() {
       ) : (
         <GameSceneSection title="丹方摘要">
           {selectedFormula ? (
-            <AlchemyFormulaSummaryCard formula={selectedFormula} />
+            <div className="space-y-3">
+              <AlchemyFormulaSummaryCard formula={selectedFormula} />
+              {formulaAnalysis ? (
+                <AlchemyFormulaAnalysisCard
+                  analysis={formulaAnalysis}
+                  cooldownRemainingSeconds={analysisCooldownRemaining}
+                />
+              ) : formulaAnalysisError ? (
+                <InkNotice tone="warning">{formulaAnalysisError}</InkNotice>
+              ) : selectedMaterialIds.length > 0 ? (
+                <InkNotice tone="info">
+                  灵材既入炉中，还需先辨明药脉，再可依方收丹。
+                </InkNotice>
+              ) : null}
+            </div>
           ) : (
             <InkNotice tone="info">
               先从上方选定一份丹方，再安排炉材。
@@ -1556,9 +1544,6 @@ export default function AlchemyPage() {
         )}
 
         {previewError && <InkNotice tone="warning">{previewError}</InkNotice>}
-        {formulaAnalysisError && (
-          <InkNotice tone="warning">{formulaAnalysisError}</InkNotice>
-        )}
         {displayValidation?.blockingReason && (
           <InkNotice tone="warning">
             {displayValidation.blockingReason}
@@ -1577,24 +1562,25 @@ export default function AlchemyPage() {
         </InkButton>
         <InkButton
           variant="primary"
-          onClick={handleSubmit}
+          onClick={handlePrimaryAction}
           disabled={
-            isSubmitting ||
-            selectedMaterialIds.length === 0 ||
-            (activeMode === 'improvised' && !userPrompt.trim()) ||
-            (activeMode === 'formula' && !selectedFormulaId) ||
-            (activeMode === 'formula' && !formulaAnalysis?.analysisId) ||
-            (activeMode === 'formula' && formulaAnalysis?.fitBand === 'blocked') ||
-            !!previewError ||
-            estimatedSpiritStones === null ||
-            !displayCanAfford ||
-            displayValidation?.valid === false
+            isFormulaMode
+              ? formulaAnalysis?.analysisId
+                ? !canCraftFormula
+                : !canAnalyzeFormula
+              : isSubmitting ||
+                selectedMaterialIds.length === 0 ||
+                !userPrompt.trim() ||
+                !!previewError ||
+                estimatedSpiritStones === null ||
+                !displayCanAfford ||
+                displayValidation?.valid === false
           }
         >
-          {isSubmitting
-            ? '丹火炼中……'
-            : activeMode === 'formula'
-              ? '依方成丹'
+          {isFormulaMode
+            ? formulaPrimaryButtonLabel
+            : isSubmitting
+              ? '丹火炼中……'
               : '开炉炼丹'}
         </InkButton>
       </InkActionGroup>
