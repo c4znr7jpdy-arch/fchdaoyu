@@ -116,6 +116,7 @@ describe('toPillDisplayModel', () => {
           formulaId: 'formula-1',
           sourceMaterials: ['凝神芝'],
           fitScore: 0.58,
+          fitBand: 'degraded',
           fitMultiplier: 1.02,
           stability: 80,
           toxicityRating: 36,
@@ -132,6 +133,7 @@ describe('toPillDisplayModel', () => {
     expect(model.primaryEffect).not.toContain('breakthrough_focus');
     expect(model.keywordLabels).toContain('护婴丹');
     expect(model.detailGroups[2].lines).toContain('目标大境界：元婴');
+    expect(model.detailGroups[2].lines).toContain('成丹层级：勉强成丹');
     expect(model.detailGroups[2].lines).toContain('药性拟合：58%');
     expect(model.detailGroups[2].lines).toContain('丹方倍率：102%');
   });
@@ -154,6 +156,7 @@ describe('toPillDisplayModel', () => {
           formulaId: 'formula-2',
           sourceMaterials: ['静神芝'],
           fitScore: 0.76,
+          fitBand: 'aligned',
           fitMultiplier: 1.08,
           stability: 82,
           toxicityRating: 24,
@@ -170,6 +173,7 @@ describe('toPillDisplayModel', () => {
     expect(model.primaryEffect).not.toContain('clear_mind');
     expect(model.keywordLabels).toContain('护婴丹');
     expect(model.detailGroups[2].lines).toContain('目标大境界：元婴');
+    expect(model.detailGroups[2].lines).toContain('成丹层级：契合成丹');
   });
 
   it('renders protect_meridians breakthrough pills with the shared higher-realm label fallback', () => {
@@ -190,6 +194,7 @@ describe('toPillDisplayModel', () => {
           formulaId: 'formula-3',
           sourceMaterials: ['护络藤'],
           fitScore: 0.81,
+          fitBand: 'aligned',
           fitMultiplier: 1.12,
           stability: 78,
           toxicityRating: 26,
@@ -205,6 +210,36 @@ describe('toPillDisplayModel', () => {
     expect(model.primaryEffect).not.toContain('protect_meridians');
     expect(model.keywordLabels).toContain('应劫丹');
     expect(model.detailGroups[2].lines).toContain('目标大境界：渡劫');
+  });
+
+  it('omits formula fit lines when legacy formula metadata is incomplete', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'healing',
+        operations: [
+          { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          quotaCategory: 'none',
+        },
+        alchemyMeta: {
+          source: 'formula',
+          formulaId: 'formula-legacy',
+          sourceMaterials: ['回春草'],
+          stability: 72,
+          toxicityRating: 8,
+          tags: ['healing'],
+        } as unknown as PillSpec['alchemyMeta'],
+      }),
+      { realm: '金丹' },
+    );
+
+    expect(model.detailGroups[2].lines).not.toContain('成丹层级：勉强成丹');
+    expect(model.detailGroups[2].lines.some((line) => line.includes('NaN'))).toBe(
+      false,
+    );
   });
 
   it('uses track config names for tempering and marrow-wash pills', () => {

@@ -38,9 +38,11 @@ import type {
   AlchemyFormula,
   AlchemyFormulaDiscoveryCandidate,
   AlchemyMode,
+  FormulaAnalysisResult,
+  FormulaMaterialJudgment,
 } from '@shared/types/consumable';
 import type { Consumable, Material } from '@shared/types/cultivator';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const ALLOWED_MATERIAL_TYPES = [
   'herb',
@@ -121,6 +123,13 @@ type FormulaDeleteResponse = {
   error?: string;
 };
 
+type FormulaAnalyzeResponse = {
+  success: boolean;
+  data?: FormulaAnalysisResult;
+  error?: string;
+  remainingSeconds?: number;
+};
+
 const DEFAULT_PREVIEW_STATE: PreviewState = {
   key: null,
   estimatedSpiritStones: null,
@@ -138,7 +147,7 @@ function resolvePreferredFormulaId(
     : (formulas[0]?.id ?? null);
 }
 
-export function getNextSelectedFormulaIdAfterDelete(
+function getNextSelectedFormulaIdAfterDelete(
   formulas: AlchemyFormula[],
   deletedFormulaId: string,
   currentSelectedFormulaId: string | null,
@@ -156,6 +165,45 @@ export function getNextSelectedFormulaIdAfterDelete(
 
 function formatFormulaTags(formula: AlchemyFormula): string {
   return formatAlchemyPropertyVector(formula.pattern.targetPropertyVector);
+}
+
+function getFormulaFitBandLabel(
+  fitBand: FormulaAnalysisResult['fitBand'],
+): string {
+  switch (fitBand) {
+    case 'aligned':
+      return '契合';
+    case 'degraded':
+      return '勉强';
+    case 'blocked':
+      return '冲方';
+  }
+}
+
+function getFormulaFitBandTone(
+  fitBand: FormulaAnalysisResult['fitBand'],
+): 'accent' | 'warning' | 'danger' {
+  switch (fitBand) {
+    case 'aligned':
+      return 'accent';
+    case 'degraded':
+      return 'warning';
+    case 'blocked':
+      return 'danger';
+  }
+}
+
+function getFormulaJudgmentTone(
+  verdict: FormulaMaterialJudgment['verdict'],
+): 'accent' | 'default' | 'danger' {
+  switch (verdict) {
+    case 'core':
+      return 'accent';
+    case 'usable':
+      return 'default';
+    case 'conflict':
+      return 'danger';
+  }
 }
 
 export function AlchemyGuideModal({
@@ -263,6 +311,84 @@ export function AlchemyFormulaSummaryCard({
           </InkBadge>
         </div>
         <FormulaNarrativeBlock formula={formula} showMasteryExp />
+      </div>
+    </InkCard>
+  );
+}
+
+export function AlchemyFormulaAnalysisCard({
+  analysis,
+  cooldownRemainingSeconds,
+}: {
+  analysis: FormulaAnalysisResult | null;
+  cooldownRemainingSeconds: number;
+}) {
+  if (!analysis) {
+    return (
+      <InkNotice tone="info">
+        静态预检只会校验炉位、品阶与灵石。若要判断这炉材料是否真正循方，请手动按一次“按方辨材”。
+      </InkNotice>
+    );
+  }
+
+  return (
+    <InkCard variant="elevated" padding="lg">
+      <div className="space-y-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <InkBadge tone={getFormulaFitBandTone(analysis.fitBand)}>
+            {getFormulaFitBandLabel(analysis.fitBand)}
+          </InkBadge>
+          <span className="text-ink-secondary">
+            药性拟合 {Math.round(analysis.fitScore * 100)}%
+          </span>
+          <span className="text-ink-secondary">
+            炸炉线 {Math.round(analysis.hardBlockThreshold * 100)}%
+          </span>
+        </div>
+        <div className="text-ink-secondary space-y-1 leading-6">
+          <p>
+            熟练越深，越能把偏差药路勉强拢回丹方主脉；但若低于炸炉线，仍不可强开。
+          </p>
+          <p>
+            本次辨材结果会在约{' '}
+            {Math.max(1, Math.ceil(analysis.expiresInSeconds / 60))} 分钟后散去
+            {cooldownRemainingSeconds > 0
+              ? `；${cooldownRemainingSeconds} 秒后可再次辨材`
+              : ''}
+            。
+          </p>
+        </div>
+        {analysis.warnings.length > 0 ? (
+          <div className="space-y-2">
+            {analysis.warnings.map((warning) => (
+              <InkNotice key={warning} tone="warning">
+                {warning}
+              </InkNotice>
+            ))}
+          </div>
+        ) : null}
+        <div className="space-y-2">
+          {analysis.materialJudgments.map((judgment) => (
+            <div
+              key={judgment.materialId}
+              className="border-ink/10 bg-ink/5 border p-3"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold">{judgment.materialName}</span>
+                <InkBadge tone={getFormulaJudgmentTone(judgment.verdict)}>
+                  {judgment.verdict === 'core'
+                    ? '契合'
+                    : judgment.verdict === 'usable'
+                      ? '可用'
+                      : '冲方'}
+                </InkBadge>
+              </div>
+              <p className="text-ink-secondary mt-1 leading-6">
+                {judgment.reason}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
     </InkCard>
   );
@@ -499,11 +625,23 @@ export default function AlchemyPage() {
   const [previewState, setPreviewState] = useState<PreviewState>(
     DEFAULT_PREVIEW_STATE,
   );
+  const [formulaAnalysis, setFormulaAnalysis] =
+    useState<FormulaAnalysisResult | null>(null);
+  const [isAnalyzingFormula, setIsAnalyzingFormula] = useState(false);
+  const [formulaAnalysisError, setFormulaAnalysisError] = useState<
+    string | null
+  >(null);
+  const [analysisCooldownRemaining, setAnalysisCooldownRemaining] =
+    useState(0);
+  const [analysisExpiresAfterMs, setAnalysisExpiresAfterMs] = useState<number | null>(
+    null,
+  );
   const [formulas, setFormulas] = useState<AlchemyFormula[]>([]);
   const [formulasError, setFormulasError] = useState<string | null>(null);
   const [loadedFormulaCultivatorId, setLoadedFormulaCultivatorId] = useState<
     string | null
   >(null);
+  const analyzedFormulaSelectionKeyRef = useRef<string | null>(null);
   const { pushToast } = useInkUI();
   const isLoadingFormulas =
     Boolean(cultivatorId) && loadedFormulaCultivatorId !== cultivatorId;
@@ -512,6 +650,76 @@ export default function AlchemyPage() {
     () => formulas.find((formula) => formula.id === selectedFormulaId) ?? null,
     [formulas, selectedFormulaId],
   );
+  const formulaJudgmentMap = useMemo(
+    () =>
+      Object.fromEntries(
+        (formulaAnalysis?.materialJudgments ?? []).map((judgment) => [
+          judgment.materialId,
+          judgment,
+        ]),
+      ) as Record<string, FormulaMaterialJudgment>,
+    [formulaAnalysis],
+  );
+  const currentFormulaSelectionKey = useMemo(() => {
+    if (activeMode !== 'formula' || !selectedFormulaId) {
+      return null;
+    }
+
+    return JSON.stringify({
+      formulaId: selectedFormulaId,
+      materials: selectedMaterialIds.map((id) => ({
+        id,
+        dose: doseMap[id] ?? MIN_DOSE,
+      })),
+    });
+  }, [activeMode, doseMap, selectedFormulaId, selectedMaterialIds]);
+
+  useEffect(() => {
+    if (analysisCooldownRemaining <= 0) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setAnalysisCooldownRemaining((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [analysisCooldownRemaining]);
+
+  useEffect(() => {
+    if (!formulaAnalysis || !analysisExpiresAfterMs) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setFormulaAnalysis(null);
+      setAnalysisExpiresAfterMs(null);
+      setFormulaAnalysisError('上次辨材已散去，请重新按方辨材。');
+    }, analysisExpiresAfterMs);
+
+    return () => window.clearTimeout(timer);
+  }, [analysisExpiresAfterMs, formulaAnalysis]);
+
+  const clearFormulaAnalysis = (options?: { keepError?: boolean }) => {
+    setFormulaAnalysis(null);
+    setAnalysisExpiresAfterMs(null);
+    analyzedFormulaSelectionKeyRef.current = null;
+    if (!options?.keepError) {
+      setFormulaAnalysisError(null);
+    }
+  };
+
+  useEffect(() => {
+    if (
+      analyzedFormulaSelectionKeyRef.current &&
+      analyzedFormulaSelectionKeyRef.current !== currentFormulaSelectionKey
+    ) {
+      analyzedFormulaSelectionKeyRef.current = null;
+      setFormulaAnalysis(null);
+      setAnalysisExpiresAfterMs(null);
+      setFormulaAnalysisError(null);
+    }
+  }, [currentFormulaSelectionKey]);
 
   const loadFormulas = async (options?: {
     selectFormulaId?: string | null;
@@ -675,6 +883,7 @@ export default function AlchemyPage() {
     setDoseMap({});
     setUserPrompt('');
     setPreviewState(DEFAULT_PREVIEW_STATE);
+    clearFormulaAnalysis();
   };
 
   const handleModeChange = (value: string) => {
@@ -688,6 +897,7 @@ export default function AlchemyPage() {
   };
 
   const toggleMaterial = (id: string, material?: Material) => {
+    clearFormulaAnalysis();
     setSelectedMaterialIds((prev) => {
       if (prev.includes(id)) {
         setSelectedMaterialMap((map) => {
@@ -720,6 +930,7 @@ export default function AlchemyPage() {
   const handleDoseChange = (id: string, dose: number) => {
     const material = selectedMaterialMap[id];
     if (!material) return;
+    clearFormulaAnalysis();
     const stock = material.quantity ?? 0;
     const clamped = Math.min(
       Math.min(MAX_DOSE, Math.max(stock, MIN_DOSE)),
@@ -738,12 +949,21 @@ export default function AlchemyPage() {
       craftType: CRAFT_TYPE,
       alchemyMode: activeMode,
       formulaId: activeMode === 'formula' ? selectedFormulaId : undefined,
+      analysisId:
+        activeMode === 'formula' ? formulaAnalysis?.analysisId : undefined,
       materialQuantities: Object.fromEntries(
         selectedMaterialIds.map((id) => [id, doseMap[id] ?? MIN_DOSE]),
       ),
       userPrompt: activeMode === 'improvised' ? userPrompt.trim() : undefined,
     }),
-    [activeMode, doseMap, selectedFormulaId, selectedMaterialIds, userPrompt],
+    [
+      activeMode,
+      doseMap,
+      formulaAnalysis?.analysisId,
+      selectedFormulaId,
+      selectedMaterialIds,
+      userPrompt,
+    ],
   );
 
   const hasFreshPreview = previewState.key === previewRequest?.key;
@@ -756,6 +976,102 @@ export default function AlchemyPage() {
   const displayValidation = validation;
   const displayCanAfford = canAfford;
 
+  const handleAnalyzeFormula = async () => {
+    if (!cultivator) {
+      pushToast({ message: '请先在首页觉醒灵根。', tone: 'warning' });
+      return;
+    }
+    if (!selectedFormulaId) {
+      pushToast({ message: '请先选定丹方。', tone: 'warning' });
+      return;
+    }
+    if (selectedMaterialIds.length === 0) {
+      pushToast({ message: '请先投入灵材。', tone: 'warning' });
+      return;
+    }
+    if (!hasFreshPreview || estimatedSpiritStones === null) {
+      pushToast({ message: '静态预检尚未完成。', tone: 'warning' });
+      return;
+    }
+    if (previewError || displayValidation?.valid === false || !displayCanAfford) {
+      pushToast({ message: '请先通过静态预检。', tone: 'warning' });
+      return;
+    }
+    if (analysisCooldownRemaining > 0) {
+      pushToast({
+        message: `炉意未散，请 ${analysisCooldownRemaining} 秒后再按方辨材。`,
+        tone: 'warning',
+      });
+      return;
+    }
+
+    setIsAnalyzingFormula(true);
+    setFormulaAnalysisError(null);
+
+    try {
+      const response = await fetch(
+        `/api/alchemy/formulas/${selectedFormulaId}/analyze`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            materialIds: selectedMaterialIds,
+            materialQuantities: Object.fromEntries(
+              selectedMaterialIds.map((id) => [id, doseMap[id] ?? MIN_DOSE]),
+            ),
+          }),
+        },
+      );
+      const result: FormulaAnalyzeResponse = await response.json();
+
+      if (!response.ok || !result.success || !result.data) {
+        if (typeof result.remainingSeconds === 'number') {
+          setAnalysisCooldownRemaining(result.remainingSeconds);
+        }
+        throw new Error(result.error || '按方辨材失败');
+      }
+
+      if (!result.data.valid) {
+        clearFormulaAnalysis();
+        setFormulaAnalysisError(result.data.staticBlockingReason || '当前炉材未通过静态预检。');
+        return;
+      }
+
+      setFormulaAnalysis(result.data);
+      setAnalysisExpiresAfterMs(result.data.expiresInSeconds * 1000);
+      analyzedFormulaSelectionKeyRef.current = currentFormulaSelectionKey;
+      setAnalysisCooldownRemaining(result.data.cooldownRemainingSeconds);
+      pushToast({
+        message:
+          result.data.fitBand === 'aligned'
+            ? '炉意已明，可依方成丹。'
+            : result.data.fitBand === 'degraded'
+              ? '这炉尚可循方，但药力会有折损。'
+              : '此炉冲方，不可强开。',
+        tone:
+          result.data.fitBand === 'blocked'
+            ? 'warning'
+            : result.data.fitBand === 'degraded'
+              ? 'default'
+              : 'success',
+      });
+    } catch (error) {
+      clearFormulaAnalysis({ keepError: true });
+      setFormulaAnalysisError(
+        error instanceof Error ? error.message : '按方辨材失败，请稍后再试。',
+      );
+      pushToast({
+        message:
+          error instanceof Error ? error.message : '按方辨材失败，请稍后再试。',
+        tone: 'danger',
+      });
+    } finally {
+      setIsAnalyzingFormula(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!cultivator) {
       pushToast({ message: '请先在首页觉醒灵根。', tone: 'warning' });
@@ -763,6 +1079,10 @@ export default function AlchemyPage() {
     }
     if (activeMode === 'formula' && !selectedFormulaId) {
       pushToast({ message: '请先选定丹方。', tone: 'warning' });
+      return;
+    }
+    if (activeMode === 'formula' && !formulaAnalysis?.analysisId) {
+      pushToast({ message: '请先按方辨材。', tone: 'warning' });
       return;
     }
     if (selectedMaterialIds.length === 0) {
@@ -775,6 +1095,10 @@ export default function AlchemyPage() {
     }
     if (previewError || validation?.valid === false || !displayCanAfford) {
       pushToast({ message: '当前炉况未稳，暂不可开炉。', tone: 'warning' });
+      return;
+    }
+    if (activeMode === 'formula' && formulaAnalysis?.fitBand === 'blocked') {
+      pushToast({ message: '这炉冲方，不可强开。', tone: 'warning' });
       return;
     }
 
@@ -820,9 +1144,14 @@ export default function AlchemyPage() {
         setUserPrompt('');
       }
       setPreviewState(DEFAULT_PREVIEW_STATE);
+      clearFormulaAnalysis();
       setMaterialsRefreshKey((prev) => prev + 1);
       await refreshCultivator();
     } catch (error) {
+      if (error instanceof Error && error.message.includes('请先按方辨材')) {
+        clearFormulaAnalysis({ keepError: true });
+        setFormulaAnalysisError(error.message);
+      }
       const failMessage =
         error instanceof Error
           ? `炸炉了：${error.message}`
@@ -937,6 +1266,7 @@ export default function AlchemyPage() {
           }
 
           setPreviewState(DEFAULT_PREVIEW_STATE);
+          clearFormulaAnalysis();
           await loadFormulas({
             selectFormulaId: nextSelectedFormulaId,
           });
@@ -1035,6 +1365,7 @@ export default function AlchemyPage() {
                 <p>已选丹方：{selectedFormula.name}</p>
                 <p>丹方族类：{getPillFamilyLabel(selectedFormula.family)}</p>
                 <p>熟练等级：Lv.{selectedFormula.mastery.level}</p>
+                <p>当前仅完成静态预检；若要判定是否真正循方，请手动按一次方意辨材。</p>
               </div>
             ) : activeMode === 'formula' ? (
               <p>请先选定丹方，再投入灵材。</p>
@@ -1048,6 +1379,9 @@ export default function AlchemyPage() {
               <p className="text-crimson mt-2">
                 {displayValidation.blockingReason}
               </p>
+            ) : null}
+            {formulaAnalysisError ? (
+              <p className="text-crimson mt-2">{formulaAnalysisError}</p>
             ) : null}
           </GameSceneAsideSection>
         </>
@@ -1083,7 +1417,10 @@ export default function AlchemyPage() {
                     formula={formula}
                     isActive={isActive}
                     isDeleting={isDeletingFormula}
-                    onSelect={() => setSelectedFormulaId(formula.id)}
+                    onSelect={() => {
+                      clearFormulaAnalysis();
+                      setSelectedFormulaId(formula.id);
+                    }}
                     onDelete={() => openDeleteFormulaConfirm(formula)}
                   />
                 );
@@ -1122,10 +1459,53 @@ export default function AlchemyPage() {
           minDose={MIN_DOSE}
           maxDose={MAX_DOSE}
           disabled={isSubmitting}
+          judgmentMap={formulaJudgmentMap}
+          sortByJudgment={activeMode === 'formula' && !!formulaAnalysis}
           onRemove={(id) => toggleMaterial(id)}
           onDoseChange={handleDoseChange}
         />
       </GameSceneSection>
+
+      {activeMode === 'formula' && (
+        <GameSceneSection title="按方辨材">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-ink-secondary text-sm leading-6">
+                先过静态预检，再请丹方引炉辨材。辨材结果会保留一段时间，开炉时直接沿用，不会再次耗费推演。
+              </p>
+              <InkButton
+                variant="primary"
+                onClick={() => void handleAnalyzeFormula()}
+                disabled={
+                  isSubmitting ||
+                  isAnalyzingFormula ||
+                  !selectedFormulaId ||
+                  selectedMaterialIds.length === 0 ||
+                  !hasFreshPreview ||
+                  estimatedSpiritStones === null ||
+                  !!previewError ||
+                  !displayCanAfford ||
+                  displayValidation?.valid === false ||
+                  analysisCooldownRemaining > 0
+                }
+              >
+                {isAnalyzingFormula
+                  ? '辨材中……'
+                  : analysisCooldownRemaining > 0
+                    ? `${analysisCooldownRemaining} 秒后可再辨材`
+                    : '按方辨材'}
+              </InkButton>
+            </div>
+            {formulaAnalysisError ? (
+              <InkNotice tone="warning">{formulaAnalysisError}</InkNotice>
+            ) : null}
+            <AlchemyFormulaAnalysisCard
+              analysis={formulaAnalysis}
+              cooldownRemainingSeconds={analysisCooldownRemaining}
+            />
+          </div>
+        </GameSceneSection>
+      )}
 
       {activeMode === 'improvised' ? (
         <GameSceneSection title="注入丹意">
@@ -1170,12 +1550,15 @@ export default function AlchemyPage() {
         ) : (
           <InkNotice>
             {activeMode === 'formula'
-              ? '请先选定丹方并投入材料。'
+              ? '请先选定丹方并投入材料，完成静态预检。'
               : '请先选择材料以查看本炉消耗。'}
           </InkNotice>
         )}
 
         {previewError && <InkNotice tone="warning">{previewError}</InkNotice>}
+        {formulaAnalysisError && (
+          <InkNotice tone="warning">{formulaAnalysisError}</InkNotice>
+        )}
         {displayValidation?.blockingReason && (
           <InkNotice tone="warning">
             {displayValidation.blockingReason}
@@ -1200,6 +1583,8 @@ export default function AlchemyPage() {
             selectedMaterialIds.length === 0 ||
             (activeMode === 'improvised' && !userPrompt.trim()) ||
             (activeMode === 'formula' && !selectedFormulaId) ||
+            (activeMode === 'formula' && !formulaAnalysis?.analysisId) ||
+            (activeMode === 'formula' && formulaAnalysis?.fitBand === 'blocked') ||
             !!previewError ||
             estimatedSpiritStones === null ||
             !displayCanAfford ||

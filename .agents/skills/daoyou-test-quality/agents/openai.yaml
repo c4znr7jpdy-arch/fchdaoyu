@@ -1,0 +1,4 @@
+interface:
+  display_name: "Daoyou Test Quality"
+  short_description: "Daoyou 测试、lint、typecheck 验证路径"
+  default_prompt: "Use $daoyou-test-quality to choose and run the right Daoyou tests, lint, build, or focused verification."

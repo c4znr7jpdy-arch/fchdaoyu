@@ -1,11 +1,13 @@
 const {
   addConsumableToInventoryMock,
+  analyzerAnalyzeMock,
   executorState,
   getCultivatorByIdUnsafeMock,
   getExecutorMock,
-  plannerPlanMock,
+  redisGetMock,
   redisDelMock,
   redisSetMock,
+  redisTtlMock,
 } = vi.hoisted(() => {
   const state = {
     consumableRows: [] as any[],
@@ -102,6 +104,7 @@ const {
 
   return {
     addConsumableToInventoryMock: vi.fn(),
+    analyzerAnalyzeMock: vi.fn(),
     executorState: state,
     getCultivatorByIdUnsafeMock: vi.fn((cultivatorId: string) =>
       Promise.resolve(
@@ -119,9 +122,10 @@ const {
       ),
     ),
     getExecutorMock: vi.fn(() => executor),
-    plannerPlanMock: vi.fn(),
+    redisGetMock: vi.fn(),
     redisDelMock: vi.fn(),
     redisSetMock: vi.fn(),
+    redisTtlMock: vi.fn(),
   };
 });
 
@@ -132,8 +136,9 @@ vi.mock('@server/lib/drizzle/db', () => ({
 vi.mock('@server/lib/redis', () => ({
   redis: {
     del: redisDelMock,
-    get: vi.fn(),
+    get: redisGetMock,
     set: redisSetMock,
+    ttl: redisTtlMock,
   },
 }));
 
@@ -142,16 +147,71 @@ vi.mock('./cultivatorService', () => ({
   getCultivatorByIdUnsafe: getCultivatorByIdUnsafeMock,
 }));
 
-vi.mock('./AlchemyRecipePlanner', () => ({
-  alchemyRecipePlanner: {
-    plan: plannerPlanMock,
+vi.mock('./AlchemyFormulaAnalyzer', () => ({
+  alchemyFormulaAnalyzer: {
+    analyze: analyzerAnalyzeMock,
   },
 }));
 
 import { buildCultivationGain } from '@shared/lib/alchemyProgress';
 import type { PillSpec } from '@shared/types/consumable';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { craftFromFormula } from './AlchemyFormulaService';
+import {
+  analyzeFormulaMaterials,
+  craftFromFormula,
+} from './AlchemyFormulaService';
+
+function createAnalysisPayload(
+  overrides: Partial<Record<string, unknown>> = {},
+) {
+  return {
+    cultivatorId: 'cultivator-1',
+    formulaId: 'formula-1',
+    formulaMasteryLevel: 2,
+    signature: JSON.stringify({
+      cultivatorId: 'cultivator-1',
+      formulaId: 'formula-1',
+      formulaMasteryLevel: 2,
+      materials: [{ dose: 1, id: 'm1' }],
+    }),
+    plan: {
+      materialVectors: [
+        {
+          materialRef: 'material_1',
+          materialName: '回春草',
+          properties: [
+            { key: 'restore_hp', weight: 0.62 },
+            { key: 'heal_wounds', weight: 0.38 },
+          ],
+        },
+      ],
+      intentVector: [],
+      focusMode: 'balanced',
+      requestedElementBias: '木',
+    },
+    fitScore: 1,
+    fitBand: 'aligned',
+    hardBlockThreshold: 0.42,
+    alignedThreshold: 0.65,
+    warnings: [],
+    materialJudgments: [
+      {
+        materialId: 'm1',
+        materialName: '回春草',
+        verdict: 'core',
+        reason: '补气回春，正合方路。',
+      },
+    ],
+    aggregatedPropertyVector: [
+      { key: 'restore_hp', weight: 0.62 },
+      { key: 'heal_wounds', weight: 0.38 },
+    ],
+    dominantElement: '木',
+    stability: 80,
+    toxicityRating: 6,
+    ...overrides,
+  };
+}
 
 describe('craftFromFormula narrative copy', () => {
   beforeEach(() => {
@@ -217,50 +277,212 @@ describe('craftFromFormula narrative copy', () => {
     };
     executorState.consumableRows = [];
     redisSetMock.mockReset();
+    redisTtlMock.mockReset();
+    redisGetMock.mockReset();
     redisDelMock.mockReset();
     addConsumableToInventoryMock.mockReset();
-    plannerPlanMock.mockReset();
+    analyzerAnalyzeMock.mockReset();
     getCultivatorByIdUnsafeMock.mockClear();
     redisSetMock.mockResolvedValue('OK');
-    plannerPlanMock.mockResolvedValue({
-      materialVectors: [
-        {
-          materialRef: 'material_1',
-          materialName: '回春草',
-          properties: [
-            { key: 'restore_hp', weight: 0.62 },
-            { key: 'heal_wounds', weight: 0.38 },
-          ],
-        },
-      ],
-      intentVector: [],
-      focusMode: 'balanced',
+    redisTtlMock.mockResolvedValue(37);
+    redisGetMock.mockResolvedValue(JSON.stringify(createAnalysisPayload()));
+    analyzerAnalyzeMock.mockResolvedValue({
+      plan: createAnalysisPayload().plan,
+      materialJudgments: createAnalysisPayload().materialJudgments,
     });
   });
 
+  it('passes full formula context into manual formula analysis', async () => {
+    const result = await analyzeFormulaMaterials(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      { m1: 1 },
+    );
+
+    expect(result.valid).toBe(true);
+    expect(result.fitBand).toBe('aligned');
+    expect(analyzerAnalyzeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formula: expect.objectContaining({
+          id: 'formula-1',
+          name: '回春丹方',
+          description: '此方偏走木性生机，炉势圆融而不躁进。',
+          mastery: expect.objectContaining({ level: 2 }),
+        }),
+        materials: [
+          expect.objectContaining({
+            id: 'm1',
+            materialRef: 'material_1',
+            name: '回春草',
+            dose: 1,
+          }),
+        ],
+      }),
+    );
+  });
+
+  it('enforces the per-cultivator analyze cooldown and returns remaining seconds', async () => {
+    redisSetMock.mockResolvedValueOnce(null);
+    redisTtlMock.mockResolvedValueOnce(37);
+
+    await expect(
+      analyzeFormulaMaterials('cultivator-1', 'formula-1', ['m1'], { m1: 1 }),
+    ).rejects.toMatchObject({
+      message: '请 37 秒后再按方辨材。',
+      status: 429,
+      details: {
+        remainingSeconds: 37,
+      },
+    });
+    expect(analyzerAnalyzeMock).not.toHaveBeenCalled();
+  });
+
+  it('lowers the hard block threshold with mastery without changing fit score', async () => {
+    analyzerAnalyzeMock.mockResolvedValue({
+      plan: {
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '回春草',
+            properties: [
+              { key: 'restore_hp', weight: 0.4 },
+              { key: 'restore_mp', weight: 0.6 },
+            ],
+          },
+        ],
+        intentVector: [],
+        focusMode: 'balanced',
+        requestedElementBias: '木',
+      },
+      materialJudgments: createAnalysisPayload().materialJudgments,
+    });
+    executorState.formulaRows = [
+      {
+        ...executorState.formulaRows[0],
+        mastery: {
+          level: 0,
+          exp: 0,
+        },
+      },
+    ];
+
+    const noviceResult = await analyzeFormulaMaterials(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      { m1: 1 },
+    );
+
+    executorState.formulaRows = [
+      {
+        ...executorState.formulaRows[0],
+        mastery: {
+          level: 4,
+          exp: 0,
+        },
+      },
+    ];
+
+    const veteranResult = await analyzeFormulaMaterials(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      { m1: 1 },
+    );
+
+    expect(noviceResult.fitScore).toBeCloseTo(0.4, 4);
+    expect(veteranResult.fitScore).toBeCloseTo(0.4, 4);
+    expect(noviceResult.hardBlockThreshold).toBeCloseTo(0.45, 4);
+    expect(veteranResult.hardBlockThreshold).toBeCloseTo(0.39, 4);
+    expect(noviceResult.fitBand).toBe('blocked');
+    expect(veteranResult.fitBand).toBe('degraded');
+  });
+
   it('keeps formula-derived pill name and uses rule-based batch description', async () => {
-    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+    const result = await craftFromFormula(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      undefined,
+      'analysis-1',
+    );
 
     expect(result.consumable.name).toBe('回春');
     expect(result.consumable.description).toContain('依《回春丹方》炉意炼成');
     expect(result.consumable.description).toContain('药力拟合 115%');
   });
 
-  it('rejects materials whose fit drops below the hard threshold', async () => {
-    plannerPlanMock.mockResolvedValueOnce({
-      materialVectors: [
-        {
-          materialRef: 'material_1',
-          materialName: '回春草',
-          properties: [{ key: 'restore_mp', weight: 1 }],
-        },
-      ],
-      intentVector: [],
-      focusMode: 'balanced',
-    });
-
+  it('rejects formula crafting without a valid prior analysis id', async () => {
     await expect(
       craftFromFormula('cultivator-1', 'formula-1', ['m1']),
+    ).rejects.toThrow('请先按方辨材。');
+  });
+
+  it('rejects formula crafting when the cached analysis has expired', async () => {
+    redisGetMock.mockResolvedValueOnce(null);
+
+    await expect(
+      craftFromFormula(
+        'cultivator-1',
+        'formula-1',
+        ['m1'],
+        undefined,
+        'analysis-1',
+      ),
+    ).rejects.toThrow('请先按方辨材。');
+  });
+
+  it('rejects formula crafting when the cached analysis signature no longer matches', async () => {
+    redisGetMock.mockResolvedValueOnce(
+      JSON.stringify(
+        createAnalysisPayload({
+          signature: 'mismatch-signature',
+        }),
+      ),
+    );
+
+    await expect(
+      craftFromFormula(
+        'cultivator-1',
+        'formula-1',
+        ['m1'],
+        undefined,
+        'analysis-1',
+      ),
+    ).rejects.toThrow('请先按方辨材。');
+  });
+
+  it('rejects materials whose fit drops below the hard threshold', async () => {
+    redisGetMock.mockResolvedValueOnce(
+      JSON.stringify(
+        createAnalysisPayload({
+          plan: {
+            materialVectors: [
+              {
+                materialRef: 'material_1',
+                materialName: '回春草',
+                properties: [{ key: 'restore_mp', weight: 1 }],
+              },
+            ],
+            intentVector: [],
+            focusMode: 'balanced',
+            requestedElementBias: '木',
+          },
+          fitScore: 0,
+          fitBand: 'blocked',
+        }),
+      ),
+    );
+
+    await expect(
+      craftFromFormula(
+        'cultivator-1',
+        'formula-1',
+        ['m1'],
+        undefined,
+        'analysis-1',
+      ),
     ).rejects.toThrow('本炉药性与丹方偏差过大，强行开炉只会炸鼎。');
   });
 
@@ -276,7 +498,13 @@ describe('craftFromFormula narrative copy', () => {
       },
     ];
 
-    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+    const result = await craftFromFormula(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      undefined,
+      'analysis-1',
+    );
 
     expect(result.consumable.quality).toBe('天品');
     expect(result.consumable.spec.kind).toBe('pill');
@@ -319,23 +547,38 @@ describe('craftFromFormula narrative copy', () => {
         element: '金',
       },
     ];
-    plannerPlanMock.mockResolvedValueOnce({
-      materialVectors: [
-        {
-          materialRef: 'material_1',
-          materialName: '金霞芝',
-          properties: [{ key: 'cultivation', weight: 1 }],
-        },
-      ],
-      intentVector: [],
-      focusMode: 'balanced',
-    });
+    redisGetMock.mockResolvedValueOnce(
+      JSON.stringify(
+        createAnalysisPayload({
+          plan: {
+            materialVectors: [
+              {
+                materialRef: 'material_1',
+                materialName: '金霞芝',
+                properties: [{ key: 'cultivation', weight: 1 }],
+              },
+            ],
+            intentVector: [],
+            focusMode: 'balanced',
+          },
+          aggregatedPropertyVector: [{ key: 'cultivation', weight: 1 }],
+          fitScore: 1,
+          fitBand: 'aligned',
+        }),
+      ),
+    );
     executorState.cultivatorRow = {
       ...executorState.cultivatorRow,
       realm: '筑基',
     };
 
-    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+    const result = await craftFromFormula(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      undefined,
+      'analysis-1',
+    );
 
     expect(result.consumable.name).toBe('养元');
     expect(result.consumable.spec.kind).toBe('pill');
@@ -387,23 +630,38 @@ describe('craftFromFormula narrative copy', () => {
         element: '水',
       },
     ];
-    plannerPlanMock.mockResolvedValueOnce({
-      materialVectors: [
-        {
-          materialRef: 'material_1',
-          materialName: '静神芝',
-          properties: [{ key: 'clear_mind_support', weight: 1 }],
-        },
-      ],
-      intentVector: [],
-      focusMode: 'balanced',
-    });
+    redisGetMock.mockResolvedValueOnce(
+      JSON.stringify(
+        createAnalysisPayload({
+          plan: {
+            materialVectors: [
+              {
+                materialRef: 'material_1',
+                materialName: '静神芝',
+                properties: [{ key: 'clear_mind_support', weight: 1 }],
+              },
+            ],
+            intentVector: [],
+            focusMode: 'balanced',
+          },
+          aggregatedPropertyVector: [{ key: 'clear_mind_support', weight: 1 }],
+          fitScore: 1,
+          fitBand: 'aligned',
+        }),
+      ),
+    );
     executorState.cultivatorRow = {
       ...executorState.cultivatorRow,
       realm: '金丹',
     };
 
-    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+    const result = await craftFromFormula(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      undefined,
+      'analysis-1',
+    );
 
     expect(result.consumable.name).toBe('护婴丹');
     expect(result.consumable.spec.kind).toBe('pill');
@@ -455,23 +713,38 @@ describe('craftFromFormula narrative copy', () => {
         element: '木',
       },
     ];
-    plannerPlanMock.mockResolvedValueOnce({
-      materialVectors: [
-        {
-          materialRef: 'material_1',
-          materialName: '护络藤',
-          properties: [{ key: 'protect_meridians_support', weight: 1 }],
-        },
-      ],
-      intentVector: [],
-      focusMode: 'balanced',
-    });
+    redisGetMock.mockResolvedValueOnce(
+      JSON.stringify(
+        createAnalysisPayload({
+          plan: {
+            materialVectors: [
+              {
+                materialRef: 'material_1',
+                materialName: '护络藤',
+                properties: [{ key: 'protect_meridians_support', weight: 1 }],
+              },
+            ],
+            intentVector: [],
+            focusMode: 'balanced',
+          },
+          aggregatedPropertyVector: [{ key: 'protect_meridians_support', weight: 1 }],
+          fitScore: 1,
+          fitBand: 'aligned',
+        }),
+      ),
+    );
     executorState.cultivatorRow = {
       ...executorState.cultivatorRow,
       realm: '元婴',
     };
 
-    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+    const result = await craftFromFormula(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      undefined,
+      'analysis-1',
+    );
 
     expect(result.consumable.name).toBe('叩神丹');
     expect(result.consumable.spec.kind).toBe('pill');
@@ -491,7 +764,13 @@ describe('craftFromFormula narrative copy', () => {
   });
 
   it('stores formula target vector and fit metrics in formula alchemy meta', async () => {
-    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+    const result = await craftFromFormula(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      undefined,
+      'analysis-1',
+    );
 
     expect(result.consumable.spec.kind).toBe('pill');
     const alchemyMeta = (result.consumable.spec as PillSpec).alchemyMeta;
@@ -502,6 +781,7 @@ describe('craftFromFormula narrative copy', () => {
         { key: 'restore_hp', weight: 0.62 },
         { key: 'heal_wounds', weight: 0.38 },
       ],
+      fitBand: 'aligned',
       tags: ['restore_hp', 'heal_wounds', 'healing'],
     });
     if (alchemyMeta.source !== 'formula') {
@@ -512,29 +792,49 @@ describe('craftFromFormula narrative copy', () => {
   });
 
   it('adds a warning sentence when fit lands in the degraded middle band', async () => {
-    plannerPlanMock.mockResolvedValueOnce({
-      materialVectors: [
-        {
-          materialRef: 'material_1',
-          materialName: '回春草',
-          properties: [
+    redisGetMock.mockResolvedValueOnce(
+      JSON.stringify(
+        createAnalysisPayload({
+          plan: {
+            materialVectors: [
+              {
+                materialRef: 'material_1',
+                materialName: '回春草',
+                properties: [
+                  { key: 'restore_hp', weight: 0.55 },
+                  { key: 'restore_mp', weight: 0.45 },
+                ],
+              },
+            ],
+            intentVector: [],
+            focusMode: 'balanced',
+            requestedElementBias: '木',
+          },
+          aggregatedPropertyVector: [
             { key: 'restore_hp', weight: 0.55 },
             { key: 'restore_mp', weight: 0.45 },
           ],
-        },
-      ],
-      intentVector: [],
-      focusMode: 'balanced',
-    });
+          fitScore: 0.55,
+          fitBand: 'degraded',
+        }),
+      ),
+    );
 
-    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+    const result = await craftFromFormula(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      undefined,
+      'analysis-1',
+    );
 
-    expect(result.consumable.description).toContain('本炉药性虽能循方成丹');
+    expect(result.consumable.description).toContain('本炉循方成丹，但药力散逸');
     const alchemyMeta = (result.consumable.spec as PillSpec).alchemyMeta;
     if (alchemyMeta.source !== 'formula') {
       throw new Error('expected formula alchemy meta');
     }
     expect(alchemyMeta.fitScore).toBeCloseTo(0.55, 4);
-    expect(alchemyMeta.fitMultiplier).toBeCloseTo(1.065, 4);
+    expect(alchemyMeta.fitBand).toBe('degraded');
+    expect(alchemyMeta.fitMultiplier).toBeCloseTo(0.8786, 4);
   });
 });

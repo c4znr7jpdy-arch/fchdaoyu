@@ -9,6 +9,7 @@ import { jsonrepair } from 'jsonrepair';
 import z from 'zod';
 
 export type LlmSceneId =
+  | 'alchemy-formula-analysis'
   | 'alchemy-improvised-copy'
   | 'alchemy-recipe-plan'
   | 'battle-report'

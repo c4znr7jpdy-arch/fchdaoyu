@@ -772,15 +772,35 @@ export interface MaterialAlchemyProfile {
 输入：
 
 - 已掌握丹方
-- 符合丹方要求的材料
+- 当前炉材
+- 玩家主动触发的一次辨材结果 `analysisId`
 
 流程：
 
-1. 校验材料是否满足丹方模式
-2. 按丹方蓝图生成基础 `operations`
-3. 按材料拟合度修正强度、稳定度、毒性
-4. 按丹方熟练度修正成功质量
-5. 产出丹药
+1. 先走廉价静态预检：
+   - 校验材料存在与归属
+   - 校验炉位数
+   - 校验最低品阶
+   - 估算灵石消耗
+2. 玩家手动点击“按方辨材”，由专用 LLM prompt 在丹方语境下解析当前炉材：
+   - 为每味材料输出 1-3 个标准药性权重
+   - 为每味材料输出 `core / usable / conflict`
+   - 输出本炉 `focusMode`
+3. 服务端规则层聚合本炉药性向量，计算：
+   - `fitScore`
+   - `fitBand`
+   - `stability`
+   - `toxicityRating`
+4. 辨材结果写入 Redis，TTL 10 分钟；同一角色 60 秒内只能辨材一次。
+5. 正式开炉必须携带 `analysisId`，并校验：
+   - 角色一致
+   - 丹方一致
+   - 熟练度一致
+   - 材料顺序与标准化剂量一致
+6. 正式开炉不再二次调用 LLM，直接沿用辨材结果成丹：
+   - `aligned`：正常成丹
+   - `degraded`：勉强成丹并降效
+   - `blocked`：禁止开炉 / 炸鼎
 
 ### 16.6 即兴炼丹与丹方关系
 
@@ -794,12 +814,14 @@ export interface MaterialAlchemyProfile {
 
 丹方不应强绑定具体材料 ID。
 
-丹方描述的是“材料模式”：
+丹方描述的是“目标药路”：
 
-- 需要的标签
-- 需要的主次结构
+- 目标药性向量
+- 主元素偏向
 - 最低品质要求
-- 五行偏性要求
+- 炉位数
+
+具体材料是否契合，不再靠静态标签硬匹配，而是由 LLM 在丹方语境下解释材料语义。
 
 ### 17.2 丹方模型
 
@@ -808,10 +830,10 @@ export interface AlchemyFormula {
   id: string;
   cultivatorId: string;
   name: string;
+  description: string;
   family: PillFamily;
   pattern: {
-    requiredTags: string[];
-    optionalTags?: string[];
+    targetPropertyVector: WeightedAlchemyProperty[];
     dominantElement?: ElementType;
     minQuality?: Quality;
     slotCount: number;
@@ -831,7 +853,77 @@ export interface AlchemyFormula {
 }
 ```
 
-### 17.3 丹方悟出条件
+### 17.3 丹方辨材结果模型
+
+```ts
+export interface FormulaMaterialJudgment {
+  materialId: string;
+  materialName: string;
+  verdict: 'core' | 'usable' | 'conflict';
+  reason: string;
+}
+
+export interface FormulaAnalysisResult {
+  analysisId: string;
+  valid: boolean;
+  staticBlockingReason?: string;
+  fitScore: number;
+  fitBand: 'aligned' | 'degraded' | 'blocked';
+  hardBlockThreshold: number;
+  alignedThreshold: number;
+  warnings: string[];
+  materialJudgments: FormulaMaterialJudgment[];
+  aggregatedPropertyVector: WeightedAlchemyProperty[];
+  dominantElement?: ElementType;
+  stability: number;
+  toxicityRating: number;
+  cooldownRemainingSeconds: number;
+  expiresInSeconds: number;
+}
+```
+
+### 17.4 丹方模式判定规则
+
+- `alignedThreshold = 0.65`
+- `hardBlockThreshold = max(0.30, 0.45 - mastery.level * 0.015)`
+- 区间判定：
+  - `fit >= 0.65`：`aligned`
+  - `hardBlockThreshold <= fit < 0.65`：`degraded`
+  - `fit < hardBlockThreshold`：`blocked`
+- 熟练度只影响 `hardBlockThreshold`，不改写材料语义，也不直接改写 `fitScore`
+- `degraded` 额外惩罚：
+  - `degradedPenaltyFactor = clamp(0.55 + fit * 0.5, 0.78, 0.90)`
+  - 稳定度惩罚：`round((0.65 - fit) * 40)`
+  - 毒性惩罚：`round((0.65 - fit) * 30)`
+
+### 17.5 接口与缓存架构
+
+- `GET /api/craft?craftType=alchemy&alchemyMode=formula...`
+  - 只做静态预检
+  - 不触发 LLM
+- `POST /api/alchemy/formulas/:formulaId/analyze`
+  - 手动按方辨材
+  - 触发专用 LLM prompt
+  - 返回 `FormulaAnalysisResult`
+- `POST /api/craft`
+  - 丹方模式必须携带 `analysisId`
+  - 正式开炉只复用缓存分析结果，不再二次调用 LLM
+
+Redis：
+
+- `alchemy:formula_analysis:${cultivatorId}:${analysisId}`
+  - 保存辨材结果
+  - TTL 600 秒
+- `alchemy:formula_analysis:cooldown:${cultivatorId}`
+  - 限制 60 秒一次辨材
+
+本版明确不做：
+
+- 不扫描整个库存做 LLM 排序
+- 不在材料列表分页内做自动丹方适配
+- 不让 LLM 直接输出最终成败或最终数值
+
+### 17.6 丹方悟出条件
 
 第一版建议条件：
 
@@ -846,7 +938,8 @@ export interface AlchemyFormula {
 - `ConditionService`
 - `ConditionStatusRegistry`
 - `PillOperationExecutor`
-- `AlchemyIntentResolver`
+- `AlchemyRecipePlanner`
+- `AlchemyFormulaAnalyzer`
 - `AlchemyFormulaService`
 
 ### 18.2 替换关系
@@ -855,7 +948,14 @@ export interface AlchemyFormula {
 - `CombatStatusTemplateRegistry` -> `ConditionStatusRegistry`
 - 旧 `ConsumableRegistry` 删除，不保留
 - `ConsumableUseEngine` 改为直接解释 `consumable.spec`
-- `alchemyServiceV2` 重写，不再靠 prompt 正则直接决定整颗丹的固定模板
+- `alchemyServiceV2`
+  - 负责即兴炼丹
+  - 仍由 `AlchemyRecipePlanner` 做无丹方语境的判材
+- `AlchemyFormulaService`
+  - 负责丹方模式的静态预检、辨材缓存、正式开炉
+- `AlchemyFormulaAnalyzer`
+  - 专门承接“丹方引导 LLM 判材”
+  - 不复用即兴炼丹 prompt
 
 ## 19. 数据库改造建议
 
@@ -990,12 +1090,16 @@ export interface AlchemyFormula {
 ### Phase 6：丹方系统上线
 
 - 新增丹方表
-- 新增丹方炼制流程
+- 新增丹方炼制静态预检 + 手动辨材 + 正式开炉三段链路
+- 新增 `POST /api/alchemy/formulas/:formulaId/analyze`
+- 新增 Redis 辨材缓存与角色级冷却
 - 支持即兴炼丹悟出丹方
 
 完成标准：
 
 - 即兴炼丹与丹方炼制形成闭环
+- 丹方模式正式开炉不再重复调用 LLM
+- 丹方模式支持 `aligned / degraded / blocked` 三段判定
 
 ## 22. 验收标准
 
@@ -1009,9 +1113,12 @@ export interface AlchemyFormula {
 - 永久加属性丹被完全替换为炼体 / 洗髓进度丹
 - 即兴炼丹能根据材料药性产出不同操作组合
 - 丹方炼制可稳定复现丹药蓝图
+- 丹方模式的 LLM 只在手动“按方辨材”时触发
+- 正式开炉必须依赖有效 `analysisId`
+- 丹方成品会记录 `fitBand / fitScore / sourceMaterials`
 
 ## 23. 实施备注
 
-- 这份设计稿优先保证“结构可持续”，不在文档内写死所有数值。
-- 所有具体倍率、阈值、成长量都应进入配置层，而不是散落在服务逻辑里。
+- 当前版本已先将丹方模式关键阈值固化在服务层常量中，以保证规则闭环稳定。
+- 后续若丹方系统继续扩展，可再将阈值、冷却和缓存 TTL 下沉为配置项。
 - 若实现时发现某个机制需要临时补充字段，应先判断是否可以并入 `condition` 或 `spec`，避免再次走回“多个近义字段并存”的旧路。

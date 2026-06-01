@@ -273,6 +273,26 @@ function buildAlchemyInfoLines(
 ): string[] {
   const { alchemyMeta } = consumable.spec;
   const breakthroughLabel = getBreakthroughPurposeLabel(consumable.spec);
+  const formulaFitBandText =
+    alchemyMeta.source === 'formula'
+      ? alchemyMeta.fitBand === 'aligned'
+        ? '契合成丹'
+        : alchemyMeta.fitBand === 'degraded'
+          ? '勉强成丹'
+          : undefined
+      : undefined;
+  const formulaFitScoreText =
+    alchemyMeta.source === 'formula' &&
+    Number.isFinite(alchemyMeta.fitScore)
+      ? `药性拟合：${Math.round(alchemyMeta.fitScore * 100)}%`
+      : undefined;
+  const formulaFitMultiplierText =
+    alchemyMeta.source === 'formula' &&
+    Number.isFinite(alchemyMeta.fitMultiplier)
+      ? `丹方倍率：${Math.round(alchemyMeta.fitMultiplier * 100)}%`
+      : undefined;
+  const fitBandText =
+    alchemyMeta.source === 'formula' ? formulaFitBandText : undefined;
 
   return [
     `丹药类别：${getPillFamilyLabel(consumable.spec.family)}`,
@@ -281,12 +301,9 @@ function buildAlchemyInfoLines(
       ? `目标大境界：${alchemyMeta.breakthroughTargetRealm}`
       : undefined,
     `炼制来源：${alchemyMeta.source === 'formula' ? '丹方炼制' : '即兴炼制'}`,
-    alchemyMeta.source === 'formula'
-      ? `药性拟合：${Math.round(alchemyMeta.fitScore * 100)}%`
-      : undefined,
-    alchemyMeta.source === 'formula'
-      ? `丹方倍率：${Math.round(alchemyMeta.fitMultiplier * 100)}%`
-      : undefined,
+    fitBandText ? `成丹层级：${fitBandText}` : undefined,
+    formulaFitScoreText,
+    formulaFitMultiplierText,
     `稳度：${alchemyMeta.stability}`,
     alchemyMeta.dominantElement
       ? `主元素：${alchemyMeta.dominantElement}`

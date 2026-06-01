@@ -1,4 +1,5 @@
-import { InkButton } from '@app/components/ui';
+import { InkBadge, InkButton } from '@app/components/ui';
+import type { FormulaMaterialJudgment } from '@shared/types/consumable';
 import { getMaterialTypeInfo } from '@shared/types/dictionaries';
 import type { Material } from '@shared/types/cultivator';
 
@@ -9,8 +10,49 @@ export interface SelectedMaterialsWithDoseProps {
   minDose: number;
   maxDose: number;
   disabled?: boolean;
+  judgmentMap?: Record<string, FormulaMaterialJudgment>;
+  sortByJudgment?: boolean;
   onRemove: (id: string) => void;
   onDoseChange: (id: string, dose: number) => void;
+}
+
+function getJudgmentOrder(
+  verdict: FormulaMaterialJudgment['verdict'] | undefined,
+): number {
+  switch (verdict) {
+    case 'core':
+      return 0;
+    case 'usable':
+      return 1;
+    case 'conflict':
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+function getJudgmentBadgeTone(
+  verdict: FormulaMaterialJudgment['verdict'],
+): 'accent' | 'default' | 'danger' {
+  switch (verdict) {
+    case 'core':
+      return 'accent';
+    case 'usable':
+      return 'default';
+    case 'conflict':
+      return 'danger';
+  }
+}
+
+function getJudgmentLabel(verdict: FormulaMaterialJudgment['verdict']): string {
+  switch (verdict) {
+    case 'core':
+      return '契合';
+    case 'usable':
+      return '可用';
+    case 'conflict':
+      return '冲方';
+  }
 }
 
 /**
@@ -26,6 +68,8 @@ export function SelectedMaterialsWithDose({
   minDose,
   maxDose,
   disabled,
+  judgmentMap,
+  sortByJudgment = false,
   onRemove,
   onDoseChange,
 }: SelectedMaterialsWithDoseProps) {
@@ -37,9 +81,23 @@ export function SelectedMaterialsWithDose({
     );
   }
 
+  const displayIds = sortByJudgment
+    ? [...selectedIds].sort((left, right) => {
+        const leftJudgment = judgmentMap?.[left];
+        const rightJudgment = judgmentMap?.[right];
+        const verdictDelta =
+          getJudgmentOrder(leftJudgment?.verdict) -
+          getJudgmentOrder(rightJudgment?.verdict);
+        if (verdictDelta !== 0) {
+          return verdictDelta;
+        }
+        return left.localeCompare(right);
+      })
+    : selectedIds;
+
   return (
     <div className="space-y-2">
-      {selectedIds.map((id) => {
+      {displayIds.map((id) => {
         const material = materialMap[id];
         if (!material) {
           return (
@@ -68,6 +126,7 @@ export function SelectedMaterialsWithDose({
           Math.max(minDose, doseMap[id] ?? minDose),
         );
         const typeInfo = getMaterialTypeInfo(material.type);
+        const judgment = judgmentMap?.[id];
 
         return (
           <div
@@ -76,13 +135,25 @@ export function SelectedMaterialsWithDose({
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm font-semibold">
-                  {typeInfo.icon} {material.name}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold">
+                    {typeInfo.icon} {material.name}
+                  </p>
+                  {judgment ? (
+                    <InkBadge tone={getJudgmentBadgeTone(judgment.verdict)}>
+                      {getJudgmentLabel(judgment.verdict)}
+                    </InkBadge>
+                  ) : null}
+                </div>
                 <p className="text-ink-secondary text-xs">
                   {typeInfo.label} · {material.rank} ·{' '}
                   {material.element || '无属性'} · 库存 {stock}
                 </p>
+                {judgment ? (
+                  <p className="text-ink-secondary mt-1 text-xs leading-6">
+                    {judgment.reason}
+                  </p>
+                ) : null}
               </div>
               <InkButton
                 variant="secondary"

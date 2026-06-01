@@ -62,6 +62,30 @@ export interface AlchemyMaterialPropertyVector {
   properties: WeightedAlchemyProperty[];
 }
 
+export const FORMULA_MATERIAL_VERDICT_VALUES = [
+  'core',
+  'usable',
+  'conflict',
+] as const;
+
+export type FormulaMaterialVerdict =
+  (typeof FORMULA_MATERIAL_VERDICT_VALUES)[number];
+
+export const FORMULA_FIT_BAND_VALUES = [
+  'aligned',
+  'degraded',
+  'blocked',
+] as const;
+
+export type FormulaFitBand = (typeof FORMULA_FIT_BAND_VALUES)[number];
+
+export interface FormulaMaterialJudgment {
+  materialId: string;
+  materialName: string;
+  verdict: FormulaMaterialVerdict;
+  reason: string;
+}
+
 export const ALCHEMY_FOCUS_MODE_VALUES = [
   'focused',
   'balanced',
@@ -105,6 +129,7 @@ export type PillAlchemyMeta =
       propertyVector: WeightedAlchemyProperty[];
       sourceMaterialVectors: AlchemyMaterialPropertyVector[];
       fitScore: number;
+      fitBand: Exclude<FormulaFitBand, 'blocked'>;
       fitMultiplier: number;
       dominantElement?: ElementType;
       stability: number;
@@ -203,6 +228,24 @@ export interface AlchemyFormulaBlueprint {
   consumeRules: PillConsumeRules;
   targetStability: number;
   targetToxicity: number;
+}
+
+export interface FormulaAnalysisResult {
+  analysisId: string;
+  valid: boolean;
+  staticBlockingReason?: string;
+  fitScore: number;
+  fitBand: FormulaFitBand;
+  hardBlockThreshold: number;
+  alignedThreshold: number;
+  warnings: string[];
+  materialJudgments: FormulaMaterialJudgment[];
+  aggregatedPropertyVector: WeightedAlchemyProperty[];
+  dominantElement?: ElementType;
+  stability: number;
+  toxicityRating: number;
+  cooldownRemainingSeconds: number;
+  expiresInSeconds: number;
 }
 
 export interface AlchemyFormula {

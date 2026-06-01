@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
 
 const {
+  analyzeFormulaMaterialsMock,
   confirmDiscoveryCandidateMock,
   deleteCultivatorFormulaMock,
   listCultivatorFormulasMock,
 } = vi.hoisted(() => ({
+  analyzeFormulaMaterialsMock: vi.fn(),
   confirmDiscoveryCandidateMock: vi.fn(),
   deleteCultivatorFormulaMock: vi.fn(),
   listCultivatorFormulasMock: vi.fn(),
@@ -21,6 +23,7 @@ vi.mock('@server/lib/hono/middleware', () => ({
 }));
 
 vi.mock('@server/lib/services/AlchemyFormulaService', () => ({
+  analyzeFormulaMaterials: analyzeFormulaMaterialsMock,
   confirmDiscoveryCandidate: confirmDiscoveryCandidateMock,
   deleteCultivatorFormula: deleteCultivatorFormulaMock,
   listCultivatorFormulas: listCultivatorFormulasMock,
@@ -148,6 +151,80 @@ describe('alchemy formulas router', () => {
       '11111111-1111-4111-8111-111111111111',
       true,
     );
+  });
+
+  it('analyzes selected materials for a formula via POST /api/alchemy/formulas/:formulaId/analyze', async () => {
+    analyzeFormulaMaterialsMock.mockResolvedValueOnce({
+      analysisId: '22222222-2222-4222-8222-222222222222',
+      valid: true,
+      fitScore: 0.7,
+      fitBand: 'aligned',
+      hardBlockThreshold: 0.45,
+      alignedThreshold: 0.65,
+      warnings: ['炉势尚稳。'],
+      materialJudgments: [
+        {
+          materialId: 'm1',
+          materialName: '青岚草',
+          verdict: 'core',
+          reason: '补气回春，正合方路。',
+        },
+      ],
+      aggregatedPropertyVector: [{ key: 'restore_hp', weight: 0.7 }],
+      dominantElement: '木',
+      stability: 72,
+      toxicityRating: 6,
+      cooldownRemainingSeconds: 60,
+      expiresInSeconds: 600,
+    });
+
+    const response = await createApp().request(
+      '/api/alchemy/formulas/11111111-1111-4111-8111-111111111111/analyze',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          materialIds: ['m1'],
+          materialQuantities: { m1: 2 },
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: expect.objectContaining({
+        analysisId: '22222222-2222-4222-8222-222222222222',
+        fitBand: 'aligned',
+      }),
+    });
+    expect(analyzeFormulaMaterialsMock).toHaveBeenCalledWith(
+      'cultivator-1',
+      '11111111-1111-4111-8111-111111111111',
+      ['m1'],
+      { m1: 2 },
+    );
+  });
+
+  it('rejects out-of-range material quantities for formula analysis', async () => {
+    const response = await createApp().request(
+      '/api/alchemy/formulas/11111111-1111-4111-8111-111111111111/analyze',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          materialIds: ['m1'],
+          materialQuantities: { m1: 999 },
+        }),
+      },
+    );
+
+    expect(response.status).toBe(400);
+    expect(analyzeFormulaMaterialsMock).not.toHaveBeenCalled();
   });
 
   it('deletes a cultivator formula via DELETE /api/alchemy/formulas/:formulaId', async () => {

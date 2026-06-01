@@ -72,7 +72,7 @@ description: 为本项目的主流程游戏 UI 提供抽象规范与审查方法
    - 壳层组件负责稳定骨架。
    - 正文组件负责任务组织。
    - 共享组件进入正文后，必须服从正文规则。
-6. 改完后执行 `references/viewport-checklist.md` 的审查项。
+6. 改完后执行 `references/viewport-checklist.md`、本文件 `Review Questions` 与 `Validation` 的审查项。
 
 ## Core Principles
 
@@ -159,8 +159,20 @@ description: 为本项目的主流程游戏 UI 提供抽象规范与审查方法
 - `src/react-app/components/game-shell`
 - `src/react-app/components/feature/world-chat`
 - `src/react-app/routes/game`
+- `src/react-app/router.tsx`
+- `src/react-app/components/game-shell/gameNavigation.ts`
+- `src/react-app/lib/router/gameShellRegistry.ts`
+- `docs/game-layout-ownership.md`
 
 优先复用现有主流程原语，而不是重新发明一套页面局部样式约定。只有当现有原语无法表达当前规则时，才新增一个职责单一的组件。
+
+新增或迁移主流程场景时，不要只添加 route 文件。同步核对：
+
+- `src/react-app/router.tsx` 中的 route、`handle={scene(...)}` 和 document title
+- `src/react-app/components/game-shell/gameNavigation.ts` 中对应 scene metadata、dock label、href
+- 需要 immersive chrome 时的特殊返回 descriptor
+- `src/react-app/lib/router/gameShellRegistry.test.ts`、`src/react-app/lib/router/routeTitle.test.ts` 或相邻路由测试
+- `docs/game-layout-ownership.md` 是否仍准确
 
 ## Review Questions
 
@@ -176,6 +188,7 @@ description: 为本项目的主流程游戏 UI 提供抽象规范与审查方法
 8. 交互反馈是否安静、一致、可预期。
 9. 共享组件进入正文后，是否仍保留了不合时宜的展示感。
 10. 页面是否仍然把注意力锁在当前场景任务上。
+11. 新增场景是否同步了 route handle、scene registry、dock 信息和路由测试。
 
 ## Anti-Patterns
 
@@ -190,10 +203,11 @@ description: 为本项目的主流程游戏 UI 提供抽象规范与审查方法
 - 用相邻双边框、双虚线或嵌套边框表达同一种分隔语义
 - 用正文底部按钮组承担跨场景导航
 - 用壳层透传 class 或全局语义 CSS 修补局部视觉问题
+- 新增主流程页只加页面文件，漏掉 scene registry、dock、title 或测试
 
 ## Validation
 
-执行 `references/viewport-checklist.md` 的检查项。
+执行 `references/viewport-checklist.md` 和本文件 `Review Questions` 的检查项。
 
 至少确认：
 

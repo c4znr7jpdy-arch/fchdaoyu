@@ -43,6 +43,7 @@ const CraftSchema = z.object({
   craftType: z.enum(SUPPORTED_CRAFT_TYPES),
   alchemyMode: z.enum(ALCHEMY_MODE_VALUES).optional(),
   formulaId: z.string().uuid().optional(),
+  analysisId: z.string().uuid().optional(),
   materialQuantities: z
     .record(
       z.string(),
@@ -208,6 +209,7 @@ router.post('/', requireActiveCultivator(), async (c) => {
       craftType,
       alchemyMode,
       formulaId,
+      analysisId,
       materialQuantities,
       userPrompt,
       requestedSlot,
@@ -228,6 +230,9 @@ router.post('/', requireActiveCultivator(), async (c) => {
       if (resolvedAlchemyMode === 'formula' && !formulaId) {
         return c.json({ error: '请先选定丹方。' }, 400);
       }
+      if (resolvedAlchemyMode === 'formula' && !analysisId) {
+        return c.json({ error: '请先按方辨材。' }, 400);
+      }
 
       const result = resolvedAlchemyMode === 'formula'
         ? await craftFromFormula(
@@ -235,6 +240,7 @@ router.post('/', requireActiveCultivator(), async (c) => {
             formulaId!,
             materialIds,
             materialQuantities,
+            analysisId,
           )
         : await processAlchemyCraft(cultivator.id, materialIds, {
             materialQuantities,

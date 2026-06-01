@@ -70,6 +70,7 @@ function createPillSpec() {
       formulaId: 'formula-1',
       sourceMaterials: ['赤心芝'],
       fitScore: 0.92,
+      fitBand: 'aligned' as const,
       fitMultiplier: 1.1,
       stability: 78,
       toxicityRating: 8,

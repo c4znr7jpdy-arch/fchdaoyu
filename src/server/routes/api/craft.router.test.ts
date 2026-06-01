@@ -315,6 +315,7 @@ describe('craft router alchemy routes', () => {
               },
             ],
             fitScore: 1,
+            fitBand: 'aligned',
             fitMultiplier: 1.05,
             stability: 72,
             toxicityRating: 5,
@@ -340,6 +341,7 @@ describe('craft router alchemy routes', () => {
         craftType: 'alchemy',
         alchemyMode: 'formula',
         formulaId: '11111111-1111-4111-8111-111111111111',
+        analysisId: '22222222-2222-4222-8222-222222222222',
         materialIds: ['m1'],
         materialQuantities: { m1: 2 },
       }),
@@ -367,10 +369,33 @@ describe('craft router alchemy routes', () => {
       '11111111-1111-4111-8111-111111111111',
       ['m1'],
       { m1: 2 },
+      '22222222-2222-4222-8222-222222222222',
     );
     expect(recordTaskEventMock).toHaveBeenCalledWith(
       'cultivator-1',
       'alchemy_crafted',
     );
+  });
+
+  it('requires analysisId for formula crafting via POST /api/craft', async () => {
+    const response = await createApp().request('/api/craft', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        craftType: 'alchemy',
+        alchemyMode: 'formula',
+        formulaId: '11111111-1111-4111-8111-111111111111',
+        materialIds: ['m1'],
+        materialQuantities: { m1: 2 },
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: '请先按方辨材。',
+    });
+    expect(craftFromFormulaMock).not.toHaveBeenCalled();
   });
 });
