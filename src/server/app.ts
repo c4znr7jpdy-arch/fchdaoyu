@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { runWithContext } from '@server/lib/http/context';
 import { jsonError } from '@server/lib/hono/middleware';
 import type { AppEnv } from '@server/lib/hono/types';
+import { validateLlmBaseUrl } from '@server/lib/llm/allowedHosts';
 import apiRouter from '@server/routes/api';
 import internalRouter from '@server/routes/internal';
 
@@ -18,10 +19,26 @@ app.use('*', async (context, next) => {
   const fastModel = context.req.header('x-llm-fast-model');
 
   if (provider && apiKey && model && fastModel) {
+    // [安全守卫] 白名单校验：仅允许预注册的 LLM 服务商域名
+    // 如果 baseUrl 非空且不在白名单内，丢弃整个 llmConfig 以防止
+    // apiKey 被发送到攻击者控制的代理服务器
+    let validatedBaseUrl: string | null = null;
+    if (baseUrl) {
+      validatedBaseUrl = validateLlmBaseUrl(baseUrl);
+      if (!validatedBaseUrl) {
+        console.warn(
+          `[llm-guard] Rejected non-whitelisted LLM base URL: ${baseUrl}`,
+        );
+        // 不设置 llmConfig，回退到服务端默认 LLM
+        await next();
+        return;
+      }
+    }
+
     context.set('llmConfig', {
       provider,
       apiKey,
-      baseUrl: baseUrl || null,
+      baseUrl: validatedBaseUrl,
       model,
       fastModel,
     });

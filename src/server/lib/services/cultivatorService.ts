@@ -1413,6 +1413,38 @@ export async function equipEquipment(
 // ===== 资源管理引擎底层操作 =====
 
 /**
+ * [安全守卫] 资源变化量安全限制
+ * 防止外部 LLM 注入极端数值导致经济系统崩溃
+ * - MAX_SINGLE_DELTA: 单次操作允许的最大变化量（绝对值）
+ * - RESOURCE_CEILING: 资源绝对上限
+ */
+const RESOURCE_SAFETY = {
+  spirit_stones: {
+    maxDelta: 10_000_000,    // 单次最多变动 1000 万灵石
+    ceiling: 1_000_000_000,  // 灵石绝对上限 10 亿
+  },
+  lifespan: {
+    maxDelta: 100_000,       // 单次最多变动 10 万年寿元
+    ceiling: 10_000_000,     // 寿元绝对上限 1000 万年
+  },
+  cultivation_exp: {
+    maxDelta: 10_000_000,    // 单次最多变动 1000 万修为
+    ceiling: 1_000_000_000,  // 修为绝对上限 10 亿
+  },
+} as const;
+
+/**
+ * 校验并夹紧资源变化量，返回安全的 delta 值
+ * 拒绝 NaN/Infinity，并将变化量限制在 maxDelta 范围内
+ */
+function clampResourceDelta(delta: number, maxDelta: number): number {
+  if (!Number.isFinite(delta)) {
+    throw new Error(`非法的资源变化量: ${delta}（必须为有限数）`);
+  }
+  return Math.max(-maxDelta, Math.min(maxDelta, delta));
+}
+
+/**
  * 更新角色灵石数量
  */
 export async function updateSpiritStones(
@@ -1422,6 +1454,9 @@ export async function updateSpiritStones(
   tx?: DbTransaction,
 ): Promise<void> {
   await assertCultivatorOwnership(userId, cultivatorId);
+
+  // [安全守卫] 夹紧变化量并施加上限
+  const safeDelta = clampResourceDelta(delta, RESOURCE_SAFETY.spirit_stones.maxDelta);
 
   const dbInstance = getExecutor(tx);
   const cultivator = await dbInstance
@@ -1434,10 +1469,13 @@ export async function updateSpiritStones(
     throw new Error('修真者不存在');
   }
 
-  const newValue = cultivator[0].spirit_stones + delta;
+  const newValue = Math.min(
+    cultivator[0].spirit_stones + safeDelta,
+    RESOURCE_SAFETY.spirit_stones.ceiling,
+  );
   if (newValue < 0) {
     throw new Error(
-      `灵石不足，需要 ${-delta}，当前拥有 ${cultivator[0].spirit_stones}`,
+      `灵石不足，需要 ${-safeDelta}，当前拥有 ${cultivator[0].spirit_stones}`,
     );
   }
 
@@ -1458,6 +1496,9 @@ export async function updateLifespan(
 ): Promise<void> {
   await assertCultivatorOwnership(userId, cultivatorId);
 
+  // [安全守卫] 夹紧变化量并施加上限
+  const safeDelta = clampResourceDelta(delta, RESOURCE_SAFETY.lifespan.maxDelta);
+
   const dbInstance = getExecutor(tx);
   const cultivator = await dbInstance
     .select({ lifespan: schema.cultivators.lifespan })
@@ -1469,10 +1510,13 @@ export async function updateLifespan(
     throw new Error('修真者不存在');
   }
 
-  const newValue = cultivator[0].lifespan + delta;
+  const newValue = Math.min(
+    cultivator[0].lifespan + safeDelta,
+    RESOURCE_SAFETY.lifespan.ceiling,
+  );
   if (newValue < 0) {
     throw new Error(
-      `寿元不足，需要 ${-delta}，当前剩余 ${cultivator[0].lifespan}`,
+      `寿元不足，需要 ${-safeDelta}，当前剩余 ${cultivator[0].lifespan}`,
     );
   }
 
@@ -1519,11 +1563,17 @@ export async function updateCultivationExp(
     cultivatorData[0].realm_stage as RealmStage,
   );
 
+  // [安全守卫] 夹紧修为变化量并施加上限
+  const safeExpDelta = clampResourceDelta(cultivationExpDelta, RESOURCE_SAFETY.cultivation_exp.maxDelta);
+
   // 计算新的修为值
-  const newCultivationExp = progress.cultivation_exp + cultivationExpDelta;
+  const newCultivationExp = Math.min(
+    progress.cultivation_exp + safeExpDelta,
+    RESOURCE_SAFETY.cultivation_exp.ceiling,
+  );
   if (newCultivationExp < 0) {
     throw new Error(
-      `修为不足，需要 ${-cultivationExpDelta}，当前修为 ${progress.cultivation_exp}`,
+      `修为不足，需要 ${-safeExpDelta}，当前修为 ${progress.cultivation_exp}`,
     );
   }
 

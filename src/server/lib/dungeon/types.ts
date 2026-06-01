@@ -48,7 +48,7 @@ export const DungeonCostSchema = z.object({
     'battle',
     'artifact_damage',
   ]),
-  value: z.number().describe('数量或强度'),
+  value: z.number().min(0).describe('数量或强度'),
   name: z.string().optional().describe('材料名称（material 类型需要，如果未知可省略留给系统匹配）'),
   required_quality: z.enum(DUNGEON_QUALITY_VALUES).optional().describe('模糊要求时：最低品质'),
   required_type: z.enum(['herb', 'ore', 'monster', 'tcdb', 'aux', 'gongfa_manual', 'skill_manual']).optional().describe('模糊要求时：材料类型'),
@@ -77,7 +77,7 @@ export const DungeonGainSchema = z.object({
     'artifact',
     'consumable',
   ]),
-  value: z.number().describe('数量'),
+  value: z.number().min(0).max(10_000_000).describe('数量'),
   name: z.string().optional().describe('物品名称'),
   desc: z.string().optional().describe('描述信息'),
   data: z.any().optional().describe('完整物品数据'),
@@ -157,11 +157,11 @@ export const DungeonRoundSchema = z.object({
       options: z.array(DungeonOptionSchema).describe('交互选项'),
     })
     .describe('交互'),
-  acquired_items: z.array(RewardBlueprintSchema).optional().describe('当前轮次探索或战斗获得的战利品（仅在合理情况下发放，勿滥发）'),
+  acquired_items: z.array(RewardBlueprintSchema).max(10).optional().describe('当前轮次探索或战斗获得的战利品（仅在合理情况下发放，勿滥发）'),
   status_update: z
     .object({
       is_final_round: z.boolean(),
-      internal_danger_score: z.number(),
+      internal_danger_score: z.number().min(0).max(100),
     })
     .describe('状态更新'),
 });
@@ -189,7 +189,7 @@ const DungeonCostLlmSchema = z
       'battle',
       'artifact_damage',
     ]),
-    value: z.number(),
+    value: z.number().min(0),
     name: z.string().optional(),
     required_quality: z.enum(DUNGEON_QUALITY_VALUES).optional(),
     required_type: z
@@ -230,10 +230,10 @@ export const DungeonRoundLlmSchema = z.object({
       }),
     ),
   }),
-  acquired_items: z.array(RewardBlueprintLlmSchema).optional(),
+  acquired_items: z.array(RewardBlueprintLlmSchema).max(10).optional(),
   status_update: z.object({
     is_final_round: z.boolean(),
-    internal_danger_score: z.number(),
+    internal_danger_score: z.number().min(0).max(100),
   }),
 });
 
@@ -250,6 +250,7 @@ export const DungeonSettlementSchema = z
         .describe('奖励蓝图列表（需包含之前获取的物品，根据评级1-5个）'),
       performance_tags: z
         .array(z.string())
+        .max(10)
         .describe('评价标签（如：收获颇丰、险象环生、九死一生、空手而归）'),
     }),
   })
@@ -260,7 +261,7 @@ export const DungeonSettlementLlmSchema = z.object({
   settlement: z.object({
     reward_tier: z.enum(['S', 'A', 'B', 'C', 'D']),
     reward_blueprints: z.array(RewardBlueprintLlmSchema).min(1).max(5),
-    performance_tags: z.array(z.string()),
+    performance_tags: z.array(z.string()).max(10),
   }),
 });
 

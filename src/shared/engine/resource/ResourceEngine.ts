@@ -1,4 +1,6 @@
 import { getExecutor } from '@server/lib/drizzle/db';
+import { eq } from 'drizzle-orm';
+import * as schema from '@server/lib/drizzle/schema';
 import {
   addArtifactToInventory,
   addConsumableToInventory,
@@ -145,6 +147,25 @@ export class ResourceEngine {
     action?: (tx: DbTransaction) => Promise<void>,
     dryRun = false,
   ): Promise<ResourceOperationResult> {
+    // [安全守卫] 拒绝负值 cost.value，防止双负得正的资源注入漏洞
+    // Zod Schema 层已有 .min(0) 约束，此处为纵深防御的第二道关卡
+    for (const cost of costs) {
+      if (!Number.isFinite(cost.value)) {
+        return {
+          success: false,
+          operations: costs,
+          errors: [`非法的资源数值: ${cost.type}=${cost.value}（必须为有限数）`],
+        };
+      }
+      if (cost.value < 0) {
+        return {
+          success: false,
+          operations: costs,
+          errors: [`非法的负值成本: ${cost.type}=${cost.value}（cost.value 必须非负）`],
+        };
+      }
+    }
+
     // 先校验资源是否充足
     const validation = await this.validate(userId, cultivatorId, costs);
     if (!validation.valid) {
@@ -175,9 +196,24 @@ export class ResourceEngine {
               await updateSpiritStones(userId, cultivatorId, -cost.value, tx);
               break;
 
-            case 'lifespan':
+            case 'lifespan': {
               await updateLifespan(userId, cultivatorId, -cost.value, tx);
+              // [安全守卫] 寿元消耗后执行死亡检查（防止绕过 handleLifespan 的死亡判定）
+              const lifespanCheck = await tx
+                .select({ age: schema.cultivators.age, lifespan: schema.cultivators.lifespan, status: schema.cultivators.status })
+                .from(schema.cultivators)
+                .where(eq(schema.cultivators.id, cultivatorId))
+                .limit(1);
+              if (lifespanCheck.length > 0 && lifespanCheck[0].status === 'active') {
+                if (lifespanCheck[0].age >= lifespanCheck[0].lifespan) {
+                  await tx
+                    .update(schema.cultivators)
+                    .set({ status: 'dead' })
+                    .where(eq(schema.cultivators.id, cultivatorId));
+                }
+              }
               break;
+            }
 
             case 'cultivation_exp':
               await updateCultivationExp(
@@ -260,6 +296,24 @@ export class ResourceEngine {
     action?: (tx: DbTransaction) => Promise<void>,
     dryRun = false,
   ): Promise<ResourceOperationResult> {
+    // [安全守卫] 拒绝非法的 gain 数值（纵深防御，与 consume 对称）
+    for (const gain of gains) {
+      if (!Number.isFinite(gain.value)) {
+        return {
+          success: false,
+          operations: gains,
+          errors: [`非法的资源数值: ${gain.type}=${gain.value}（必须为有限数）`],
+        };
+      }
+      if (gain.value < 0) {
+        return {
+          success: false,
+          operations: gains,
+          errors: [`非法的负值收益: ${gain.type}=${gain.value}（gain.value 必须非负）`],
+        };
+      }
+    }
+
     // 如果是干运行模式，直接返回成功
     if (dryRun) {
       return {

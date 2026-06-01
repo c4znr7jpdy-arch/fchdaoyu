@@ -110,6 +110,17 @@ export class AlchemyRecipePlanner {
       );
     }
 
+    // [安全守卫] 检测重复的 materialRef，防止 LLM 伪造多个向量指向同一材料以操纵药性权重
+    const seenRefs = new Set<string>();
+    for (const vector of normalized.materialVectors) {
+      if (seenRefs.has(vector.materialRef)) {
+        throw new Error(
+          `alchemy planner returned duplicate materialRef: ${vector.materialRef}`,
+        );
+      }
+      seenRefs.add(vector.materialRef);
+    }
+
     for (const vector of normalized.materialVectors) {
       const material = materialMap.get(vector.materialRef);
       if (!material) {

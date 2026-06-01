@@ -1,6 +1,6 @@
 import { InkButton, InkSelect } from '@app/components/ui';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type LlmMetricsSummaryRow = {
   key: string;
@@ -73,6 +73,32 @@ function formatUsage(usage: Record<string, number>): string {
   return entries.map(([key, value]) => `${key}:${value}`).join(' / ');
 }
 
+/**
+ * 纯异步函数：获取 LLM 指标快照。
+ * 提取到组件外部，不依赖任何闭包状态，避免 effect 依赖问题。
+ */
+async function fetchMetricsSnapshot(
+  nextLimit: string,
+  nextSceneId: string,
+): Promise<LlmMetricsSnapshot> {
+  const query = new URLSearchParams();
+  query.set('limit', nextLimit);
+  if (nextSceneId !== 'all') {
+    query.set('sceneId', nextSceneId);
+  }
+
+  const response = await fetch(`/api/admin/llm-metrics?${query.toString()}`, {
+    cache: 'no-store',
+  });
+  const payload = (await response.json()) as MetricsResponse;
+
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(payload.error ?? '加载 LLM 指标失败');
+  }
+
+  return payload.data;
+}
+
 function SummaryCard(props: {
   title: string;
   value: string;
@@ -91,46 +117,41 @@ function SummaryCard(props: {
 
 export default function AdminLlmMetricsPage() {
   const { pushToast } = useInkUI();
-  const [loading, setLoading] = useState(true);
   const [snapshot, setSnapshot] = useState<LlmMetricsSnapshot | null>(null);
   const [limit, setLimit] = useState('300');
   const [sceneId, setSceneId] = useState('all');
 
-  const fetchSnapshot = async (nextLimit = limit, nextSceneId = sceneId) => {
-    setLoading(true);
+  // loading 从 snapshot 派生：首次加载时 snapshot 为 null
+  // 后续 filter 变化时旧数据仍然展示，无需单独的 loading 状态
+  const loading = snapshot === null;
+
+  // 稳定的获取函数：依赖项仅为 limit 和 sceneId
+  const loadSnapshot = useCallback(async () => {
     try {
-      const query = new URLSearchParams();
-      query.set('limit', nextLimit);
-      if (nextSceneId !== 'all') {
-        query.set('sceneId', nextSceneId);
-      }
-
-      const response = await fetch(`/api/admin/llm-metrics?${query.toString()}`, {
-        cache: 'no-store',
-      });
-      const payload = (await response.json()) as MetricsResponse;
-
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.error ?? '加载 LLM 指标失败');
-      }
-
-      setSnapshot(payload.data);
+      const data = await fetchMetricsSnapshot(limit, sceneId);
+      setSnapshot(data);
     } catch (error) {
       pushToast({
         message: error instanceof Error ? error.message : '加载 LLM 指标失败',
         tone: 'danger',
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [limit, sceneId, pushToast]);
 
+  // 用 ref 保存最新的 loadSnapshot，避免 interval 闭包陈旧问题
+  const loadRef = useRef(loadSnapshot);
   useEffect(() => {
-    void fetchSnapshot(limit, sceneId);
-    const timer = window.setInterval(() => {
-      void fetchSnapshot(limit, sceneId);
-    }, 30_000);
+    loadRef.current = loadSnapshot;
+  }, [loadSnapshot]);
 
+  // 初始加载 + 轮询：effect body 不直接调用 setState，
+  // 而是通过 ref 在 interval 回调中间接调用（订阅外部系统模式）
+  useEffect(() => {
+    // 初始加载通过 ref 调用，避免 effect body 中的同步 setState 链
+    void loadRef.current();
+    const timer = window.setInterval(() => {
+      void loadRef.current();
+    }, 30_000);
     return () => window.clearInterval(timer);
   }, [limit, sceneId]);
 
@@ -175,7 +196,7 @@ export default function AdminLlmMetricsPage() {
           </InkSelect>
           <InkButton
             variant="secondary"
-            onClick={() => void fetchSnapshot(limit, sceneId)}
+            onClick={() => void loadSnapshot()}
           >
             刷新
           </InkButton>
@@ -185,7 +206,7 @@ export default function AdminLlmMetricsPage() {
           </p>
         </div>
 
-        {loading && !snapshot ? (
+        {loading ? (
           <p className="text-ink-secondary text-sm">加载中...</p>
         ) : null}
 

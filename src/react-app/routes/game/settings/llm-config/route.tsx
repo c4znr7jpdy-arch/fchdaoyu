@@ -2,6 +2,7 @@ import { GameSceneFrame } from '@app/components/game-shell';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkInput } from '@app/components/ui/InkInput';
 import { InkSelect } from '@app/components/ui/InkSelect';
+import { findLlmProvider, LLM_PROVIDERS } from '@shared/config/llmProviders';
 import { useState } from 'react';
 
 const STORAGE_KEY = 'daoyou_llm_config';
@@ -16,56 +17,12 @@ function readStoredConfig() {
   return null;
 }
 
-const PROVIDERS = [
-  { value: 'deepseek', label: 'DeepSeek' },
-  { value: 'ark', label: '火山方舟 (ARK)' },
-  { value: 'kimi', label: 'Kimi (Moonshot)' },
-  { value: 'alibaba', label: '阿里云 (Qwen)' },
-  { value: 'openrouter', label: 'OpenRouter' },
-  { value: 'openai', label: 'OpenAI / 兼容' },
-];
-
-const PROVIDER_DEFAULTS: Record<
-  string,
-  { baseUrl: string; model: string; fastModel: string }
-> = {
-  deepseek: {
-    baseUrl: 'https://api.deepseek.com',
-    model: 'deepseek-chat',
-    fastModel: 'deepseek-chat',
-  },
-  kimi: {
-    baseUrl: 'https://api.moonshot.cn/v1',
-    model: 'kimi-k2.6',
-    fastModel: 'kimi-k2.6',
-  },
-  alibaba: {
-    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    model: 'qwen-turbo',
-    fastModel: 'qwen-turbo',
-  },
-  openai: {
-    baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4o',
-    fastModel: 'gpt-4o-mini',
-  },
-  openrouter: {
-    baseUrl: '',
-    model: '',
-    fastModel: '',
-  },
-  ark: {
-    baseUrl: '',
-    model: '',
-    fastModel: '',
-  },
-};
+const DEFAULT_PROVIDER = LLM_PROVIDERS[0].id;
 
 export default function LlmConfigPage() {
   const stored = readStoredConfig();
-  const [provider, setProvider] = useState(stored?.provider || 'deepseek');
+  const [provider, setProvider] = useState(stored?.provider || DEFAULT_PROVIDER);
   const [apiKey, setApiKey] = useState(stored?.apiKey || '');
-  const [baseUrl, setBaseUrl] = useState(stored?.baseUrl || '');
   const [model, setModel] = useState(stored?.model || '');
   const [fastModel, setFastModel] = useState(stored?.fastModel || '');
   const [loading, setLoading] = useState(false);
@@ -75,8 +32,19 @@ export default function LlmConfigPage() {
   } | null>(null);
   const [hasConfig, setHasConfig] = useState(!!stored);
 
+  const currentProvider = findLlmProvider(provider);
+
   const canSubmit =
     provider && apiKey && model && fastModel && !loading;
+
+  const handleProviderChange = (value: string) => {
+    setProvider(value);
+    const next = findLlmProvider(value);
+    if (next) {
+      setModel(next.model);
+      setFastModel(next.fastModel);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -88,7 +56,8 @@ export default function LlmConfigPage() {
       const config = {
         provider,
         apiKey,
-        baseUrl: baseUrl || undefined,
+        // baseUrl 由 Provider 决定，不允许用户自定义
+        baseUrl: currentProvider?.baseUrl || '',
         model,
         fastModel,
       };
@@ -104,11 +73,11 @@ export default function LlmConfigPage() {
 
   const handleClear = () => {
     localStorage.removeItem(STORAGE_KEY);
-    setProvider('deepseek');
+    const defaults = LLM_PROVIDERS[0];
+    setProvider(defaults.id);
     setApiKey('');
-    setBaseUrl('');
-    setModel('');
-    setFastModel('');
+    setModel(defaults.model);
+    setFastModel(defaults.fastModel);
     setHasConfig(false);
     setMessage({ type: 'success', text: '已清除本地配置，恢复为服务器默认模型。' });
   };
@@ -117,24 +86,16 @@ export default function LlmConfigPage() {
     <GameSceneFrame
       variant="lite"
       title="模型配置"
-      description="为当前角色配置独立的 LLM Provider 与模型参数。配置保存在浏览器本地，仅当前设备生效。"
+      description="为当前角色配置独立的 LLM 服务商与模型参数。Base URL 由所选服务商自动确定，不支持自定义。配置保存在浏览器本地，仅当前设备生效。"
     >
       <div className="space-y-5">
         <InkSelect
-          label="Provider"
+          label="服务商"
           value={provider}
-          onChange={(value) => {
-            setProvider(value);
-            const defaults = PROVIDER_DEFAULTS[value];
-            if (defaults) {
-              setBaseUrl(defaults.baseUrl);
-              setModel(defaults.model);
-              setFastModel(defaults.fastModel);
-            }
-          }}
+          onChange={handleProviderChange}
         >
-          {PROVIDERS.map((p) => (
-            <option key={p.value} value={p.value}>
+          {LLM_PROVIDERS.map((p) => (
+            <option key={p.id} value={p.id}>
               {p.label}
             </option>
           ))}
@@ -146,23 +107,26 @@ export default function LlmConfigPage() {
           placeholder="sk-..."
           value={apiKey}
           onChange={setApiKey}
-
         />
 
-        <InkInput
-          label="Base URL（可选）"
-          placeholder="https://api.example.com/v1"
-          value={baseUrl}
-          onChange={setBaseUrl}
-
-        />
+        {/* Base URL — 只读展示，由 Provider 自动确定，不允许自定义 */}
+        <div className="flex flex-col gap-1">
+          <span className="text-ink font-semibold tracking-[0.08em]">
+            Base URL
+          </span>
+          <span className="text-ink-secondary bg-ink/5 font-mono text-sm rounded-md px-3 py-2 select-all">
+            {currentProvider?.baseUrl || '—'}
+          </span>
+          <span className="text-ink-secondary text-[0.82rem]">
+            由所选服务商自动确定，不支持自定义输入
+          </span>
+        </div>
 
         <InkInput
           label="普通模型"
           placeholder="如 deepseek-chat"
           value={model}
           onChange={setModel}
-
         />
 
         <InkInput
@@ -170,7 +134,6 @@ export default function LlmConfigPage() {
           placeholder="如 deepseek-chat"
           value={fastModel}
           onChange={setFastModel}
-
         />
 
         <div className="flex flex-wrap items-center gap-3">
