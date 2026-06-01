@@ -422,6 +422,74 @@ describe('craftFromFormula narrative copy', () => {
     });
   });
 
+  it('preserves protect_meridians status effects when crafting higher-realm breakthrough formulas', async () => {
+    executorState.formulaRows = [
+      {
+        ...executorState.formulaRows[0],
+        name: '稳络叩神丹方',
+        description: '此方重在护脉稳络，专为化神前的大境界冲关所备。',
+        family: 'breakthrough',
+        pattern: {
+          targetPropertyVector: [{ key: 'protect_meridians_support', weight: 1 }],
+          slotCount: 1,
+        },
+        blueprint: {
+          operations: [
+            { type: 'add_status', status: 'protect_meridians', usesRemaining: 1 },
+            { type: 'change_gauge', gauge: 'pillToxicity', delta: 11 },
+          ],
+          consumeRules: {
+            scene: 'out_of_battle_only',
+            quotaCategory: 'long_term',
+          },
+          targetStability: 72,
+          targetToxicity: 11,
+        },
+      },
+    ];
+    executorState.materialRows = [
+      {
+        ...executorState.materialRows[0],
+        name: '护络藤',
+        description: '藤性绵长，可护脉稳络，镇住冲关时经脉震荡。',
+        element: '木',
+      },
+    ];
+    plannerPlanMock.mockResolvedValueOnce({
+      materialVectors: [
+        {
+          materialRef: 'material_1',
+          materialName: '护络藤',
+          properties: [{ key: 'protect_meridians_support', weight: 1 }],
+        },
+      ],
+      intentVector: [],
+      focusMode: 'balanced',
+    });
+    executorState.cultivatorRow = {
+      ...executorState.cultivatorRow,
+      realm: '元婴',
+    };
+
+    const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
+
+    expect(result.consumable.name).toBe('叩神丹');
+    expect(result.consumable.spec.kind).toBe('pill');
+    expect(
+      (result.consumable.spec as PillSpec).consumeRules.quotaCategory,
+    ).toBe('long_term');
+    expect((result.consumable.spec as PillSpec).operations).toContainEqual({
+      type: 'add_status',
+      status: 'protect_meridians',
+      usesRemaining: 1,
+    });
+    expect((result.consumable.spec as PillSpec).alchemyMeta).toMatchObject({
+      breakthroughTargetRealm: '化神',
+      breakthroughLabel: '叩神丹',
+      propertyVector: [{ key: 'protect_meridians_support', weight: 1 }],
+    });
+  });
+
   it('stores formula target vector and fit metrics in formula alchemy meta', async () => {
     const result = await craftFromFormula('cultivator-1', 'formula-1', ['m1']);
 

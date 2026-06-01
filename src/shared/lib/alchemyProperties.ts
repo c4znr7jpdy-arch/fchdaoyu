@@ -13,7 +13,8 @@ export const ALCHEMY_PROPERTY_LABELS: Record<AlchemyPropertyKey, string> = {
   cultivation: '积蓄修为',
   insight: '澄明悟心',
   clear_mind_support: '清心定神',
-  breakthrough_support: '护脉破境',
+  protect_meridians_support: '护脉稳络',
+  breakthrough_support: '冲关蓄势',
   tempering_vitality: '炼体·体魄',
   tempering_spirit: '炼体·灵力',
   tempering_wisdom: '炼体·悟性',
@@ -30,13 +31,14 @@ const PROPERTY_SORT_ORDER: Record<AlchemyPropertyKey, number> = {
   cultivation: 4,
   insight: 5,
   clear_mind_support: 6,
-  breakthrough_support: 7,
-  tempering_vitality: 8,
-  tempering_spirit: 9,
-  tempering_wisdom: 10,
-  tempering_speed: 11,
-  tempering_willpower: 12,
-  marrow_wash: 13,
+  protect_meridians_support: 7,
+  breakthrough_support: 8,
+  tempering_vitality: 9,
+  tempering_spirit: 10,
+  tempering_wisdom: 11,
+  tempering_speed: 12,
+  tempering_willpower: 13,
+  marrow_wash: 14,
 };
 
 export function getAlchemyPropertyLabel(key: AlchemyPropertyKey): string {
@@ -59,6 +61,7 @@ export function getAlchemyPropertyFamily(
     case 'insight':
       return 'insight';
     case 'clear_mind_support':
+    case 'protect_meridians_support':
     case 'breakthrough_support':
       return 'breakthrough';
     case 'marrow_wash':
@@ -96,6 +99,7 @@ export function isLongTermAlchemyProperty(key: AlchemyPropertyKey): boolean {
     key === 'cultivation' ||
     key === 'insight' ||
     key === 'clear_mind_support' ||
+    key === 'protect_meridians_support' ||
     key === 'breakthrough_support' ||
     key === 'marrow_wash' ||
     key.startsWith('tempering_')

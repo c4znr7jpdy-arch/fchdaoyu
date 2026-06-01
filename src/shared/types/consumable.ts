@@ -39,6 +39,7 @@ export const ALCHEMY_PROPERTY_KEY_VALUES = [
   'cultivation',
   'insight',
   'clear_mind_support',
+  'protect_meridians_support',
   'breakthrough_support',
   'tempering_vitality',
   'tempering_spirit',

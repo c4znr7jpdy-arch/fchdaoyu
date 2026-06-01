@@ -335,4 +335,49 @@ describe('synthesizeAlchemy', () => {
       ),
     ).toBe(false);
   });
+
+  it('turns protect-meridians routes into breakthrough pills that grant protect_meridians status', () => {
+    const result = synthesizeAlchemy(
+      [
+        createMaterial({
+          id: 'm1',
+          materialRef: 'material_1',
+          name: '护络藤',
+          description: '藤性绵长，可护脉稳络，镇住冲关时经脉震荡。',
+          element: '木',
+          type: 'herb',
+        }),
+      ],
+      {
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '护络藤',
+            properties: [{ key: 'protect_meridians_support', weight: 1 }],
+          },
+        ],
+        intentVector: [{ key: 'protect_meridians_support', weight: 1 }],
+        focusMode: 'focused',
+      },
+      '真品',
+      '元婴',
+    );
+
+    expect(result.family).toBe('breakthrough');
+    expect(result.propertyVector).toEqual([
+      { key: 'protect_meridians_support', weight: 1 },
+    ]);
+    expect(result.operations).toContainEqual({
+      type: 'add_status',
+      status: 'protect_meridians',
+      usesRemaining: 1,
+    });
+    expect(
+      result.operations.some(
+        (operation) =>
+          operation.type === 'add_status' &&
+          operation.status === 'breakthrough_focus',
+      ),
+    ).toBe(false);
+  });
 });

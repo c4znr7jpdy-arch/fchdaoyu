@@ -261,6 +261,12 @@ function buildBasePropertyOperation(
         status: 'clear_mind',
         usesRemaining: 1,
       };
+    case 'protect_meridians_support':
+      return {
+        type: 'add_status',
+        status: 'protect_meridians',
+        usesRemaining: 1,
+      };
     case 'breakthrough_support':
       return {
         type: 'add_status',

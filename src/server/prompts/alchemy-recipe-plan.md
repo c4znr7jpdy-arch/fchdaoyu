@@ -38,7 +38,8 @@ id: alchemy-recipe-plan
 - 若材料文本明显出现“养元、积修、温养道基”，优先考虑 `cultivation`。
 - 若材料文本明显出现“悟道、开慧”，优先考虑 `insight`。
 - 若材料文本明显出现“清心、明识、定神”，优先考虑 `clear_mind_support`。
-- 若材料文本明显出现“冲关、护脉、破境”，优先考虑 `breakthrough_support`。
+- 若材料文本明显出现“护脉、稳脉、续脉、镇络”，优先考虑 `protect_meridians_support`。
+- 若材料文本明显出现“冲关、破境、蓄势”，优先考虑 `breakthrough_support`。
 - 若材料文本明显出现“锻骨、强筋、炼体”，在五个 `tempering_*` 中选择最贴切的一类。
 - 若材料文本明显出现“洗髓、伐脉、易筋”，优先考虑 `marrow_wash`。
 

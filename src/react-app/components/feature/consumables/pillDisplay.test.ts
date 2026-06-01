@@ -172,6 +172,41 @@ describe('toPillDisplayModel', () => {
     expect(model.detailGroups[2].lines).toContain('目标大境界：元婴');
   });
 
+  it('renders protect_meridians breakthrough pills with the shared higher-realm label fallback', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'breakthrough',
+        operations: [
+          { type: 'add_status', status: 'protect_meridians', usesRemaining: 1 },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 12 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          quotaCategory: 'long_term',
+        },
+        alchemyMeta: {
+          source: 'formula',
+          formulaId: 'formula-3',
+          sourceMaterials: ['护络藤'],
+          fitScore: 0.81,
+          fitMultiplier: 1.12,
+          stability: 78,
+          toxicityRating: 26,
+          tags: ['protect_meridians_support', 'breakthrough'],
+          breakthroughTargetRealm: '渡劫',
+        },
+      }),
+      { realm: '大乘' },
+    );
+
+    expect(model.primaryEffect).toContain('应劫丹');
+    expect(model.primaryEffect).toContain('护脉');
+    expect(model.primaryEffect).not.toContain('protect_meridians');
+    expect(model.keywordLabels).toContain('应劫丹');
+    expect(model.detailGroups[2].lines).toContain('目标大境界：渡劫');
+  });
+
   it('uses track config names for tempering and marrow-wash pills', () => {
     const temperingModel = toPillDisplayModel(
       createPill({

@@ -1,4 +1,5 @@
 import { EnemyGenerator } from '@shared/engine/enemyGenerator';
+import { hasActiveConditionStatus } from '@shared/lib/condition';
 import type { Cultivator } from '@shared/types/cultivator';
 import type {
   TaskDailyKind,
@@ -118,12 +119,20 @@ const challengeProfiles: TaskChallengeProfile[] = [
     id: 'heart_demon_nascent',
     title: '心魔劫',
     buildOpponent: (cultivator) =>
-      cloneMirrorOpponent(cultivator, {
-        name: '心魔化身',
-        attributeMultiplier: 1.08,
-        bonusWillpower: 6,
-        bonusSpeed: 4,
-      }),
+      cloneMirrorOpponent(
+        cultivator,
+        hasActiveConditionStatus(cultivator.condition, 'clear_mind')
+          ? {
+              name: '心魔化身',
+              attributeMultiplier: 1,
+            }
+          : {
+              name: '心魔化身',
+              attributeMultiplier: 1.08,
+              bonusWillpower: 6,
+              bonusSpeed: 4,
+            },
+      ),
   },
   {
     id: 'tribulation_deity',
