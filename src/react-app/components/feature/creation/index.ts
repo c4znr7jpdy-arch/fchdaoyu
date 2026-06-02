@@ -12,4 +12,9 @@ export {
 } from './CreationProductResultModal';
 export {
   MaterialSelector,
+  type MaterialSelectorProps,
 } from './MaterialSelector';
+export {
+  MaterialSelectionModal,
+  type MaterialSelectionModalProps,
+} from './MaterialSelectionModal';

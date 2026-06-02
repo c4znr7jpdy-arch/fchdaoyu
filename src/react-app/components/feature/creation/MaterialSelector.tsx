@@ -18,7 +18,7 @@ import type { Material } from '@shared/types/cultivator';
 import { getMaterialTypeInfo } from '@shared/types/dictionaries';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-interface MaterialSelectorProps {
+export interface MaterialSelectorProps {
   cultivatorId?: string;
   selectedMaterialIds: string[];
   onToggleMaterial: (id: string, material?: Material) => void;
@@ -269,8 +269,8 @@ export function MaterialSelector({
                     >
                       <span>{material?.name ?? '未知材料'}</span>
                       {material?.rank ? (
-                        <InkBadge tier={material.rank as Quality}>
-                          {material.rank}
+                        <InkBadge tier={material.rank as Quality} compact>
+                          {getMaterialTypeInfo(material.type).label}
                         </InkBadge>
                       ) : null}
                     </button>

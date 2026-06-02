@@ -1,6 +1,7 @@
 import { cn } from '@shared/lib/cn';
 import { InkModal } from '@app/components/layout/InkModal';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { InkButton } from './InkButton';
 
 // ============ Dialog State Type ============
@@ -28,6 +29,8 @@ export interface InkDialogProps {
  * 对话框组件
  */
 export function InkDialog({ dialog, onClose }: InkDialogProps) {
+  const [isExecuting, setIsExecuting] = useState(false);
+
   if (!dialog) {
     return null;
   }
@@ -45,6 +48,7 @@ export function InkDialog({ dialog, onClose }: InkDialogProps) {
   const effectiveConfirmLabel =
     confirmLabel === undefined ? '允' : confirmLabel;
   const effectiveCancelLabel = cancelLabel === undefined ? '罢' : cancelLabel;
+  const isBusy = loading || isExecuting;
 
   return (
     <InkModal
@@ -59,6 +63,7 @@ export function InkDialog({ dialog, onClose }: InkDialogProps) {
                 await onCancel?.();
                 onClose();
               }}
+              disabled={isBusy}
             >
               {effectiveCancelLabel}
             </InkButton>
@@ -66,13 +71,19 @@ export function InkDialog({ dialog, onClose }: InkDialogProps) {
           {effectiveConfirmLabel !== null ? (
             <InkButton
               variant="primary"
+              disabled={isBusy}
               onClick={async () => {
-                await onConfirm?.();
+                if (isBusy) return;
+                setIsExecuting(true);
+                try {
+                  await onConfirm?.();
+                } finally {
+                  setIsExecuting(false);
+                }
                 onClose();
               }}
-              disabled={loading}
             >
-              {loading ? loadingLabel : effectiveConfirmLabel}
+              {isBusy ? loadingLabel : effectiveConfirmLabel}
             </InkButton>
           ) : null}
         </div>

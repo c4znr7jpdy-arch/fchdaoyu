@@ -4,9 +4,18 @@ import { InkCard } from '@app/components/ui/InkCard';
 import { InkNotice } from '@app/components/ui/InkNotice';
 import { DungeonOption } from '@shared/lib/dungeon/types';
 import { getMapNode } from '@shared/lib/game/mapSystem';
+import {
+  getPillToxicityStage,
+  isConditionStatusActive,
+} from '@shared/lib/condition';
+import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
+import { REALM_ORDER } from '@shared/types/constants';
 import { DungeonViewState } from '@app/lib/hooks/dungeon/useDungeonViewModel';
 import { DungeonAbandonBattleResult } from '@app/lib/hooks/dungeon/useEnemyProbe';
 import { Cultivator } from '@shared/types/cultivator';
+import type { CultivatorDisplaySnapshot } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
+import { evaluateNoviceReadiness } from '@shared/lib/noviceGuidance';
+import type { TaskInstance } from '@shared/types/task';
 import { DungeonSceneScreen } from '../dungeonScene';
 import { resolveDungeonSceneDescriptor } from '../dungeonSceneRegistry';
 import { BattlePreparation } from './BattlePreparation';
@@ -19,6 +28,8 @@ import { DungeonLooting } from './DungeonLooting';
 interface DungeonViewRendererProps {
   viewState: DungeonViewState;
   cultivator: Cultivator | null;
+  displayResources?: CultivatorDisplaySnapshot['resources'];
+  tasks: TaskInstance[];
   processing: boolean;
   actions: {
     startDungeon: (nodeId: string) => Promise<void>;
@@ -33,12 +44,94 @@ interface DungeonViewRendererProps {
   onSettlementConfirm?: () => void;
 }
 
+function renderPreparationNotice(
+  cultivator: Cultivator | null,
+  selectedNode: ReturnType<typeof getMapNode> | null,
+  readiness: ReturnType<typeof evaluateNoviceReadiness> | null,
+) {
+  if (!cultivator) return null;
+
+  const activeStatuses = (cultivator.condition?.statuses ?? []).filter(
+    (status) => isConditionStatusActive(status),
+  );
+  const statusNames = activeStatuses
+    .slice(0, 2)
+    .map((status) => getConditionStatusTemplate(status.key)?.name ?? status.key)
+    .join('、');
+  const toxicityStage = getPillToxicityStage(cultivator.condition);
+  const nodeRealm = selectedNode?.realm_requirement;
+  const realmRisk =
+    nodeRealm && REALM_ORDER[nodeRealm] > REALM_ORDER[cultivator.realm]
+      ? 'danger'
+      : nodeRealm && REALM_ORDER[nodeRealm] === REALM_ORDER[cultivator.realm]
+        ? 'warning'
+        : 'info';
+  const riskText =
+    realmRisk === 'danger'
+      ? `当前秘境要求${nodeRealm}，已高于你的${cultivator.realm}境界。`
+      : realmRisk === 'warning'
+        ? `当前秘境与 ${cultivator.realm} 境同阶，进场前务必确认气血和法力。`
+        : selectedNode
+          ? '当前秘境境界要求较低，适合用来熟悉查探、撤退和结算。'
+          : '第一次探秘建议从地图选择低境界秘境，先学会查探和撤退。';
+  const bodyWarnings = [
+    statusNames ? `当前有${statusNames}状态` : null,
+    toxicityStage.key !== 'none' ? `丹毒：${toxicityStage.label}` : null,
+  ].filter(Boolean);
+
+  return (
+    <InkSection title="出行准备">
+      <div className="space-y-3 text-sm leading-7">
+        <InkNotice tone={realmRisk === 'danger' ? 'warning' : 'info'}>
+          {riskText}
+        </InkNotice>
+        {bodyWarnings.length > 0 ? (
+          <InkNotice tone="warning">
+            {bodyWarnings.join('，')}。若是第一次云游，建议先去客栈调息或服用疗伤丹。
+          </InkNotice>
+        ) : (
+          <p className="text-ink-secondary">
+            遇敌后先点“神识查探”，看不稳就撤退；撤退不会受伤，失败战斗会影响道体状态。
+          </p>
+        )}
+        {readiness?.shouldBlock ? (
+          <div className="space-y-2">
+            {readiness.reasons.map((reason) => (
+              <InkNotice key={reason} tone="warning">
+                {reason}
+              </InkNotice>
+            ))}
+            {readiness.hints.length > 0 ? (
+              <p className="text-ink-secondary text-xs leading-6">
+                {readiness.hints.slice(0, 2).join(' ')}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <InkButton href="/game/inn" variant="secondary">
+            去客栈调息
+          </InkButton>
+          <InkButton href="/game/training-room" variant="secondary">
+            去练功房
+          </InkButton>
+          <InkButton href="/game/craft/alchemy" variant="secondary">
+            去炼丹房
+          </InkButton>
+        </div>
+      </div>
+    </InkSection>
+  );
+}
+
 /**
  * 副本视图渲染器
  */
 export function DungeonViewRenderer({
   viewState,
   cultivator,
+  displayResources,
+  tasks,
   processing,
   actions,
   onSettlementConfirm,
@@ -87,6 +180,7 @@ export function DungeonViewRenderer({
       <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('battle_preparation')}>
         <BattlePreparation
           battleId={viewState.state.activeBattleId!}
+          player={cultivator}
           onStart={actions.startBattle}
           onAbandon={actions.abandonBattle}
         />
@@ -138,6 +232,25 @@ export function DungeonViewRenderer({
     const selectedNode = viewState.preSelectedNodeId
       ? getMapNode(viewState.preSelectedNodeId)
       : null;
+    const firstDungeonTask = tasks.find(
+      (task) => task.definitionId === 'tutorial_first_dungeon',
+    );
+    const selectedNodeRealm =
+      selectedNode && 'realm_requirement' in selectedNode
+        ? selectedNode.realm_requirement
+        : null;
+    const readiness =
+      cultivator && displayResources
+        ? evaluateNoviceReadiness({
+            cultivator,
+            selectedNodeRealm,
+            hp: displayResources.hp,
+            mp: displayResources.mp,
+            isFirstDungeonTutorialActive: Boolean(
+              firstDungeonTask && !firstDungeonTask.snapshot.isCompleted,
+            ),
+          })
+        : null;
 
     const renderLimitHint = () => {
       if (viewState.limitLoading) {
@@ -167,8 +280,10 @@ export function DungeonViewRenderer({
             selectedNode={selectedNode ?? null}
             onStart={actions.startDungeon}
             isStarting={processing}
+            readiness={readiness}
           />
         </InkSection>
+        {renderPreparationNotice(cultivator, selectedNode ?? null, readiness)}
         {renderLimitHint()}
         <div className="mt-4 text-center">
           <InkButton href="/game/dungeon/history" variant="ghost">

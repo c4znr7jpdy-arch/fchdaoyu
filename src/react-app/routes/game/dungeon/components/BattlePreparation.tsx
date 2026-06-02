@@ -7,23 +7,27 @@ import {
   DungeonAbandonBattleResult,
   useEnemyProbe,
 } from '@app/lib/hooks/dungeon/useEnemyProbe';
+import { evaluateBattlePreparationRisk } from '@app/lib/dungeon/battlePreparationRisk';
+import type { Cultivator } from '@shared/types/cultivator';
 import { useEffect, useState } from 'react';
 
 interface BattlePreparationProps {
   battleId: string;
+  player: Cultivator;
   onStart: (enemyName: string) => void;
   onAbandon: (result: DungeonAbandonBattleResult) => Promise<void>;
 }
 
 export function BattlePreparation({
   battleId,
+  player,
   onStart,
   onAbandon,
 }: BattlePreparationProps) {
   const { openDialog } = useInkUI();
   const { enemy, isProbing, probeEnemy, abandonBattle } =
     useEnemyProbe(battleId);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState(true);
 
   useEffect(() => {
     if (!enemy && !isProbing) {
@@ -51,12 +55,29 @@ export function BattlePreparation({
     });
   };
 
-  const handleStart = () => {
+  const battleRisk = evaluateBattlePreparationRisk(player, enemy);
+
+  const startBattle = () => {
     const enemyName = enemy?.title
       ? `${enemy.title}·${enemy.name}`
       : enemy?.name || '神秘敌手';
 
     onStart(enemyName);
+  };
+
+  const handleStart = () => {
+    if (!battleRisk.shouldWarn) {
+      startBattle();
+      return;
+    }
+
+    openDialog({
+      title: '强敌压境',
+      content: battleRisk.message,
+      confirmLabel: '仍要开战',
+      cancelLabel: '先撤退',
+      onConfirm: startBattle,
+    });
   };
 
   return (
@@ -79,6 +100,9 @@ export function BattlePreparation({
           )}
           <p className="text-ink-secondary mt-2 text-sm">
             此战避无可避，当速决断！
+          </p>
+          <p className="text-wood mt-3 text-sm leading-6">
+            新手先点“神识查探”再决定。若属性差距明显，撤退不会受伤；强行战败会结束本轮探秘。
           </p>
         </div>
       </div>
@@ -146,11 +170,12 @@ export function BattlePreparation({
         ) : null}
 
         <InkButton
-          variant="primary"
+          variant={battleRisk.shouldWarn ? 'secondary' : 'primary'}
           className="w-full py-4 text-lg"
           onClick={handleStart}
+          disabled={!enemy}
         >
-          ⚔️ 开始战斗
+          {battleRisk.shouldWarn ? '⚠️ 强敌当前，建议撤退' : '⚔️ 开始战斗'}
         </InkButton>
 
         <InkButton

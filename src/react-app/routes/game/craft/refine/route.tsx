@@ -1,7 +1,7 @@
 import {
   CreationIntentPanel,
   CreationProductResultModal,
-  MaterialSelector,
+  MaterialSelectionModal,
   SelectedMaterialsWithDose,
   type CreationProductResultRecord,
 } from '@app/components/feature/creation';
@@ -66,6 +66,7 @@ export default function RefinePage() {
   const [createdResult, setCreatedResult] =
     useState<CreationProductResultRecord | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
   const [celebrationTick, setCelebrationTick] = useState(0);
   const [materialsRefreshKey, setMaterialsRefreshKey] = useState(0);
   const [estimatedCost, setEstimatedCost] = useState<CostEstimate | null>(null);
@@ -157,6 +158,7 @@ export default function RefinePage() {
     setUserPrompt('');
     setRequestedSlot('');
     setValidation(null);
+    setIsMaterialModalOpen(false);
   };
 
   const submitPayload = useMemo(
@@ -220,6 +222,7 @@ export default function RefinePage() {
       setSelectedMaterialIds([]);
       setSelectedMaterialMap({});
       setDoseMap({});
+      setIsMaterialModalOpen(false);
       setMaterialsRefreshKey((prev) => prev + 1);
     } catch (error) {
       const failMessage =
@@ -269,26 +272,30 @@ export default function RefinePage() {
         </>
       }
     >
-      <GameSceneSection title="1. 甄选灵材">
-        <MaterialSelector
-          cultivatorId={cultivator?.id}
-          selectedMaterialIds={selectedMaterialIds}
-          onToggleMaterial={toggleMaterial}
-          selectedMaterialMap={selectedMaterialMap}
-          isSubmitting={isSubmitting}
-          pageSize={20}
-          includeMaterialTypes={ALLOWED_MATERIAL_TYPES}
-          refreshKey={materialsRefreshKey}
-          loadingText="正在检索储物袋中的灵材，请稍候……"
-          emptyNoticeText="暂无可用于炼器的材料。"
-          totalText={(total) => `共 ${total} 份可用于炼器的材料`}
+      <GameSceneSection title="器型与意念">
+        <CreationIntentPanel
+          productType="artifact"
+          userPrompt={userPrompt}
+          onUserPromptChange={setUserPrompt}
+          requestedSlot={requestedSlot}
+          onRequestedSlotChange={setRequestedSlot}
+          disabled={isSubmitting}
         />
-        <p className="text-ink-secondary mt-1 text-right text-xs">
-          {selectedMaterialIds.length}/{MAX_MATERIALS}
-        </p>
       </GameSceneSection>
 
-      <GameSceneSection title="2. 调度投入份数">
+      <GameSceneSection title="灵材投入">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-ink-secondary text-sm leading-7">
+            已投入 {selectedMaterialIds.length} / {MAX_MATERIALS} 种灵材
+          </p>
+          <InkButton
+            variant="outline"
+            onClick={() => setIsMaterialModalOpen(true)}
+            disabled={isSubmitting}
+          >
+            打开材料
+          </InkButton>
+        </div>
         <SelectedMaterialsWithDose
           selectedIds={selectedMaterialIds}
           materialMap={selectedMaterialMap}
@@ -298,17 +305,6 @@ export default function RefinePage() {
           disabled={isSubmitting}
           onRemove={(id) => toggleMaterial(id)}
           onDoseChange={handleDoseChange}
-        />
-      </GameSceneSection>
-
-      <GameSceneSection title="3. 造物意念">
-        <CreationIntentPanel
-          productType="artifact"
-          userPrompt={userPrompt}
-          onUserPromptChange={setUserPrompt}
-          requestedSlot={requestedSlot}
-          onRequestedSlotChange={setRequestedSlot}
-          disabled={isSubmitting}
         />
       </GameSceneSection>
 
@@ -337,7 +333,7 @@ export default function RefinePage() {
         )}
       </GameSceneSection>
 
-      <GameSceneSection title="4. 开炉炼制">
+      <GameSceneSection title="开炉炼制">
         <InkActionGroup align="right">
           <InkButton onClick={resetAll} disabled={isSubmitting}>
             重置
@@ -363,6 +359,24 @@ export default function RefinePage() {
           <InkNotice tone="info">{status}</InkNotice>
         </div>
       )}
+
+      <MaterialSelectionModal
+        isOpen={isMaterialModalOpen}
+        onClose={() => setIsMaterialModalOpen(false)}
+        title="甄选炼器灵材"
+        maxMaterials={MAX_MATERIALS}
+        cultivatorId={cultivator?.id}
+        selectedMaterialIds={selectedMaterialIds}
+        onToggleMaterial={toggleMaterial}
+        selectedMaterialMap={selectedMaterialMap}
+        isSubmitting={isSubmitting}
+        pageSize={20}
+        includeMaterialTypes={ALLOWED_MATERIAL_TYPES}
+        refreshKey={materialsRefreshKey}
+        loadingText="正在检索储物袋中的灵材，请稍候……"
+        emptyNoticeText="暂无可用于炼器的材料。"
+        totalText={(total) => `共 ${total} 份可用于炼器的材料`}
+      />
 
       <CreationProductResultModal
         isOpen={isResultModalOpen}

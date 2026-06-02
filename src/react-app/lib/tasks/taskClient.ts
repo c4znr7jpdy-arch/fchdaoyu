@@ -2,10 +2,15 @@ import type {
   TaskChallengeResponse,
   TaskDetailResponse,
   TaskListResponse,
+  TaskRewardClaimResponse,
 } from '@shared/contracts/task';
 import { getNextMajorRealm } from '@shared/lib/breakthroughPill';
 import type { Cultivator } from '@shared/types/cultivator';
 import type { TaskInstance, TaskStatus } from '@shared/types/task';
+import {
+  TUTORIAL_TASK_ORDER,
+  hasClaimedTutorialReward,
+} from '@shared/lib/noviceGuidance';
 
 async function readJsonOrThrow<T>(response: Response): Promise<T> {
   const payload = await response.json();
@@ -41,6 +46,13 @@ export async function startTaskChallenge(taskId: string) {
   return readJsonOrThrow<TaskChallengeResponse>(response);
 }
 
+export async function claimTaskReward(taskId: string) {
+  const response = await fetch(`/api/tasks/${taskId}/claim-reward`, {
+    method: 'POST',
+  });
+  return readJsonOrThrow<TaskRewardClaimResponse>(response);
+}
+
 export function findCurrentMajorBreakthroughTask(
   cultivator: Cultivator | null | undefined,
   tasks: TaskInstance[],
@@ -62,4 +74,25 @@ export function findCurrentMajorBreakthroughTask(
         task.metadata.toRealm === toRealm,
     ) ?? null
   );
+}
+
+export function findNextTutorialTask(tasks: TaskInstance[]): TaskInstance | null {
+  const tutorialByDefinition = new Map(
+    tasks
+      .filter((task) => task.category === 'tutorial')
+      .map((task) => [task.definitionId, task]),
+  );
+
+  for (const definitionId of TUTORIAL_TASK_ORDER) {
+    const task = tutorialByDefinition.get(definitionId);
+    if (!task) {
+      return null;
+    }
+
+    if (!task.snapshot.isCompleted || !hasClaimedTutorialReward(task)) {
+      return task;
+    }
+  }
+
+  return null;
 }

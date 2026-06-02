@@ -1,13 +1,23 @@
 import { Hono } from 'hono';
 
 const {
+  startDungeonMock,
   probeBattleEnemyMock,
   abandonBattleMock,
   executeBattleMock,
+  listCultivatorTasksMock,
+  getCultivatorByIdUnsafeMock,
+  getCultivatorDisplaySnapshotMock,
+  getMapNodeMock,
 } = vi.hoisted(() => ({
+  startDungeonMock: vi.fn(),
   probeBattleEnemyMock: vi.fn(),
   abandonBattleMock: vi.fn(),
   executeBattleMock: vi.fn(),
+  listCultivatorTasksMock: vi.fn(),
+  getCultivatorByIdUnsafeMock: vi.fn(),
+  getCultivatorDisplaySnapshotMock: vi.fn(),
+  getMapNodeMock: vi.fn(),
 }));
 
 vi.mock('@server/lib/hono/middleware', () => ({
@@ -21,7 +31,7 @@ vi.mock('@server/lib/hono/middleware', () => ({
 
 vi.mock('@server/lib/dungeon/service_v2', () => ({
   dungeonService: {
-    startDungeon: vi.fn(),
+    startDungeon: startDungeonMock,
     getState: vi.fn(),
     handleAction: vi.fn(),
     quitDungeon: vi.fn(),
@@ -31,6 +41,24 @@ vi.mock('@server/lib/dungeon/service_v2', () => ({
     abandonBattle: abandonBattleMock,
     executeBattle: executeBattleMock,
   },
+}));
+
+vi.mock('@server/lib/services/TaskService', () => ({
+  TaskService: {
+    listCultivatorTasks: listCultivatorTasksMock,
+  },
+}));
+
+vi.mock('@server/lib/services/cultivatorService', () => ({
+  getCultivatorByIdUnsafe: getCultivatorByIdUnsafeMock,
+}));
+
+vi.mock('@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter', () => ({
+  getCultivatorDisplaySnapshot: getCultivatorDisplaySnapshotMock,
+}));
+
+vi.mock('@shared/lib/game/mapSystem', () => ({
+  getMapNode: getMapNodeMock,
 }));
 
 vi.mock('@server/lib/drizzle/db', () => ({
@@ -46,6 +74,95 @@ function createApp() {
 describe('dungeon battle router', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    listCultivatorTasksMock.mockResolvedValue([]);
+    getCultivatorByIdUnsafeMock.mockResolvedValue({
+      cultivator: {
+        id: 'cultivator-1',
+        realm: '炼气',
+        inventory: {
+          artifacts: [],
+          consumables: [],
+          materials: [],
+        },
+        equipped: {
+          weapon: null,
+          armor: null,
+          accessory: null,
+        },
+      },
+    });
+    getCultivatorDisplaySnapshotMock.mockReturnValue({
+      resources: {
+        hp: { current: 100, max: 100, percent: 100 },
+        mp: { current: 100, max: 100, percent: 100 },
+      },
+    });
+    getMapNodeMock.mockReturnValue({
+      id: 'node-1',
+      realm_requirement: '炼气',
+    });
+  });
+
+  it('starts a dungeon when novice readiness passes', async () => {
+    startDungeonMock.mockResolvedValueOnce({
+      state: {
+        id: 'dungeon-state-1',
+      },
+    });
+
+    const response = await createApp().request('/api/dungeon/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        mapNodeId: 'node-1',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      state: {
+        id: 'dungeon-state-1',
+      },
+    });
+    expect(startDungeonMock).toHaveBeenCalledWith('cultivator-1', 'node-1');
+  });
+
+  it('blocks the first dungeon when novice readiness fails', async () => {
+    listCultivatorTasksMock.mockResolvedValueOnce([
+      {
+        definitionId: 'tutorial_first_dungeon',
+        snapshot: {
+          isCompleted: false,
+        },
+      },
+    ]);
+    getCultivatorDisplaySnapshotMock.mockReturnValueOnce({
+      resources: {
+        hp: { current: 40, max: 100, percent: 40 },
+        mp: { current: 100, max: 100, percent: 100 },
+      },
+    });
+
+    const response = await createApp().request('/api/dungeon/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        mapNodeId: 'node-1',
+      }),
+    });
+
+    expect(response.status).toBe(409);
+    const payload = (await response.json()) as {
+      error: string;
+      readiness: { shouldBlock: boolean };
+    };
+    expect(payload.error).toContain('气血仅 40%');
+    expect(payload.readiness.shouldBlock).toBe(true);
+    expect(startDungeonMock).not.toHaveBeenCalled();
   });
 
   it('probes the current dungeon enemy via GET /api/dungeon/battle/probe', async () => {

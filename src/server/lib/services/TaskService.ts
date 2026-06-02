@@ -4,7 +4,14 @@ import { isConditionStatusActive } from '@shared/lib/condition';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import type { BattleRecord } from '@shared/types/battle';
 import type { ConditionStatusKey } from '@shared/types/condition';
-import type { Consumable, CultivationProgress, Cultivator } from '@shared/types/cultivator';
+import type {
+  Artifact,
+  Consumable,
+  CultivationProgress,
+  Cultivator,
+  Material,
+} from '@shared/types/cultivator';
+import type { MailAttachment } from '@shared/types/mail';
 import {
   QUALITY_ORDER,
   REALM_ORDER,
@@ -32,17 +39,36 @@ import {
 import { getNextStage } from '@server/utils/breakthroughCalculator';
 import { getOrInitCultivationProgress } from '@server/utils/cultivationUtils';
 import { simulateBattleV5 } from './simulateBattleV5';
-import { getCultivatorByIdUnsafe } from './cultivatorService';
+import {
+  addArtifactToInventory,
+  addConsumableToInventory,
+  addMaterialToInventory,
+  getCultivatorByIdUnsafe,
+  updateCultivator,
+  updateCultivationExp,
+  updateSpiritStones,
+} from './cultivatorService';
+import { getExecutor, type DbTransaction } from '@server/lib/drizzle/db';
+import {
+  addCultivationExp,
+  calculateDailyTaskExpGain,
+} from '@server/utils/expGainSystem';
+import { calculateSceneCultivationExp } from '@shared/engine/cultivation/ExpBudgetCalculator';
 import {
   createCultivatorTask,
+  clearTaskRewardGrantPendingForKey,
   findCultivatorTaskById,
   findCultivatorTaskByDefinition,
   listCultivatorTasks,
+  markTaskRewardGrantPendingForKey,
+  markTaskRewardGrantedForKey,
+  markTutorialTaskRewardClaimed,
   type CultivatorTaskRecord,
   updateCultivatorTask,
 } from '@server/lib/repositories/taskRepository';
 import {
   getDailyTaskDefinitions,
+  getTutorialTaskDefinitions,
   getTaskDefinition,
   getBreakthroughTaskDefinition,
   getBreakthroughTaskDefinitionByTransition,
@@ -50,6 +76,7 @@ import {
   type BreakthroughTaskDefinition,
   type DailyTaskDefinition,
   type RuntimeTaskDefinition,
+  type TutorialTaskDefinition,
   type TaskStageTemplate,
 } from './taskDefinitions';
 import { MailService } from './MailService';
@@ -65,6 +92,11 @@ export interface MajorBreakthroughGate {
   required: boolean;
   blocked: boolean;
   task: TaskInstance | null;
+}
+
+export interface TaskRewardClaimResult {
+  task: TaskInstance;
+  rewards: string[];
 }
 
 interface TaskProgressContext {
@@ -114,10 +146,14 @@ function resolveTaskRewardAttachments(
 }
 
 function formatTaskRewardSummary(
-  definition: Pick<RuntimeTaskDefinition, 'category' | 'rewardAttachments'>,
+  definition: Pick<RuntimeTaskDefinition, 'category' | 'rewardAttachments' | 'difficulty'> & {
+    rewardCultivationExp?: number;
+  },
   realm?: RealmType,
+  realmStage?: Cultivator['realm_stage'],
+  expCap?: number,
 ): string[] {
-  return resolveTaskRewardAttachments(definition, realm).map((attachment) => {
+  const summary = resolveTaskRewardAttachments(definition, realm).map((attachment) => {
     switch (attachment.type) {
       case 'spirit_stones':
         return `${attachment.name} x${attachment.quantity}`;
@@ -125,14 +161,34 @@ function formatTaskRewardSummary(
         return `${attachment.name} x${attachment.quantity}`;
     }
   });
+
+  if (definition.category === 'tutorial' && definition.rewardCultivationExp) {
+    summary.unshift(`修为 x${definition.rewardCultivationExp}`);
+  }
+
+  if (definition.category === 'daily' && definition.difficulty && realm && realmStage) {
+    const expCalc = calculateSceneCultivationExp('daily_task', {
+      realm,
+      realmStage,
+      expCap,
+      difficulty: definition.difficulty,
+    });
+    if (expCalc.baseExp > 0) {
+      summary.push(`修为 x${expCalc.baseExp}`);
+    }
+  }
+
+  return summary;
 }
 
 function createTaskMetadata(
   definition: RuntimeTaskDefinition,
   resetKey: string,
   realm?: RealmType,
+  realmStage?: Cultivator['realm_stage'],
+  expCap?: number,
 ): TaskInstanceMetadata {
-  const rewardSummary = formatTaskRewardSummary(definition, realm);
+  const rewardSummary = formatTaskRewardSummary(definition, realm, realmStage, expCap);
 
   if (definition.category === 'daily') {
     return {
@@ -142,10 +198,17 @@ function createTaskMetadata(
     };
   }
 
+  if (definition.category === 'tutorial') {
+    return {
+      rewardSummary: rewardSummary.length > 0 ? rewardSummary : undefined,
+    };
+  }
+
   return {
     fromRealm: definition.fromRealm,
     toRealm: definition.toRealm,
     taskTheme: definition.taskTheme,
+    rewardSummary: rewardSummary.length > 0 ? rewardSummary : undefined,
   };
 }
 
@@ -374,6 +437,29 @@ function resolveObjectiveProgress(
   progress: TaskObjectiveProgress;
 } {
   switch (definition.kind) {
+    case 'auto_complete': {
+      const nextState = completeObjectiveState(
+        {
+          ...createDefaultObjectiveState(definition.id),
+          ...state,
+          objectiveId: definition.id,
+        },
+        1,
+        nowIso,
+      );
+
+      return {
+        objectiveState: nextState,
+        progress: {
+          id: definition.id,
+          kind: definition.kind,
+          title: definition.title,
+          description: definition.description,
+          completed: true,
+          progressText: '已备妥',
+        },
+      };
+    }
     case 'craft_breakthrough_pill': {
       const preparedPillQuantity = getPreparedBreakthroughPillQuantity(
         context,
@@ -606,12 +692,20 @@ function resolveStageLinks(
     switch (link.kind) {
       case 'alchemy':
         return { label: link.label, href: '/game/craft/alchemy' };
+      case 'cultivator':
+        return { label: link.label, href: '/game/cultivator' };
       case 'dungeon':
         return { label: link.label, href: '/game/dungeon' };
+      case 'inn':
+        return { label: link.label, href: '/game/inn' };
+      case 'inventory':
+        return { label: link.label, href: '/game/inventory' };
       case 'ranking':
         return { label: link.label, href: '/game/rankings' };
       case 'retreat':
         return { label: link.label, href: '/game/retreat' };
+      case 'training':
+        return { label: link.label, href: '/game/training-room' };
       case 'challenge':
         return { label: link.label, href: `/game/tasks/${taskId}/challenge` };
       case 'tasks':
@@ -619,6 +713,137 @@ function resolveStageLinks(
         return { label: link.label, href: '/game/tasks' };
     }
   });
+}
+
+function definitionHandlesEvent(
+  definition: RuntimeTaskDefinition,
+  event: TaskEvent,
+): boolean {
+  return definition.stages.some((stage) =>
+    stage.objectives.some(
+      (objective) => objective.kind === 'event_count' && objective.event === event,
+    ),
+  );
+}
+
+function withoutRewardGrantPendingKey(
+  metadata: TaskInstanceMetadata,
+): TaskInstanceMetadata {
+  const next = { ...metadata };
+  delete next.rewardGrantPendingKey;
+  return next;
+}
+
+async function grantDailyTaskRewardIfNeeded(
+  cultivatorId: string,
+  context: TaskProgressContext,
+  record: CultivatorTaskRecord,
+  definition: DailyTaskDefinition,
+  task: TaskInstance,
+  resetKey: string,
+): Promise<boolean> {
+  const grantKey = `${definition.id}:${resetKey}`;
+  if (task.metadata.rewardGrantedKey === grantKey) {
+    return false;
+  }
+
+  const pendingRecord = await markTaskRewardGrantPendingForKey(
+    record.id,
+    cultivatorId,
+    grantKey,
+    {
+      ...task.metadata,
+      rewardGrantPendingKey: grantKey,
+    },
+  );
+  if (!pendingRecord) {
+    return false;
+  }
+
+  const pendingMetadata = pendingRecord.metadata as TaskInstanceMetadata;
+  let grantMetadata = pendingMetadata;
+
+  try {
+    let expGained = 0;
+    if (
+      definition.difficulty &&
+      pendingMetadata.rewardExpGrantedKey !== grantKey
+    ) {
+      const cultivator = await loadBundleOrThrow(cultivatorId);
+      const baseExp = calculateDailyTaskExpGain(
+        cultivator,
+        definition.difficulty,
+      );
+
+      if (baseExp > 0) {
+        const { result: expResult, updated_progress } = addCultivationExp(
+          cultivator,
+          { source: 'daily_task', base_amount: baseExp },
+        );
+        await getExecutor().transaction(async (tx) => {
+          await updateCultivator(
+            cultivatorId,
+            {
+              cultivation_progress: updated_progress,
+            },
+            tx,
+          );
+          grantMetadata = {
+            ...pendingMetadata,
+            rewardExpGrantedKey: grantKey,
+          };
+          await updateCultivatorTask(
+            record.id,
+            cultivatorId,
+            {
+              metadata: grantMetadata,
+            },
+            tx,
+          );
+        });
+        expGained = expResult.exp_gained;
+      }
+    }
+
+    const rewardAttachments = resolveTaskRewardAttachments(
+      definition,
+      context.realm,
+    );
+
+    let mailBody = `道友已办妥"${task.snapshot.title}"，这份薄礼已由传音玉简送达。`;
+    if (expGained > 0) {
+      mailBody += `\n（修为 +${expGained}）`;
+    }
+
+    if (rewardAttachments.length > 0 || expGained > 0) {
+      await MailService.sendMail(
+        cultivatorId,
+        `【今日日常】${task.snapshot.title}`,
+        mailBody,
+        rewardAttachments,
+        'reward',
+      );
+    }
+
+    await markTaskRewardGrantedForKey(
+      record.id,
+      cultivatorId,
+      grantKey,
+      {
+        ...withoutRewardGrantPendingKey(grantMetadata),
+        rewardGrantedKey: grantKey,
+      },
+    );
+    return true;
+  } catch (error) {
+    await clearTaskRewardGrantPendingForKey(
+      record.id,
+      cultivatorId,
+      grantKey,
+      withoutRewardGrantPendingKey(grantMetadata),
+    );
+    throw error;
+  }
 }
 
 function buildTaskSnapshot(
@@ -676,14 +901,25 @@ function buildTaskSnapshot(
           .filter((objective) => !objective.completed)
           .map((objective) => `${objective.title}：${objective.progressText}`)
       : [];
-  const rewardSummary = formatTaskRewardSummary(definition, context.realm);
+  const rewardSummary = formatTaskRewardSummary(
+    definition,
+    context.realm,
+    context.realmStage,
+    context.cultivationProgress?.exp_cap,
+  );
 
   return {
     snapshot: {
       title: definition.title,
       summary: definition.summary,
-      fromRealm: definition.fromRealm,
-      toRealm: definition.toRealm,
+      fromRealm:
+        definition.category === 'breakthrough_major'
+          ? definition.fromRealm
+          : undefined,
+      toRealm:
+        definition.category === 'breakthrough_major'
+          ? definition.toRealm
+          : undefined,
       isCompleted,
       currentStageId,
       currentStageIndex: resolvedCurrentStageIndex,
@@ -696,6 +932,9 @@ function buildTaskSnapshot(
           ? (record.metadata as TaskInstanceMetadata | null | undefined)?.resetKey
           : undefined,
       rewardSummary: rewardSummary.length > 0 ? rewardSummary : undefined,
+      rewardClaimedAt:
+        (record.metadata as TaskInstanceMetadata | null | undefined)
+          ?.rewardClaimedAt,
       stages: stageProgresses,
     },
     objectiveStates: nextStates,
@@ -747,6 +986,12 @@ function isDailyTaskDefinition(
   return definition.category === 'daily';
 }
 
+function isTutorialTaskDefinition(
+  definition: RuntimeTaskDefinition,
+): definition is TutorialTaskDefinition {
+  return definition.category === 'tutorial';
+}
+
 async function createTaskRecordIfMissing(
   context: TaskProgressContext,
   definition: RuntimeTaskDefinition,
@@ -769,7 +1014,13 @@ async function createTaskRecordIfMissing(
       status: 'active',
       currentStage: definition.stages[0]?.id ?? null,
       objectives: buildDefaultObjectiveStates(definition),
-      metadata: createTaskMetadata(definition, resetKey, context.realm),
+      metadata: createTaskMetadata(
+        definition,
+        resetKey,
+        context.realm,
+        context.realmStage,
+        context.cultivationProgress?.exp_cap,
+      ),
     });
   } catch (error) {
     if (
@@ -787,6 +1038,7 @@ async function ensureCurrentTaskRecords(
 ): Promise<void> {
   const currentMajorDefinition = getCurrentMajorDefinition(context);
   const definitions: RuntimeTaskDefinition[] = [
+    ...getTutorialTaskDefinitions(),
     ...getDailyTaskDefinitions(),
     ...(currentMajorDefinition ? [currentMajorDefinition] : []),
   ];
@@ -817,6 +1069,8 @@ async function resetRepeatableTaskRecordIfNeeded(
     definition,
     currentResetKey,
     context.realm,
+    context.realmStage,
+    context.cultivationProgress?.exp_cap,
   );
 
   return (
@@ -861,11 +1115,18 @@ async function syncTaskRecord(
     (preparedRecord.metadata as TaskInstanceMetadata | null | undefined) ??
     undefined;
   const nextMetadata = isDailyTaskDefinition(definition)
-    ? createTaskMetadata(
-        definition,
-        currentMetadata?.resetKey ?? getTaskResetKey(),
-        context.realm,
-      )
+    ? {
+        ...createTaskMetadata(
+          definition,
+          currentMetadata?.resetKey ?? getTaskResetKey(),
+          context.realm,
+          context.realmStage,
+          context.cultivationProgress?.exp_cap,
+        ),
+        rewardGrantPendingKey: currentMetadata?.rewardGrantPendingKey,
+        rewardExpGrantedKey: currentMetadata?.rewardExpGrantedKey,
+        rewardGrantedKey: currentMetadata?.rewardGrantedKey,
+      }
     : currentMetadata;
   const metadataNeedsUpdate =
     JSON.stringify(currentMetadata) !== JSON.stringify(nextMetadata);
@@ -918,6 +1179,50 @@ async function syncCultivatorTasksWithContext(
   await ensureCurrentTaskRecords(context);
   const records = await listCultivatorTasks(context.cultivatorId);
   return Promise.all(records.map((record) => syncTaskRecord(context, record)));
+}
+
+async function applyTaskRewardAttachment(
+  userId: string,
+  cultivatorId: string,
+  attachment: MailAttachment,
+  tx: DbTransaction,
+): Promise<void> {
+  switch (attachment.type) {
+    case 'spirit_stones':
+      await updateSpiritStones(userId, cultivatorId, attachment.quantity, tx);
+      return;
+    case 'material':
+      if (!attachment.data || !('name' in attachment.data)) {
+        throw new Error(`新手奖励材料缺少数据：${attachment.name}`);
+      }
+      await addMaterialToInventory(userId, cultivatorId, {
+        ...(attachment.data as Material),
+        quantity: attachment.quantity,
+      }, tx);
+      return;
+    case 'consumable':
+      if (!attachment.data || !('spec' in attachment.data)) {
+        throw new Error(`新手奖励丹药缺少数据：${attachment.name}`);
+      }
+      await addConsumableToInventory(userId, cultivatorId, {
+        ...(attachment.data as Consumable),
+        quantity: attachment.quantity,
+      }, tx);
+      return;
+    case 'artifact':
+      if (!attachment.data || !('productModel' in attachment.data)) {
+        throw new Error(`新手奖励法宝缺少数据：${attachment.name}`);
+      }
+      for (let index = 0; index < Math.max(1, attachment.quantity); index += 1) {
+        await addArtifactToInventory(
+          userId,
+          cultivatorId,
+          attachment.data as Artifact,
+          tx,
+        );
+      }
+      return;
+  }
 }
 
 export const TaskService = {
@@ -1043,15 +1348,42 @@ export const TaskService = {
 
     for (const originalRecord of records) {
       const definition = getTaskDefinition(originalRecord.definitionId);
-      if (!definition || !isDailyTaskDefinition(definition)) {
+      if (
+        !definition ||
+        (!isDailyTaskDefinition(definition) &&
+          !isTutorialTaskDefinition(definition))
+      ) {
         continue;
       }
 
-      let record = await resetRepeatableTaskRecordIfNeeded(
-        context,
-        originalRecord,
-        definition,
-      );
+      let record = isDailyTaskDefinition(definition)
+        ? await resetRepeatableTaskRecordIfNeeded(
+            context,
+            originalRecord,
+            definition,
+          )
+        : originalRecord;
+
+      if (
+        isDailyTaskDefinition(definition) &&
+        record.status === 'completed' &&
+        (record.metadata as TaskInstanceMetadata | null | undefined)?.resetKey ===
+          currentResetKey &&
+        definitionHandlesEvent(definition, event)
+      ) {
+        const task = await syncTaskRecord(context, record);
+        const granted = await grantDailyTaskRewardIfNeeded(
+          cultivatorId,
+          context,
+          record,
+          definition,
+          task,
+          currentResetKey,
+        );
+        changedAny = changedAny || granted;
+        continue;
+      }
+
       if (record.status !== 'active') {
         continue;
       }
@@ -1119,6 +1451,8 @@ export const TaskService = {
         definition,
         currentResetKey,
         context.realm,
+        context.realmStage,
+        context.cultivationProgress?.exp_cap,
       );
       record =
         (await updateCultivatorTask(record.id, cultivatorId, {
@@ -1132,17 +1466,14 @@ export const TaskService = {
       const task = await syncTaskRecord(context, record);
       changedAny = true;
 
-      const rewardAttachments = resolveTaskRewardAttachments(
-        definition,
-        context.realm,
-      );
-      if (task.status === 'completed' && rewardAttachments.length > 0) {
-        await MailService.sendMail(
+      if (task.status === 'completed' && isDailyTaskDefinition(definition)) {
+        await grantDailyTaskRewardIfNeeded(
           cultivatorId,
-          `【今日日常】${task.snapshot.title}`,
-          `道友已办妥“${task.snapshot.title}”，这份薄礼已由传音玉简送达。`,
-          rewardAttachments,
-          'reward',
+          context,
+          record,
+          definition,
+          task,
+          currentResetKey,
         );
       }
     }
@@ -1152,6 +1483,78 @@ export const TaskService = {
     }
 
     return this.listCultivatorTasks(cultivatorId);
+  },
+
+  async claimTaskReward(
+    userId: string,
+    cultivatorId: string,
+    taskId: string,
+  ): Promise<TaskRewardClaimResult> {
+    const context = await loadTaskProgressContextOrThrow(cultivatorId);
+    await ensureCurrentTaskRecords(context);
+    let task = await this.getCultivatorTask(cultivatorId, taskId);
+    if (!task) {
+      throw new Error('任务不存在');
+    }
+
+    const definition = getTaskDefinition(task.definitionId);
+    if (!definition || !isTutorialTaskDefinition(definition)) {
+      throw new Error('该任务没有可手动领取的新手奖励');
+    }
+    if (task.status !== 'completed') {
+      throw new Error('任务尚未完成');
+    }
+    if (task.metadata.rewardClaimedAt) {
+      throw new Error('奖励已经领取');
+    }
+
+    const rewardAttachments = resolveTaskRewardAttachments(
+      definition,
+      context.realm,
+    );
+    const rewards = formatTaskRewardSummary(definition, context.realm);
+    const claimedAt = new Date().toISOString();
+    const currentMetadata = task.metadata;
+
+    await getExecutor().transaction(async (tx) => {
+      const claimedRecord = await markTutorialTaskRewardClaimed(
+        taskId,
+        cultivatorId,
+        {
+          ...currentMetadata,
+          rewardClaimedAt: claimedAt,
+          rewardSummary: rewards,
+        },
+        tx,
+      );
+      if (!claimedRecord) {
+        throw new Error('奖励已经领取');
+      }
+
+      if (definition.rewardCultivationExp > 0) {
+        await updateCultivationExp(
+          userId,
+          cultivatorId,
+          definition.rewardCultivationExp,
+          undefined,
+          tx,
+        );
+      }
+
+      for (const attachment of rewardAttachments) {
+        await applyTaskRewardAttachment(userId, cultivatorId, attachment, tx);
+      }
+    });
+
+    task = await this.getCultivatorTask(cultivatorId, taskId);
+    if (!task) {
+      throw new Error('任务不存在');
+    }
+
+    return {
+      task,
+      rewards,
+    };
   },
 
   async runTaskChallenge(

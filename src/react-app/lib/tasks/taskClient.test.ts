@@ -1,7 +1,10 @@
 import type { Cultivator } from '@shared/types/cultivator';
 import type { TaskInstance } from '@shared/types/task';
 import { describe, expect, it } from 'vitest';
-import { findCurrentMajorBreakthroughTask } from './taskClient';
+import {
+  findCurrentMajorBreakthroughTask,
+  findNextTutorialTask,
+} from './taskClient';
 
 function createCultivator(
   overrides: Partial<Cultivator> = {},
@@ -149,5 +152,154 @@ describe('findCurrentMajorBreakthroughTask', () => {
     });
 
     expect(findCurrentMajorBreakthroughTask(cultivator, [dailyTask])).toBeNull();
+  });
+});
+
+describe('findNextTutorialTask', () => {
+  it('prioritizes a completed tutorial task with unclaimed reward', () => {
+    const claimedTask = createTask({
+      id: 'tutorial-claimed',
+      definitionId: 'tutorial_starter_supply',
+      category: 'tutorial',
+      status: 'completed',
+      metadata: {
+        rewardClaimedAt: '2026-05-26T00:00:00.000Z',
+      },
+      snapshot: {
+        title: '入门供给',
+        summary: '先领一份洞府供给。',
+        isCompleted: true,
+        currentStageId: null,
+        currentStageIndex: 1,
+        totalStages: 1,
+        missingRequirements: [],
+        rewardClaimedAt: '2026-05-26T00:00:00.000Z',
+        stages: [],
+      },
+    });
+    const unclaimedTask = createTask({
+      id: 'tutorial-unclaimed',
+      definitionId: 'tutorial_first_alchemy',
+      category: 'tutorial',
+      status: 'completed',
+      metadata: {},
+      snapshot: {
+        title: '第一炉疗伤丹',
+        summary: '完成一次炼丹。',
+        isCompleted: true,
+        currentStageId: null,
+        currentStageIndex: 1,
+        totalStages: 1,
+        missingRequirements: [],
+        stages: [],
+      },
+    });
+
+    expect(findNextTutorialTask([claimedTask, unclaimedTask])).toBe(
+      unclaimedTask,
+    );
+  });
+
+  it('returns the active tutorial task when no completed reward is pending', () => {
+    const starterTask = createTask({
+      id: 'tutorial-starter',
+      definitionId: 'tutorial_starter_supply',
+      category: 'tutorial',
+      status: 'completed',
+      metadata: {
+        rewardClaimedAt: '2026-05-26T00:00:00.000Z',
+      },
+      snapshot: {
+        title: '入门供给',
+        summary: '先领一份洞府供给。',
+        isCompleted: true,
+        currentStageId: null,
+        currentStageIndex: 1,
+        totalStages: 1,
+        missingRequirements: [],
+        rewardClaimedAt: '2026-05-26T00:00:00.000Z',
+        stages: [],
+      },
+    });
+    const alchemyTask = createTask({
+      id: 'tutorial-alchemy',
+      definitionId: 'tutorial_first_alchemy',
+      category: 'tutorial',
+      status: 'completed',
+      metadata: {
+        rewardClaimedAt: '2026-05-26T00:10:00.000Z',
+      },
+      snapshot: {
+        title: '第一炉疗伤丹',
+        summary: '完成一次炼丹。',
+        isCompleted: true,
+        currentStageId: null,
+        currentStageIndex: 1,
+        totalStages: 1,
+        missingRequirements: [],
+        rewardClaimedAt: '2026-05-26T00:10:00.000Z',
+        stages: [],
+      },
+    });
+    const activeTask = createTask({
+      id: 'tutorial-active',
+      definitionId: 'tutorial_first_dungeon',
+      category: 'tutorial',
+      status: 'active',
+      metadata: {},
+      snapshot: {
+        title: '第一次低危探秘',
+        summary: '完成一次探秘结算。',
+        isCompleted: false,
+        currentStageId: 'first-dungeon',
+        currentStageIndex: 0,
+        totalStages: 1,
+        missingRequirements: ['完成 1 次探秘：0/1'],
+        stages: [],
+      },
+    });
+
+    expect(findNextTutorialTask([starterTask, alchemyTask, activeTask])).toBe(
+      activeTask,
+    );
+  });
+
+  it('keeps later tutorial tasks locked until the previous reward is claimed', () => {
+    const starterTask = createTask({
+      id: 'tutorial-starter',
+      definitionId: 'tutorial_starter_supply',
+      category: 'tutorial',
+      status: 'completed',
+      metadata: {},
+      snapshot: {
+        title: '入门供给',
+        summary: '先领一份洞府供给。',
+        isCompleted: true,
+        currentStageId: null,
+        currentStageIndex: 1,
+        totalStages: 1,
+        missingRequirements: [],
+        stages: [],
+      },
+    });
+    const alchemyTask = createTask({
+      id: 'tutorial-alchemy',
+      definitionId: 'tutorial_first_alchemy',
+      category: 'tutorial',
+      status: 'active',
+      metadata: {},
+      snapshot: {
+        title: '第一炉疗伤丹',
+        summary: '完成一次炼丹。',
+        isCompleted: false,
+        currentStageId: 'first-alchemy',
+        currentStageIndex: 0,
+        totalStages: 1,
+        missingRequirements: [],
+        stages: [],
+      },
+    });
+
+    expect(findNextTutorialTask([alchemyTask, starterTask])).toBe(starterTask);
   });
 });

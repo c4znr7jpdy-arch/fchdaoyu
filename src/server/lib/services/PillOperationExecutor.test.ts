@@ -279,7 +279,7 @@ describe('PillOperationExecutor', () => {
     cultivator.condition = ConditionService.normalizeCondition(cultivator);
     const pill = {
       ...createCultivationPill(),
-      quality: '真品',
+      quality: '地品',
     } satisfies Consumable;
 
     expect(() =>

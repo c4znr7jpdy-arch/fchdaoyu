@@ -9,6 +9,11 @@ import {
   getDungeonLimitConfig,
 } from '@server/lib/dungeon/dungeonLimiter';
 import { dungeonService } from '@server/lib/dungeon/service_v2';
+import { TaskService } from '@server/lib/services/TaskService';
+import { getCultivatorByIdUnsafe } from '@server/lib/services/cultivatorService';
+import { getCultivatorDisplaySnapshot } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
+import { getMapNode } from '@shared/lib/game/mapSystem';
+import { evaluateNoviceReadiness } from '@shared/lib/noviceGuidance';
 import { desc, eq, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -42,6 +47,43 @@ router.post('/start', requireActiveCultivator(), async (c) => {
   }
 
   const { mapNodeId } = StartSchema.parse(await c.req.json());
+  const [tasks, bundle] = await Promise.all([
+    TaskService.listCultivatorTasks(cultivator.id),
+    getCultivatorByIdUnsafe(cultivator.id),
+  ]);
+  if (!bundle) {
+    return c.json({ error: '当前没有活跃角色' }, 404);
+  }
+
+  const firstDungeonTask = tasks.find(
+    (task) => task.definitionId === 'tutorial_first_dungeon',
+  );
+  const selectedNode = getMapNode(mapNodeId);
+  const selectedNodeRealm =
+    selectedNode && 'realm_requirement' in selectedNode
+      ? selectedNode.realm_requirement
+      : null;
+  const display = getCultivatorDisplaySnapshot(bundle.cultivator);
+  const readiness = evaluateNoviceReadiness({
+    cultivator: bundle.cultivator,
+    selectedNodeRealm,
+    hp: display.resources.hp,
+    mp: display.resources.mp,
+    isFirstDungeonTutorialActive: Boolean(
+      firstDungeonTask && !firstDungeonTask.snapshot.isCompleted,
+    ),
+  });
+
+  if (readiness.shouldBlock) {
+    return c.json(
+      {
+        error: readiness.reasons.join('；'),
+        readiness,
+      },
+      409,
+    );
+  }
+
   const result = await dungeonService.startDungeon(cultivator.id, mapNodeId);
   return c.json(result);
 });

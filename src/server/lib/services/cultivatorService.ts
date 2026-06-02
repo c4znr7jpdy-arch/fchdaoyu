@@ -884,8 +884,10 @@ export async function updateCultivator(
       | 'condition'
     >
   >,
+  executor?: DbExecutor | DbTransaction,
 ): Promise<Cultivator | null> {
-  if (!(await existsCultivatorById(cultivatorId, getExecutor()))) {
+  const q = executor ?? getExecutor();
+  if (!(await existsCultivatorById(cultivatorId, q))) {
     return null;
   }
 
@@ -920,7 +922,7 @@ export async function updateCultivator(
     updateData.condition = (updates.condition as CultivatorCondition) ?? {};
   }
 
-  await getExecutor()
+  await q
     .update(schema.cultivators)
     .set(updateData)
     .where(eq(schema.cultivators.id, cultivatorId));

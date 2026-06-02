@@ -1,7 +1,7 @@
 import {
   CreationIntentPanel,
   CreationProductResultModal,
-  MaterialSelector,
+  MaterialSelectionModal,
   SelectedMaterialsWithDose,
   type CreationProductResultRecord,
 } from '@app/components/feature/creation';
@@ -67,6 +67,7 @@ export default function GongfaCreationPage() {
   const [createdResult, setCreatedResult] =
     useState<CreationProductResultRecord | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
   const [celebrationTick, setCelebrationTick] = useState(0);
   const [pendingReplaceHref, setPendingReplaceHref] = useState<string | null>(null);
   const [materialsRefreshKey, setMaterialsRefreshKey] = useState(0);
@@ -190,6 +191,7 @@ export default function GongfaCreationPage() {
     setDoseMap({});
     setUserPrompt('');
     setValidation(null);
+    setIsMaterialModalOpen(false);
   };
 
   const submitPayload = useMemo(
@@ -253,6 +255,7 @@ export default function GongfaCreationPage() {
       setSelectedMaterialIds([]);
       setSelectedMaterialMap({});
       setDoseMap({});
+      setIsMaterialModalOpen(false);
       setMaterialsRefreshKey((prev) => prev + 1);
 
       if (gongfa.needs_replace) {
@@ -310,26 +313,28 @@ export default function GongfaCreationPage() {
         </>
       }
     >
-      <GameSceneSection title="1. 甄选材料">
-        <MaterialSelector
-          cultivatorId={cultivator?.id}
-          selectedMaterialIds={selectedMaterialIds}
-          onToggleMaterial={toggleMaterial}
-          selectedMaterialMap={selectedMaterialMap}
-          isSubmitting={isSubmitting}
-          pageSize={20}
-          includeMaterialTypes={ALLOWED_MATERIAL_TYPES}
-          refreshKey={materialsRefreshKey}
-          loadingText="正在检索可用于参悟的材料，请稍候……"
-          emptyNoticeText="暂无可用于参悟功法的材料。"
-          totalText={(total) => `共 ${total} 份可用于参悟的材料`}
+      <GameSceneSection title="参悟意念">
+        <CreationIntentPanel
+          productType="gongfa"
+          userPrompt={userPrompt}
+          onUserPromptChange={setUserPrompt}
+          disabled={isSubmitting}
         />
-        <p className="text-ink-secondary mt-1 text-right text-xs">
-          {selectedMaterialIds.length}/{MAX_MATERIALS}
-        </p>
       </GameSceneSection>
 
-      <GameSceneSection title="2. 调度投入份数">
+      <GameSceneSection title="参悟材料">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-ink-secondary text-sm leading-7">
+            已选 {selectedMaterialIds.length} / {MAX_MATERIALS} 种材料
+          </p>
+          <InkButton
+            variant="outline"
+            onClick={() => setIsMaterialModalOpen(true)}
+            disabled={isSubmitting}
+          >
+            打开材料
+          </InkButton>
+        </div>
         <SelectedMaterialsWithDose
           selectedIds={selectedMaterialIds}
           materialMap={selectedMaterialMap}
@@ -339,15 +344,6 @@ export default function GongfaCreationPage() {
           disabled={isSubmitting}
           onRemove={(id) => toggleMaterial(id)}
           onDoseChange={handleDoseChange}
-        />
-      </GameSceneSection>
-
-      <GameSceneSection title="3. 参悟意念">
-        <CreationIntentPanel
-          productType="gongfa"
-          userPrompt={userPrompt}
-          onUserPromptChange={setUserPrompt}
-          disabled={isSubmitting}
         />
       </GameSceneSection>
 
@@ -381,7 +377,7 @@ export default function GongfaCreationPage() {
         )}
       </GameSceneSection>
 
-      <GameSceneSection title="4. 开始参悟">
+      <GameSceneSection title="开始参悟">
         <InkActionGroup align="right">
           <InkButton onClick={resetAll} disabled={isSubmitting}>
             重置
@@ -420,6 +416,24 @@ export default function GongfaCreationPage() {
           </InkActionGroup>
         </div>
       )}
+
+      <MaterialSelectionModal
+        isOpen={isMaterialModalOpen}
+        onClose={() => setIsMaterialModalOpen(false)}
+        title="甄选参悟材料"
+        maxMaterials={MAX_MATERIALS}
+        cultivatorId={cultivator?.id}
+        selectedMaterialIds={selectedMaterialIds}
+        onToggleMaterial={toggleMaterial}
+        selectedMaterialMap={selectedMaterialMap}
+        isSubmitting={isSubmitting}
+        pageSize={20}
+        includeMaterialTypes={ALLOWED_MATERIAL_TYPES}
+        refreshKey={materialsRefreshKey}
+        loadingText="正在检索可用于参悟的材料，请稍候……"
+        emptyNoticeText="暂无可用于参悟功法的材料。"
+        totalText={(total) => `共 ${total} 份可用于参悟的材料`}
+      />
 
       <CreationProductResultModal
         isOpen={isResultModalOpen}

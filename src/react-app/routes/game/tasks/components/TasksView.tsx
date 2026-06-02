@@ -1,13 +1,15 @@
 import { BreakthroughTaskCard } from '@app/components/feature/tasks/BreakthroughTaskCard';
 import { DailyTaskCard } from '@app/components/feature/tasks/DailyTaskCard';
+import { TutorialTaskCard } from '@app/components/feature/tasks/TutorialTaskCard';
 import { GameSceneFrame, GameSceneSection } from '@app/components/game-shell';
 import { InkNotice } from '@app/components/ui';
 import { useTaskList } from '@app/lib/hooks/useTaskList';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import { findNextTutorialTask } from '@app/lib/tasks/taskClient';
 
 export function TasksView() {
   const { cultivator, isLoading } = useCultivator();
-  const { tasks, loading, error } = useTaskList(cultivator?.id);
+  const { tasks, loading, error, reload } = useTaskList(cultivator?.id);
 
   if (isLoading && !cultivator) {
     return (
@@ -41,12 +43,36 @@ export function TasksView() {
     (task) =>
       task.category === 'breakthrough_major' && task.status === 'completed',
   );
+  const nextTutorialTask = findNextTutorialTask(tasks);
 
   return (
     <GameSceneFrame
       title="任务中心"
       description="今日日常与破境卷宗都归在此处。先把手头差事理顺，再看是否该回静室叩关。"
     >
+      <GameSceneSection title="入门卷宗">
+        {loading ? (
+          <p className="text-sm text-ink-secondary">正在整理入门卷宗……</p>
+        ) : error ? (
+          <InkNotice>{error}</InkNotice>
+        ) : (
+          <div className="space-y-4">
+            {nextTutorialTask ? (
+              <TutorialTaskCard
+                key={nextTutorialTask.id}
+                task={nextTutorialTask}
+                onClaimed={reload}
+              />
+            ) : null}
+            {!nextTutorialTask ? (
+              <p className="text-sm leading-7 text-ink-secondary">
+                入门卷宗已办妥。之后按今日日常、破境卷宗与洞府状态推进即可。
+              </p>
+            ) : null}
+          </div>
+        )}
+      </GameSceneSection>
+
       <GameSceneSection title="今日日常">
         {loading ? (
           <p className="text-sm text-ink-secondary">正在整理今日差事……</p>

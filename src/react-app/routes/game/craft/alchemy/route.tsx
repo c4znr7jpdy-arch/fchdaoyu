@@ -4,7 +4,7 @@ import {
   toPillDisplayModel,
 } from '@app/components/feature/consumables';
 import {
-  MaterialSelector,
+  MaterialSelectionModal,
   SelectedMaterialsWithDose,
 } from '@app/components/feature/creation';
 import {
@@ -28,7 +28,13 @@ import {
   ItemShowcaseModal,
   type InkDialogState,
 } from '@app/components/ui';
+import {
+  STARTER_ALCHEMY_PROMPT,
+  selectRecommendedStarterAlchemyMaterials,
+} from '@app/lib/alchemy/starterAlchemy';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import { useTaskList } from '@app/lib/hooks/useTaskList';
+import { findNextTutorialTask } from '@app/lib/tasks/taskClient';
 import { CREATION_INPUT_CONSTRAINTS } from '@shared/engine/creation-v2/config/CreationBalance';
 import { formatAlchemyPropertyVector } from '@shared/lib/alchemyProperties';
 import { cn } from '@shared/lib/cn';
@@ -565,6 +571,7 @@ export function AlchemyFormulaDiscoveryModal({
 export default function AlchemyPage() {
   const { cultivator, note, isLoading, refreshCultivator } = useCultivator();
   const cultivatorId = cultivator?.id ?? null;
+  const { tasks } = useTaskList(cultivatorId ?? undefined);
   const [activeMode, setActiveMode] = useState<AlchemyMode>('improvised');
   const [selectedFormulaId, setSelectedFormulaId] = useState<string | null>(
     null,
@@ -589,6 +596,7 @@ export default function AlchemyPage() {
   const [isHandlingDiscovery, setIsHandlingDiscovery] = useState(false);
   const [isDeletingFormula, setIsDeletingFormula] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
   const [dialog, setDialog] = useState<InkDialogState | null>(null);
   const [celebrationTick, setCelebrationTick] = useState(0);
   const [materialsRefreshKey, setMaterialsRefreshKey] = useState(0);
@@ -619,6 +627,17 @@ export default function AlchemyPage() {
   const selectedFormula = useMemo(
     () => formulas.find((formula) => formula.id === selectedFormulaId) ?? null,
     [formulas, selectedFormulaId],
+  );
+  const nextTutorialTask = useMemo(() => findNextTutorialTask(tasks), [tasks]);
+  const isStarterAlchemyTask =
+    nextTutorialTask?.definitionId === 'tutorial_first_alchemy';
+  const starterAlchemySelection = useMemo(
+    () =>
+      selectRecommendedStarterAlchemyMaterials(
+        cultivator?.inventory.materials ?? [],
+        MIN_DOSE,
+      ),
+    [cultivator?.inventory.materials],
   );
   const formulaJudgmentMap = useMemo(
     () =>
@@ -854,6 +873,7 @@ export default function AlchemyPage() {
     setUserPrompt('');
     setPreviewState(DEFAULT_PREVIEW_STATE);
     clearFormulaAnalysis();
+    setIsMaterialModalOpen(false);
   };
 
   const handleModeChange = (value: string) => {
@@ -911,6 +931,32 @@ export default function AlchemyPage() {
 
   const resetAll = () => {
     resetWorkbench();
+  };
+
+  const applyStarterAlchemyRecommendation = () => {
+    const selection = starterAlchemySelection;
+    if (selection.missingNames.length > 0) {
+      pushToast({
+        message: `缺少${selection.missingNames.join('、')}，先领取入门供给或检查储物袋。`,
+        tone: 'warning',
+      });
+      return;
+    }
+
+    setActiveMode('improvised');
+    setStatus('');
+    setCreatedConsumable(null);
+    setFormulaDiscovery(null);
+    setFormulaProgress(null);
+    setIsResultModalOpen(false);
+    setIsDiscoveryModalOpen(false);
+    setSelectedMaterialIds(selection.selectedIds);
+    setSelectedMaterialMap(selection.selectedMap);
+    setDoseMap(selection.doseMap);
+    setUserPrompt(STARTER_ALCHEMY_PROMPT);
+    setPreviewState(DEFAULT_PREVIEW_STATE);
+    clearFormulaAnalysis();
+    pushToast({ message: '已按入门方意备好第一炉。', tone: 'success' });
   };
 
   const submitPayload = useMemo(
@@ -1142,6 +1188,7 @@ export default function AlchemyPage() {
       setSelectedMaterialIds([]);
       setSelectedMaterialMap({});
       setDoseMap({});
+      setIsMaterialModalOpen(false);
       if (activeMode === 'improvised') {
         setUserPrompt('');
       }
@@ -1355,6 +1402,29 @@ export default function AlchemyPage() {
       }
       aside={
         <>
+          <GameSceneAsideSection title="第一炉建议">
+            <div className="space-y-2 text-sm leading-7">
+              <p>先选青露草、凝水花一类凡品灵草，投入 1 份即可。</p>
+              <p>丹意可写：疗伤回元，药性温和。</p>
+              <p>第一炉只求看懂成丹结果，不必追求高品阶。</p>
+              {isStarterAlchemyTask ? (
+                <InkButton
+                  variant="primary"
+                  onClick={applyStarterAlchemyRecommendation}
+                  disabled={isSubmitting}
+                >
+                  使用推荐首炉
+                </InkButton>
+              ) : null}
+              {isStarterAlchemyTask &&
+              starterAlchemySelection.missingNames.length > 0 ? (
+                <p className="text-crimson text-xs leading-6">
+                  缺少{starterAlchemySelection.missingNames.join('、')}，先回入门卷宗领奖或查看储物袋。
+                </p>
+              ) : null}
+            </div>
+          </GameSceneAsideSection>
+
           <GameSceneAsideSection title="炉况摘要">
             <div className="space-y-2 text-sm leading-7">
               <p>
@@ -1445,28 +1515,19 @@ export default function AlchemyPage() {
         </GameSceneSection>
       )}
 
-      <GameSceneSection
-        title={activeMode === 'formula' ? '炉材甄选' : '甄选灵材'}
-      >
-        <MaterialSelector
-          cultivatorId={cultivator?.id}
-          selectedMaterialIds={selectedMaterialIds}
-          onToggleMaterial={toggleMaterial}
-          selectedMaterialMap={selectedMaterialMap}
-          isSubmitting={isSubmitting}
-          pageSize={20}
-          includeMaterialTypes={[...ALLOWED_MATERIAL_TYPES] as MaterialType[]}
-          refreshKey={materialsRefreshKey}
-          loadingText="正在检索储物袋中的灵材，请稍候……"
-          emptyNoticeText="暂无可用于炼丹的材料。"
-          totalText={(total) => `共 ${total} 份可用于炼丹的材料`}
-        />
-        <p className="text-ink-secondary mt-1 text-right text-xs">
-          {selectedMaterialIds.length}/{MAX_MATERIALS}
-        </p>
-      </GameSceneSection>
-
-      <GameSceneSection title="调度投入份数">
+      <GameSceneSection title="炉材投入">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-ink-secondary text-sm leading-7">
+            已投入 {selectedMaterialIds.length} / {MAX_MATERIALS} 种灵材
+          </p>
+          <InkButton
+            variant="outline"
+            onClick={() => setIsMaterialModalOpen(true)}
+            disabled={isSubmitting}
+          >
+            打开材料
+          </InkButton>
+        </div>
         <SelectedMaterialsWithDose
           selectedIds={selectedMaterialIds}
           materialMap={selectedMaterialMap}
@@ -1590,6 +1651,24 @@ export default function AlchemyPage() {
           <InkNotice tone="info">{status}</InkNotice>
         </div>
       )}
+
+      <MaterialSelectionModal
+        isOpen={isMaterialModalOpen}
+        onClose={() => setIsMaterialModalOpen(false)}
+        title="甄选炼丹灵材"
+        maxMaterials={MAX_MATERIALS}
+        cultivatorId={cultivator?.id}
+        selectedMaterialIds={selectedMaterialIds}
+        onToggleMaterial={toggleMaterial}
+        selectedMaterialMap={selectedMaterialMap}
+        isSubmitting={isSubmitting}
+        pageSize={20}
+        includeMaterialTypes={[...ALLOWED_MATERIAL_TYPES] as MaterialType[]}
+        refreshKey={materialsRefreshKey}
+        loadingText="正在检索储物袋中的灵材，请稍候……"
+        emptyNoticeText="暂无可用于炼丹的材料。"
+        totalText={(total) => `共 ${total} 份可用于炼丹的材料`}
+      />
 
       <AlchemyResultModal
         consumable={createdConsumable}

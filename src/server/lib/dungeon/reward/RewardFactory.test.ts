@@ -1,4 +1,5 @@
 import type { Material } from '@shared/types/cultivator';
+import { calculateDungeonExp } from '@shared/engine/cultivation/ExpBudgetCalculator';
 import { describe, expect, it } from 'vitest';
 import type { PlayerInfo } from '../types';
 import { RewardFactory } from './RewardFactory';
@@ -81,6 +82,8 @@ describe('RewardFactory', () => {
     );
     const expReward = rewards.find((reward) => reward.type === 'cultivation_exp');
 
-    expect(expReward?.value).toBe(375);
+    expect(expReward?.value).toBe(
+      calculateDungeonExp('筑基', '初期', 'S', 0),
+    );
   });
 });

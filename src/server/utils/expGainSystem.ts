@@ -3,6 +3,7 @@ import {
   calculateBattleExp,
   calculateSceneCultivationExp,
 } from '@shared/engine/cultivation/ExpBudgetCalculator';
+import type { DailyTaskDifficulty } from '@shared/engine/cultivation/exp-gain-strategies/types';
 import { REALM_ORDER, type RealmType } from '@shared/types/constants';
 import {
   calculateExpProgress,
@@ -229,4 +230,25 @@ export function calculatePillExpGain(
     }).baseExp,
     can_use: true,
   };
+}
+
+/**
+ * 日常任务获取修为的辅助函数
+ * @param cultivator 角色
+ * @param difficulty 任务难度
+ */
+export function calculateDailyTaskExpGain(
+  cultivator: Cultivator,
+  difficulty: DailyTaskDifficulty = 'normal',
+): number {
+  if (!cultivator.cultivation_progress) {
+    return 0;
+  }
+
+  return calculateSceneCultivationExp('daily_task', {
+    realm: cultivator.realm,
+    realmStage: cultivator.realm_stage,
+    expCap: cultivator.cultivation_progress.exp_cap,
+    difficulty,
+  }).baseExp;
 }

@@ -1,7 +1,7 @@
 import {
   CreationIntentPanel,
   CreationProductResultModal,
-  MaterialSelector,
+  MaterialSelectionModal,
   SelectedMaterialsWithDose,
   type CreationProductResultRecord,
 } from '@app/components/feature/creation';
@@ -86,6 +86,7 @@ export default function SkillCreationPage() {
   const [createdResult, setCreatedResult] =
     useState<CreationProductResultRecord | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
   const [celebrationTick, setCelebrationTick] = useState(0);
   const [pendingReplaceHref, setPendingReplaceHref] = useState<string | null>(null);
   const [materialsRefreshKey, setMaterialsRefreshKey] = useState(0);
@@ -211,6 +212,7 @@ export default function SkillCreationPage() {
     setUserPrompt('');
     setValidation(null);
     setTargetPolicy(null);
+    setIsMaterialModalOpen(false);
   };
 
   const submitPayload = useMemo(
@@ -280,6 +282,7 @@ export default function SkillCreationPage() {
       setSelectedMaterialIds([]);
       setSelectedMaterialMap({});
       setDoseMap({});
+      setIsMaterialModalOpen(false);
       setMaterialsRefreshKey((prev) => prev + 1);
 
       if (skill.needs_replace) {
@@ -349,48 +352,7 @@ export default function SkillCreationPage() {
         </>
       }
     >
-      <GameSceneSection title="1. 甄选材料">
-        <MaterialSelector
-          cultivatorId={cultivator?.id}
-          selectedMaterialIds={selectedMaterialIds}
-          onToggleMaterial={toggleMaterial}
-          selectedMaterialMap={selectedMaterialMap}
-          isSubmitting={isSubmitting}
-          pageSize={20}
-          includeMaterialTypes={ALLOWED_MATERIAL_TYPES}
-          refreshKey={materialsRefreshKey}
-          loadingText="正在检索可用于推演的材料，请稍候……"
-          emptyNoticeText="暂无可用于推演神通的材料。"
-          totalText={(total) => `共 ${total} 份可用于推演的材料`}
-        />
-        <p className="text-ink-secondary mt-1 text-right text-xs">
-          {selectedMaterialIds.length}/{MAX_MATERIALS}
-        </p>
-      </GameSceneSection>
-
-      <GameSceneSection title="2. 调度投入份数">
-        <SelectedMaterialsWithDose
-          selectedIds={selectedMaterialIds}
-          materialMap={selectedMaterialMap}
-          doseMap={doseMap}
-          minDose={MIN_DOSE}
-          maxDose={MAX_DOSE}
-          disabled={isSubmitting}
-          onRemove={(id) => toggleMaterial(id)}
-          onDoseChange={handleDoseChange}
-        />
-      </GameSceneSection>
-
-      <GameSceneSection title="3. 推演意念">
-        <CreationIntentPanel
-          productType="skill"
-          userPrompt={userPrompt}
-          onUserPromptChange={setUserPrompt}
-          disabled={isSubmitting}
-        />
-      </GameSceneSection>
-
-      <GameSceneSection title="4. 目标策略">
+      <GameSceneSection title="目标策略">
         <p className="text-ink-secondary mb-3 text-xs">
           指定神通的施法目标倾向。
           <span className="text-crimson ml-1">（必选）</span>
@@ -454,6 +416,40 @@ export default function SkillCreationPage() {
         </div>
       </GameSceneSection>
 
+      <GameSceneSection title="推演意念">
+        <CreationIntentPanel
+          productType="skill"
+          userPrompt={userPrompt}
+          onUserPromptChange={setUserPrompt}
+          disabled={isSubmitting}
+        />
+      </GameSceneSection>
+
+      <GameSceneSection title="推演材料">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-ink-secondary text-sm leading-7">
+            已选 {selectedMaterialIds.length} / {MAX_MATERIALS} 种材料
+          </p>
+          <InkButton
+            variant="outline"
+            onClick={() => setIsMaterialModalOpen(true)}
+            disabled={isSubmitting}
+          >
+            打开材料
+          </InkButton>
+        </div>
+        <SelectedMaterialsWithDose
+          selectedIds={selectedMaterialIds}
+          materialMap={selectedMaterialMap}
+          doseMap={doseMap}
+          minDose={MIN_DOSE}
+          maxDose={MAX_DOSE}
+          disabled={isSubmitting}
+          onRemove={(id) => toggleMaterial(id)}
+          onDoseChange={handleDoseChange}
+        />
+      </GameSceneSection>
+
       <GameSceneSection title="预计消耗">
         {displayEstimatedCost ? (
           <div className="bg-ink/5 border-ink/10 flex items-center justify-between border border-dashed p-3">
@@ -484,7 +480,7 @@ export default function SkillCreationPage() {
         )}
       </GameSceneSection>
 
-      <GameSceneSection title="5. 开始推演">
+      <GameSceneSection title="开始推演">
         <InkActionGroup align="right">
           <InkButton onClick={resetAll} disabled={isSubmitting}>
             重置
@@ -524,6 +520,24 @@ export default function SkillCreationPage() {
           </InkActionGroup>
         </div>
       )}
+
+      <MaterialSelectionModal
+        isOpen={isMaterialModalOpen}
+        onClose={() => setIsMaterialModalOpen(false)}
+        title="甄选推演材料"
+        maxMaterials={MAX_MATERIALS}
+        cultivatorId={cultivator?.id}
+        selectedMaterialIds={selectedMaterialIds}
+        onToggleMaterial={toggleMaterial}
+        selectedMaterialMap={selectedMaterialMap}
+        isSubmitting={isSubmitting}
+        pageSize={20}
+        includeMaterialTypes={ALLOWED_MATERIAL_TYPES}
+        refreshKey={materialsRefreshKey}
+        loadingText="正在检索可用于推演的材料，请稍候……"
+        emptyNoticeText="暂无可用于推演神通的材料。"
+        totalText={(total) => `共 ${total} 份可用于推演的材料`}
+      />
 
       <CreationProductResultModal
         isOpen={isResultModalOpen}

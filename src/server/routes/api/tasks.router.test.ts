@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
 
 const {
+  claimTaskRewardMock,
   listCultivatorTasksMock,
   getCultivatorTaskMock,
   runTaskChallengeMock,
 } = vi.hoisted(() => ({
+  claimTaskRewardMock: vi.fn(),
   listCultivatorTasksMock: vi.fn(),
   getCultivatorTaskMock: vi.fn(),
   runTaskChallengeMock: vi.fn(),
@@ -12,6 +14,9 @@ const {
 
 vi.mock('@server/lib/hono/middleware', () => ({
   requireActiveCultivator: () => async (context: any, next: () => Promise<void>) => {
+    context.set('user', {
+      id: 'user-1',
+    });
     context.set('cultivator', {
       id: 'cultivator-1',
     });
@@ -21,6 +26,7 @@ vi.mock('@server/lib/hono/middleware', () => ({
 
 vi.mock('@server/lib/services/TaskService', () => ({
   TaskService: {
+    claimTaskReward: claimTaskRewardMock,
     listCultivatorTasks: listCultivatorTasksMock,
     getCultivatorTask: getCultivatorTaskMock,
     runTaskChallenge: runTaskChallengeMock,
@@ -109,5 +115,36 @@ describe('tasks router', () => {
     await expect(response.json()).resolves.toEqual({
       error: '当前阶段没有可执行的试炼挑战',
     });
+  });
+
+  it('claims tutorial rewards through the active user and cultivator', async () => {
+    claimTaskRewardMock.mockResolvedValueOnce({
+      task: {
+        id: 'task-1',
+        status: 'completed',
+      },
+      rewards: ['修为 x40'],
+    });
+
+    const response = await createApp().request('/api/tasks/task-1/claim-reward', {
+      method: 'POST',
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: {
+        task: {
+          id: 'task-1',
+          status: 'completed',
+        },
+        rewards: ['修为 x40'],
+      },
+    });
+    expect(claimTaskRewardMock).toHaveBeenCalledWith(
+      'user-1',
+      'cultivator-1',
+      'task-1',
+    );
   });
 });

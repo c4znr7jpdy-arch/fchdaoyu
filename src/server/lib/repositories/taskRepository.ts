@@ -6,7 +6,7 @@ import type {
   TaskObjectiveState,
   TaskStatus,
 } from '@shared/types/task';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 
 export type CultivatorTaskRecord = typeof schema.cultivatorTasks.$inferSelect;
 
@@ -133,6 +133,99 @@ export async function updateCultivatorTask(
       and(
         eq(schema.cultivatorTasks.id, taskId),
         eq(schema.cultivatorTasks.cultivatorId, cultivatorId),
+      ),
+    )
+    .returning();
+
+  return rows[0] ?? null;
+}
+
+export async function markTutorialTaskRewardClaimed(
+  taskId: string,
+  cultivatorId: string,
+  metadata: TaskInstanceMetadata,
+  q?: DbExecutor | DbTransaction,
+): Promise<CultivatorTaskRecord | null> {
+  const executor = getTaskExecutor(q);
+  const rows = await executor
+    .update(schema.cultivatorTasks)
+    .set({ metadata })
+    .where(
+      and(
+        eq(schema.cultivatorTasks.id, taskId),
+        eq(schema.cultivatorTasks.cultivatorId, cultivatorId),
+        sql`${schema.cultivatorTasks.metadata}->>'rewardClaimedAt' is null`,
+      ),
+    )
+    .returning();
+
+  return rows[0] ?? null;
+}
+
+export async function markTaskRewardGrantedForKey(
+  taskId: string,
+  cultivatorId: string,
+  grantKey: string,
+  metadata: TaskInstanceMetadata,
+  q?: DbExecutor | DbTransaction,
+): Promise<CultivatorTaskRecord | null> {
+  const executor = getTaskExecutor(q);
+  const rows = await executor
+    .update(schema.cultivatorTasks)
+    .set({ metadata })
+    .where(
+      and(
+        eq(schema.cultivatorTasks.id, taskId),
+        eq(schema.cultivatorTasks.cultivatorId, cultivatorId),
+        sql`coalesce(${schema.cultivatorTasks.metadata}->>'rewardGrantedKey', '') <> ${grantKey}`,
+      ),
+    )
+    .returning();
+
+  return rows[0] ?? null;
+}
+
+export async function markTaskRewardGrantPendingForKey(
+  taskId: string,
+  cultivatorId: string,
+  grantKey: string,
+  metadata: TaskInstanceMetadata,
+  q?: DbExecutor | DbTransaction,
+): Promise<CultivatorTaskRecord | null> {
+  const executor = getTaskExecutor(q);
+  const rows = await executor
+    .update(schema.cultivatorTasks)
+    .set({ metadata })
+    .where(
+      and(
+        eq(schema.cultivatorTasks.id, taskId),
+        eq(schema.cultivatorTasks.cultivatorId, cultivatorId),
+        sql`coalesce(${schema.cultivatorTasks.metadata}->>'rewardGrantedKey', '') <> ${grantKey}`,
+        sql`coalesce(${schema.cultivatorTasks.metadata}->>'rewardGrantPendingKey', '') <> ${grantKey}`,
+      ),
+    )
+    .returning();
+
+  return rows[0] ?? null;
+}
+
+export async function clearTaskRewardGrantPendingForKey(
+  taskId: string,
+  cultivatorId: string,
+  grantKey: string,
+  metadata: TaskInstanceMetadata,
+  q?: DbExecutor | DbTransaction,
+): Promise<CultivatorTaskRecord | null> {
+  const executor = getTaskExecutor(q);
+  const rows = await executor
+    .update(schema.cultivatorTasks)
+    .set({ metadata })
+    .where(
+      and(
+        eq(schema.cultivatorTasks.id, taskId),
+        eq(schema.cultivatorTasks.cultivatorId, cultivatorId),
+        sql`${schema.cultivatorTasks.metadata}->>'rewardGrantPendingKey' = ${grantKey}`,
+        sql`coalesce(${schema.cultivatorTasks.metadata}->>'rewardGrantedKey', '') <> ${grantKey}`,
       ),
     )
     .returning();

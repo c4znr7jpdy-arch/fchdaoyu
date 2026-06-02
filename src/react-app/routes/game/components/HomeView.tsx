@@ -8,6 +8,7 @@ import { InkButton, InkNotice } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { useTaskList } from '@app/lib/hooks/useTaskList';
 import { findCurrentMajorBreakthroughTask } from '@app/lib/tasks/taskClient';
+import { getNextNoviceHomeAction } from '@app/lib/tasks/noviceHomeAction';
 import { getNextMajorRealm } from '@shared/lib/breakthroughPill';
 import {
   getPillToxicityStage,
@@ -139,6 +140,12 @@ export function HomeView() {
   }
 
   const urgentItems: ReactNode[] = [];
+  const noviceAction = getNextNoviceHomeAction({
+    tasks,
+    cultivator,
+    hp: display?.resources.hp,
+    mp: display?.resources.mp,
+  });
   const hasYieldAlert = yieldHours >= 1;
   const hasResourceAlert =
     caveStatus !== null &&
@@ -158,6 +165,31 @@ export function HomeView() {
     <span className="text-ink-secondary text-sm">
       {lifespanLoading ? '核算中' : '--'}
     </span>
+  );
+
+  if (noviceAction) {
+    urgentItems.push(
+      <HomeUrgentRow
+        key="novice-action"
+        title={<span className="text-wood">{noviceAction.title}</span>}
+        summary={noviceAction.summary}
+        action={
+          <InkButton href={noviceAction.href} variant="primary">
+            {noviceAction.label}
+          </InkButton>
+        }
+      />,
+    );
+  }
+
+  urgentItems.push(
+    <HomeUrgentRow
+      key="lifespan"
+      className="pr-2"
+      title={<span>⏳ 可用寿元</span>}
+      summary={<span className="text-ink/50 text-xs">（每日凌晨重置）</span>}
+      action={lifespanAction}
+    />,
   );
 
   if (hasYieldAlert) {
@@ -245,12 +277,6 @@ export function HomeView() {
     <GameSceneFrame title="洞府" aside={<HomeAside />}>
       <GameSceneSection title="当下要事">
         <div>
-          <HomeUrgentRow
-            className="pr-2"
-            title={<span>⏳ 可用寿元</span>}
-            summary={<span className="text-ink/50 text-xs">（每日凌晨重置）</span>}
-            action={lifespanAction}
-          />
           {urgentItems.length > 0 ? (
             urgentItems.slice(0, 4)
           ) : (

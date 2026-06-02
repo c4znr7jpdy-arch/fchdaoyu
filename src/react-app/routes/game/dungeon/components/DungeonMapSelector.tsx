@@ -1,12 +1,15 @@
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
+import { InkNotice } from '@app/components/ui/InkNotice';
 import { MapNodeInfo } from '@shared/lib/game/mapSystem';
 import { MapNodeCard } from '../MapNodeCard';
+import type { NoviceDungeonReadiness } from '@shared/lib/noviceGuidance';
 
 interface DungeonMapSelectorProps {
   selectedNode: MapNodeInfo | null;
   onStart: (nodeId: string) => Promise<void>;
   isStarting: boolean;
+  readiness: NoviceDungeonReadiness | null;
 }
 
 /**
@@ -17,6 +20,7 @@ export function DungeonMapSelector({
   selectedNode,
   onStart,
   isStarting,
+  readiness,
 }: DungeonMapSelectorProps) {
   if (!selectedNode) {
     return (
@@ -32,6 +36,11 @@ export function DungeonMapSelector({
   return (
     <div className="space-y-4">
       <MapNodeCard node={selectedNode} />
+      {readiness?.shouldBlock ? (
+        <InkNotice tone="warning">
+          {readiness.reasons[0] ?? '首次探秘前还需准备。'}
+        </InkNotice>
+      ) : null}
       <div className="flex justify-center gap-4">
         <InkButton href="/game/map" disabled={isStarting}>
           重新选择
@@ -39,9 +48,13 @@ export function DungeonMapSelector({
         <InkButton
           variant="primary"
           onClick={() => onStart(selectedNode.id)}
-          disabled={isStarting}
+          disabled={isStarting || readiness?.shouldBlock}
         >
-          {isStarting ? '启动中...' : '开始探索'}
+          {isStarting
+            ? '启动中...'
+            : readiness?.shouldBlock
+              ? '准备未足'
+              : '开始探索'}
         </InkButton>
       </div>
     </div>

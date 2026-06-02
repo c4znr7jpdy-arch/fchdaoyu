@@ -15,3 +15,8 @@ export type TaskChallengeResponse = ApiSuccess<{
   isWin: boolean;
   challengeTitle: string;
 }>;
+
+export type TaskRewardClaimResponse = ApiSuccess<{
+  task: TaskInstance;
+  rewards: string[];
+}>;

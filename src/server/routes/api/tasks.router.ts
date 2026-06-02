@@ -90,4 +90,35 @@ router.post('/:id/challenge', requireActiveCultivator(), async (c) => {
   }
 });
 
+router.post('/:id/claim-reward', requireActiveCultivator(), async (c) => {
+  const user = c.get('user');
+  const cultivator = c.get('cultivator');
+  if (!user || !cultivator) {
+    return c.json({ error: '当前没有活跃角色' }, 404);
+  }
+
+  try {
+    const result = await TaskService.claimTaskReward(
+      user.id,
+      cultivator.id,
+      c.req.param('id'),
+    );
+
+    return c.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : '领取奖励失败，请稍后再试';
+    const status =
+      message === '任务不存在'
+        ? 404
+        : message.includes('尚未完成') || message.includes('已经领取')
+          ? 409
+          : 400;
+    return c.json({ error: message }, status);
+  }
+});
+
 export default router;

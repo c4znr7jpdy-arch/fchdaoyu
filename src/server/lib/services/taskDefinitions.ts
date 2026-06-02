@@ -1,4 +1,5 @@
 import { EnemyGenerator } from '@shared/engine/enemyGenerator';
+import { buildPresetArtifact } from '@shared/engine/cultivator/creation/presetProducts';
 import { hasActiveConditionStatus } from '@shared/lib/condition';
 import type { Cultivator } from '@shared/types/cultivator';
 import type {
@@ -16,12 +17,46 @@ const challengeEnemyGenerator = new EnemyGenerator({
   }),
 });
 
+const noviceGuardArtifact = buildPresetArtifact({
+  name: '入门护身玉佩',
+  slot: 'accessory',
+  element: '木',
+  description: '宗门交给新入道者的护身小器，灵光不盛，却足以挡住初次云游的几分凶险。',
+  affixIds: ['artifact-panel-accessory-utility', 'artifact-panel-vitality'],
+  realm: '炼气',
+  realmStage: '初期',
+});
+
+const noviceWeaponArtifact = buildPresetArtifact({
+  name: '入门青竹剑',
+  slot: 'weapon',
+  element: '木',
+  description: '以青竹淬灵制成的入门法剑，锋芒不躁，适合新入道者熟悉斗法节奏。',
+  affixIds: ['artifact-panel-weapon-dual-atk', 'artifact-panel-atk'],
+  realm: '炼气',
+  realmStage: '初期',
+});
+
+const noviceArmorArtifact = buildPresetArtifact({
+  name: '入门护身布甲',
+  slot: 'armor',
+  element: '土',
+  description: '缀有护身符线的粗布法甲，可缓冲初次探秘里的冲撞与余波。',
+  affixIds: ['artifact-panel-armor-dual-def', 'artifact-panel-def'],
+  realm: '炼气',
+  realmStage: '初期',
+});
+
 type TaskLinkKind =
   | 'alchemy'
+  | 'cultivator'
   | 'dungeon'
+  | 'inn'
+  | 'inventory'
   | 'retreat'
   | 'challenge'
   | 'tasks'
+  | 'training'
   | 'ranking';
 
 export interface TaskStageTemplate extends TaskStageDefinition {
@@ -50,7 +85,18 @@ export interface DailyTaskDefinition
   stages: TaskStageTemplate[];
 }
 
-export type RuntimeTaskDefinition = BreakthroughTaskDefinition | DailyTaskDefinition;
+export interface TutorialTaskDefinition
+  extends Omit<TaskDefinition, 'stages' | 'category'> {
+  category: 'tutorial';
+  rewardCultivationExp: number;
+  rewardAttachments: NonNullable<TaskDefinition['rewardAttachments']>;
+  stages: TaskStageTemplate[];
+}
+
+export type RuntimeTaskDefinition =
+  | BreakthroughTaskDefinition
+  | DailyTaskDefinition
+  | TutorialTaskDefinition;
 
 export interface TaskChallengeProfile {
   id: string;
@@ -678,6 +724,7 @@ const dailyDefinitions: DailyTaskDefinition[] = [
     category: 'daily',
     repeat: 'daily',
     dailyKind: 'alchemy',
+    difficulty: 'easy',
     title: '丹炉留痕',
     summary: '今日开炉一次，让炉火与药意都别生疏。',
     rewardAttachments: [
@@ -712,6 +759,7 @@ const dailyDefinitions: DailyTaskDefinition[] = [
     category: 'daily',
     repeat: 'daily',
     dailyKind: 'dungeon',
+    difficulty: 'normal',
     title: '云游一程',
     summary: '去外界走一遭，别让道心只困在洞府里。',
     rewardAttachments: [
@@ -746,6 +794,7 @@ const dailyDefinitions: DailyTaskDefinition[] = [
     category: 'daily',
     repeat: 'daily',
     dailyKind: 'ranking',
+    difficulty: 'easy',
     title: '试手天骄',
     summary: '与榜上修士交一次手，试试今日锋芒还在不在。',
     rewardAttachments: [
@@ -777,7 +826,188 @@ const dailyDefinitions: DailyTaskDefinition[] = [
   },
 ];
 
+const tutorialDefinitions: TutorialTaskDefinition[] = [
+  {
+    id: 'tutorial_starter_supply',
+    category: 'tutorial',
+    title: '入门供给',
+    summary: '先领一份洞府供给，备好第一炉丹、第一次探秘和一整套入门装备。',
+    rewardCultivationExp: 40,
+    rewardAttachments: [
+      {
+        type: 'spirit_stones',
+        name: '灵石',
+        quantity: 5000,
+      },
+      {
+        type: 'material',
+        name: '青露草',
+        quantity: 3,
+        data: {
+          name: '青露草',
+          type: 'herb',
+          rank: '凡品',
+          element: '木',
+          description: '叶尖含露，药性温和，适合作为第一炉疗伤丹的主材。',
+          quantity: 3,
+        },
+      },
+      {
+        type: 'material',
+        name: '凝水花',
+        quantity: 2,
+        data: {
+          name: '凝水花',
+          type: 'herb',
+          rank: '凡品',
+          element: '水',
+          description: '花瓣凝水成珠，能缓和炉火躁性，常用于回元与疗伤。',
+          quantity: 2,
+        },
+      },
+      {
+        type: 'artifact',
+        name: noviceWeaponArtifact.name,
+        quantity: 1,
+        data: noviceWeaponArtifact,
+      },
+      {
+        type: 'artifact',
+        name: noviceArmorArtifact.name,
+        quantity: 1,
+        data: noviceArmorArtifact,
+      },
+      {
+        type: 'artifact',
+        name: noviceGuardArtifact.name,
+        quantity: 1,
+        data: noviceGuardArtifact,
+      },
+    ],
+    stages: [
+      {
+        id: 'starter-supply',
+        title: '领取供给',
+        description: '先把入门供给收入囊中，穿戴入门武器、护甲与玉佩后，再按卷宗去试第一炉丹与第一次探秘。',
+        completionText: '供给已备，可以开始熟悉洞府里的修行循环。',
+        links: [
+          { label: '看道身状态', kind: 'cultivator' },
+          { label: '去储物袋', kind: 'inventory' },
+        ],
+        objectives: [
+          {
+            id: 'starter-supply-ready',
+            kind: 'auto_complete',
+            title: '供给已备',
+            description: '入门供给已经备好，领取后会获得修为、灵石、灵材与一整套入门装备。',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tutorial_first_alchemy',
+    category: 'tutorial',
+    title: '第一炉疗伤丹',
+    summary: '用温和灵草开一次炉，学会材料、丹意、消耗和成丹结果之间的关系。',
+    rewardCultivationExp: 40,
+    rewardAttachments: [
+      {
+        type: 'spirit_stones',
+        name: '灵石',
+        quantity: 3000,
+      },
+      {
+        type: 'material',
+        name: '赤芽果',
+        quantity: 2,
+        data: {
+          name: '赤芽果',
+          type: 'herb',
+          rank: '凡品',
+          element: '火',
+          description: '药力较活，少量投入可提振丹势，过量则容易使炉火躁烈。',
+          quantity: 2,
+        },
+      },
+    ],
+    stages: [
+      {
+        id: 'first-alchemy',
+        title: '开炉一次',
+        description: '去炼丹房选择青露草、凝水花一类温和灵材，丹意可写“疗伤回元，药性温和”。',
+        completionText: '第一炉已成，你已经知道炼丹要先看材料药性与丹意方向。',
+        links: [
+          { label: '去炼丹房', kind: 'alchemy' },
+          { label: '查看储物袋', kind: 'inventory' },
+        ],
+        objectives: [
+          {
+            id: 'first-alchemy-crafted',
+            kind: 'event_count',
+            title: '完成 1 次炼丹',
+            description: '成功开炉一次即可完成，不要求丹药品阶。',
+            event: 'alchemy_crafted',
+            threshold: 1,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'tutorial_first_dungeon',
+    category: 'tutorial',
+    title: '第一次低危探秘',
+    summary: '满状态再进低危秘境，学会查探、撤退、结算和战后恢复。',
+    rewardCultivationExp: 50,
+    rewardAttachments: [
+      {
+        type: 'spirit_stones',
+        name: '灵石',
+        quantity: 5000,
+      },
+      {
+        type: 'material',
+        name: '铁木枝',
+        quantity: 2,
+        data: {
+          name: '铁木枝',
+          type: 'aux',
+          rank: '凡品',
+          element: '木',
+          description: '木质坚韧，可作炼器辅材，也能在炼丹时稳住药路。',
+          quantity: 2,
+        },
+      },
+    ],
+    stages: [
+      {
+        id: 'first-dungeon',
+        title: '完成一次探秘结算',
+        description: '进入云游探秘前先确认气血与法力，遇敌时先查探，危险就撤退。',
+        completionText: '第一次探秘已结算，你已经走完修炼、准备、探索、恢复的基础循环。',
+        links: [
+          { label: '去云游探秘', kind: 'dungeon' },
+          { label: '去客栈调息', kind: 'inn' },
+          { label: '去练功房', kind: 'training' },
+        ],
+        objectives: [
+          {
+            id: 'first-dungeon-completed',
+            kind: 'event_count',
+            title: '完成 1 次探秘',
+            description: '完成一次云游探秘结算即可，成功撤退也能学到风险判断。',
+            event: 'dungeon_completed',
+            threshold: 1,
+          },
+        ],
+      },
+    ],
+  },
+];
+
 const definitions: RuntimeTaskDefinition[] = [
+  ...tutorialDefinitions,
   ...breakthroughDefinitions,
   ...dailyDefinitions,
 ];
@@ -810,6 +1040,10 @@ export function getBreakthroughTaskDefinitionByTransition(
 
 export function getDailyTaskDefinitions() {
   return dailyDefinitions;
+}
+
+export function getTutorialTaskDefinitions() {
+  return tutorialDefinitions;
 }
 
 export function getTaskChallengeProfile(challengeId: string) {

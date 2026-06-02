@@ -3,7 +3,7 @@ import type { Quality, RealmType } from './constants';
 import type { MailAttachment } from './mail';
 import type { DailyTaskDifficulty } from '@shared/engine/cultivation/exp-gain-strategies/types';
 
-export type TaskCategory = 'breakthrough_major' | 'daily';
+export type TaskCategory = 'breakthrough_major' | 'daily' | 'tutorial';
 
 export type TaskStatus = 'active' | 'completed';
 
@@ -17,6 +17,7 @@ export type TaskEvent =
   | 'ranking_challenge_battled';
 
 export type TaskObjectiveKind =
+  | 'auto_complete'
   | 'craft_breakthrough_pill'
   | 'insight_at_least'
   | 'technique_quality_at_least'
@@ -35,6 +36,11 @@ export interface TaskObjectiveDefinitionBase {
   kind: TaskObjectiveKind;
   title: string;
   description: string;
+}
+
+export interface AutoCompleteObjectiveDefinition
+  extends TaskObjectiveDefinitionBase {
+  kind: 'auto_complete';
 }
 
 export interface CraftBreakthroughPillObjectiveDefinition
@@ -85,6 +91,7 @@ export interface EventCountObjectiveDefinition
 }
 
 export type TaskObjectiveDefinition =
+  | AutoCompleteObjectiveDefinition
   | CraftBreakthroughPillObjectiveDefinition
   | InsightAtLeastObjectiveDefinition
   | TechniqueQualityAtLeastObjectiveDefinition
@@ -135,6 +142,10 @@ export interface TaskInstanceMetadata {
   dailyKind?: TaskDailyKind;
   resetKey?: string;
   rewardSummary?: string[];
+  rewardClaimedAt?: string;
+  rewardGrantPendingKey?: string;
+  rewardExpGrantedKey?: string;
+  rewardGrantedKey?: string;
 }
 
 export interface TaskObjectiveProgress {
@@ -170,6 +181,7 @@ export interface TaskProgressSnapshot {
   dailyKind?: TaskDailyKind;
   resetKey?: string;
   rewardSummary?: string[];
+  rewardClaimedAt?: string;
   stages: TaskStageProgress[];
 }
 

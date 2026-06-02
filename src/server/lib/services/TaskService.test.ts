@@ -1,27 +1,49 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 
 const {
+  addArtifactToInventoryMock,
+  addConsumableToInventoryMock,
+  addMaterialToInventoryMock,
   createCultivatorTaskMock,
   findActiveCultivatorRecordByIdMock,
   findCultivatorTaskByDefinitionMock,
   findCultivatorTaskByIdMock,
+  getExecutorMock,
   getCultivatorByIdUnsafeMock,
   listCultivatorBreakthroughPillsMock,
   listCultivatorTasksMock,
   listCultivatorTechniqueQualitiesMock,
+  clearTaskRewardGrantPendingForKeyMock,
+  markTaskRewardGrantPendingForKeyMock,
+  markTaskRewardGrantedForKeyMock,
+  markTutorialTaskRewardClaimedMock,
   sendMailMock,
+  updateCultivationExpMock,
+  updateCultivatorMock,
   updateCultivatorTaskMock,
+  updateSpiritStonesMock,
 } = vi.hoisted(() => ({
+  addArtifactToInventoryMock: vi.fn(),
+  addConsumableToInventoryMock: vi.fn(),
+  addMaterialToInventoryMock: vi.fn(),
   createCultivatorTaskMock: vi.fn(),
   findActiveCultivatorRecordByIdMock: vi.fn(),
   findCultivatorTaskByDefinitionMock: vi.fn(),
   findCultivatorTaskByIdMock: vi.fn(),
+  getExecutorMock: vi.fn(),
   getCultivatorByIdUnsafeMock: vi.fn(),
   listCultivatorBreakthroughPillsMock: vi.fn(),
   listCultivatorTasksMock: vi.fn(),
   listCultivatorTechniqueQualitiesMock: vi.fn(),
+  clearTaskRewardGrantPendingForKeyMock: vi.fn(),
+  markTaskRewardGrantPendingForKeyMock: vi.fn(),
+  markTaskRewardGrantedForKeyMock: vi.fn(),
+  markTutorialTaskRewardClaimedMock: vi.fn(),
   sendMailMock: vi.fn(),
+  updateCultivationExpMock: vi.fn(),
+  updateCultivatorMock: vi.fn(),
   updateCultivatorTaskMock: vi.fn(),
+  updateSpiritStonesMock: vi.fn(),
 }));
 
 vi.mock('@server/lib/repositories/cultivatorRepository', () => ({
@@ -31,14 +53,28 @@ vi.mock('@server/lib/repositories/cultivatorRepository', () => ({
 }));
 
 vi.mock('./cultivatorService', () => ({
+  addArtifactToInventory: addArtifactToInventoryMock,
+  addConsumableToInventory: addConsumableToInventoryMock,
+  addMaterialToInventory: addMaterialToInventoryMock,
   getCultivatorByIdUnsafe: getCultivatorByIdUnsafeMock,
+  updateCultivationExp: updateCultivationExpMock,
+  updateCultivator: updateCultivatorMock,
+  updateSpiritStones: updateSpiritStonesMock,
+}));
+
+vi.mock('@server/lib/drizzle/db', () => ({
+  getExecutor: getExecutorMock,
 }));
 
 vi.mock('@server/lib/repositories/taskRepository', () => ({
+  clearTaskRewardGrantPendingForKey: clearTaskRewardGrantPendingForKeyMock,
   createCultivatorTask: createCultivatorTaskMock,
   findCultivatorTaskByDefinition: findCultivatorTaskByDefinitionMock,
   findCultivatorTaskById: findCultivatorTaskByIdMock,
   listCultivatorTasks: listCultivatorTasksMock,
+  markTaskRewardGrantPendingForKey: markTaskRewardGrantPendingForKeyMock,
+  markTaskRewardGrantedForKey: markTaskRewardGrantedForKeyMock,
+  markTutorialTaskRewardClaimed: markTutorialTaskRewardClaimedMock,
   updateCultivatorTask: updateCultivatorTaskMock,
 }));
 
@@ -53,6 +89,8 @@ vi.mock('./simulateBattleV5', () => ({
 }));
 
 import { TaskService } from './TaskService';
+import { getTutorialTaskDefinitions } from './taskDefinitions';
+import { EXP_CAP_TABLE } from '@shared/config/cultivationProgress';
 
 let taskStore = new Map<string, any>();
 
@@ -256,6 +294,93 @@ function installTaskStoreMocks() {
       return next;
     },
   );
+
+  markTutorialTaskRewardClaimedMock.mockImplementation(
+    async (_taskId: string, _cultivatorId: string, metadata: any) => {
+      const record = taskStore.get(_taskId);
+      if (!record || record.metadata?.rewardClaimedAt) {
+        return null;
+      }
+
+      const next = {
+        ...record,
+        metadata,
+        updatedAt: new Date(),
+      };
+      taskStore.set(_taskId, next);
+      return next;
+    },
+  );
+
+  markTaskRewardGrantPendingForKeyMock.mockImplementation(
+    async (
+      _taskId: string,
+      _cultivatorId: string,
+      grantKey: string,
+      metadata: any,
+    ) => {
+      const record = taskStore.get(_taskId);
+      if (
+        !record ||
+        record.metadata?.rewardGrantedKey === grantKey ||
+        record.metadata?.rewardGrantPendingKey === grantKey
+      ) {
+        return null;
+      }
+
+      const next = {
+        ...record,
+        metadata,
+        updatedAt: new Date(),
+      };
+      taskStore.set(_taskId, next);
+      return next;
+    },
+  );
+
+  markTaskRewardGrantedForKeyMock.mockImplementation(
+    async (
+      _taskId: string,
+      _cultivatorId: string,
+      grantKey: string,
+      metadata: any,
+    ) => {
+      const record = taskStore.get(_taskId);
+      if (!record || record.metadata?.rewardGrantedKey === grantKey) {
+        return null;
+      }
+
+      const next = {
+        ...record,
+        metadata,
+        updatedAt: new Date(),
+      };
+      taskStore.set(_taskId, next);
+      return next;
+    },
+  );
+
+  clearTaskRewardGrantPendingForKeyMock.mockImplementation(
+    async (
+      _taskId: string,
+      _cultivatorId: string,
+      grantKey: string,
+      metadata: any,
+    ) => {
+      const record = taskStore.get(_taskId);
+      if (!record || record.metadata?.rewardGrantPendingKey !== grantKey) {
+        return null;
+      }
+
+      const next = {
+        ...record,
+        metadata,
+        updatedAt: new Date(),
+      };
+      taskStore.set(_taskId, next);
+      return next;
+    },
+  );
 }
 
 describe('TaskService', () => {
@@ -271,6 +396,11 @@ describe('TaskService', () => {
     listCultivatorTechniqueQualitiesMock.mockResolvedValue([]);
     listCultivatorBreakthroughPillsMock.mockResolvedValue([]);
     getCultivatorByIdUnsafeMock.mockResolvedValue(null);
+    updateCultivatorMock.mockResolvedValue(null);
+    getExecutorMock.mockReturnValue({
+      transaction: async (callback: (tx: unknown) => Promise<void>) =>
+        callback({}),
+    });
     sendMailMock.mockResolvedValue({ id: 'mail-1' });
   });
 
@@ -328,9 +458,11 @@ describe('TaskService', () => {
 
     const tasks = await TaskService.syncCultivatorTasks('cultivator-1');
 
-    expect(createCultivatorTaskMock).toHaveBeenCalledTimes(3);
-    expect(tasks).toHaveLength(3);
-    expect(tasks.map((task) => task.definitionId).sort()).toEqual([
+    // 3 tutorial tasks + 3 daily tasks = 6 total
+    expect(createCultivatorTaskMock).toHaveBeenCalledTimes(6);
+    expect(tasks).toHaveLength(6);
+    const dailyTasks = tasks.filter((task) => task.category === 'daily');
+    expect(dailyTasks.map((task) => task.definitionId).sort()).toEqual([
       'daily_alchemy_once',
       'daily_dungeon_once',
       'daily_ranking_once',
@@ -406,11 +538,14 @@ describe('TaskService', () => {
   });
 
   it('records only the matching daily event and sends its reward once', async () => {
-    findActiveCultivatorRecordByIdMock.mockResolvedValue(
-      createCultivatorRecord({
-        realm_stage: '初期',
-      }),
-    );
+    const cultivatorRecord = createCultivatorRecord({
+      realm_stage: '初期',
+    });
+    findActiveCultivatorRecordByIdMock.mockResolvedValue(cultivatorRecord);
+    // Mock for XP calculation in recordTaskEvent
+    getCultivatorByIdUnsafeMock.mockResolvedValue({ cultivator: cultivatorRecord });
+    updateCultivatorMock.mockResolvedValue(cultivatorRecord);
+
     taskStore.set('task-daily_alchemy_once', createDailyTaskRecord('daily_alchemy_once'));
     taskStore.set('task-daily_dungeon_once', createDailyTaskRecord('daily_dungeon_once'));
     taskStore.set('task-daily_ranking_once', createDailyTaskRecord('daily_ranking_once'));
@@ -433,6 +568,14 @@ describe('TaskService', () => {
     ).toMatchObject({
       status: 'active',
     });
+    expect(
+      firstTasks.find((task) => task.definitionId === 'tutorial_first_dungeon'),
+    ).toMatchObject({
+      status: 'completed',
+      snapshot: {
+        rewardClaimedAt: undefined,
+      },
+    });
     expect(sendMailMock).toHaveBeenCalledTimes(1);
     expect(sendMailMock).toHaveBeenCalledWith(
       'cultivator-1',
@@ -444,16 +587,19 @@ describe('TaskService', () => {
 
     await TaskService.recordTaskEvent('cultivator-1', 'dungeon_completed');
 
-    expect(sendMailMock).toHaveBeenCalledTimes(1);
+    expect(sendMailMock).toHaveBeenCalledTimes(1); // no additional mail on second call
   });
 
   it('scales daily reward summary and mail attachments by current realm', async () => {
-    findActiveCultivatorRecordByIdMock.mockResolvedValue(
-      createCultivatorRecord({
-        realm: '渡劫',
-        realm_stage: '初期',
-      }),
-    );
+    const cultivatorRecord = createCultivatorRecord({
+      realm: '渡劫',
+      realm_stage: '初期',
+    });
+    findActiveCultivatorRecordByIdMock.mockResolvedValue(cultivatorRecord);
+    // Mock for XP calculation in recordTaskEvent
+    getCultivatorByIdUnsafeMock.mockResolvedValue({ cultivator: cultivatorRecord });
+    updateCultivatorMock.mockResolvedValue(cultivatorRecord);
+
     taskStore.set(
       'task-daily_dungeon_once',
       createDailyTaskRecord('daily_dungeon_once', {
@@ -470,10 +616,11 @@ describe('TaskService', () => {
 
     expect(dailyTask).toMatchObject({
       metadata: {
-        rewardSummary: ['灵石 x9000'],
+        // 灵石 scales by realm + XP added for daily task (normal difficulty at 渡劫/初期)
+        rewardSummary: ['灵石 x9000', '修为 x23'],
       },
       snapshot: {
-        rewardSummary: ['灵石 x9000'],
+        rewardSummary: ['灵石 x9000', '修为 x23'],
       },
     });
 
@@ -486,5 +633,130 @@ describe('TaskService', () => {
       [{ type: 'spirit_stones', name: '灵石', quantity: 9000 }],
       'reward',
     );
+  });
+
+  it('claims tutorial rewards once and records the claim timestamp', async () => {
+    const result = await TaskService.claimTaskReward(
+      'user-1',
+      'cultivator-1',
+      'task-tutorial_starter_supply',
+    );
+
+    expect(result.rewards).toEqual([
+      '修为 x40',
+      '灵石 x5000',
+      '青露草 x3',
+      '凝水花 x2',
+      '入门青竹剑 x1',
+      '入门护身布甲 x1',
+      '入门护身玉佩 x1',
+    ]);
+    expect(updateCultivationExpMock).toHaveBeenCalledWith(
+      'user-1',
+      'cultivator-1',
+      40,
+      undefined,
+      {},
+    );
+    expect(updateSpiritStonesMock).toHaveBeenCalledWith(
+      'user-1',
+      'cultivator-1',
+      5000,
+      {},
+    );
+    expect(addMaterialToInventoryMock).toHaveBeenCalledTimes(2);
+    expect(addArtifactToInventoryMock).toHaveBeenCalledTimes(3);
+    expect(result.task.snapshot.rewardClaimedAt).toBe(
+      '2026-05-26T02:00:00.000Z',
+    );
+
+    await expect(
+      TaskService.claimTaskReward(
+        'user-1',
+        'cultivator-1',
+        'task-tutorial_starter_supply',
+      ),
+    ).rejects.toThrow('奖励已经领取');
+  });
+
+  it('does not apply tutorial rewards when the claim marker is already taken', async () => {
+    markTutorialTaskRewardClaimedMock.mockResolvedValueOnce(null);
+
+    await expect(
+      TaskService.claimTaskReward(
+        'user-1',
+        'cultivator-1',
+        'task-tutorial_starter_supply',
+      ),
+    ).rejects.toThrow('奖励已经领取');
+
+    expect(updateCultivationExpMock).not.toHaveBeenCalled();
+    expect(updateSpiritStonesMock).not.toHaveBeenCalled();
+    expect(addMaterialToInventoryMock).not.toHaveBeenCalled();
+    expect(addArtifactToInventoryMock).not.toHaveBeenCalled();
+  });
+
+  it('does not grant daily rewards when the daily pending marker is already held', async () => {
+    const cultivatorRecord = createCultivatorRecord({
+      realm_stage: '初期',
+    });
+    findActiveCultivatorRecordByIdMock.mockResolvedValue(cultivatorRecord);
+    getCultivatorByIdUnsafeMock.mockResolvedValue({ cultivator: cultivatorRecord });
+    taskStore.set('task-daily_dungeon_once', createDailyTaskRecord('daily_dungeon_once'));
+    markTaskRewardGrantPendingForKeyMock.mockResolvedValueOnce(null);
+
+    await TaskService.recordTaskEvent('cultivator-1', 'dungeon_completed');
+
+    expect(updateCultivatorMock).not.toHaveBeenCalled();
+    expect(sendMailMock).not.toHaveBeenCalled();
+  });
+
+  it('retries daily mail rewards after a pending grant fails without duplicating exp', async () => {
+    const cultivatorRecord = createCultivatorRecord({
+      realm_stage: '初期',
+    });
+    findActiveCultivatorRecordByIdMock.mockResolvedValue(cultivatorRecord);
+    getCultivatorByIdUnsafeMock.mockResolvedValue({ cultivator: cultivatorRecord });
+    updateCultivatorMock.mockResolvedValue(cultivatorRecord);
+    taskStore.set('task-daily_dungeon_once', createDailyTaskRecord('daily_dungeon_once'));
+    sendMailMock
+      .mockRejectedValueOnce(new Error('SMTP 暂不可用'))
+      .mockResolvedValueOnce({ id: 'mail-2' });
+
+    await expect(
+      TaskService.recordTaskEvent('cultivator-1', 'dungeon_completed'),
+    ).rejects.toThrow('SMTP 暂不可用');
+
+    expect(clearTaskRewardGrantPendingForKeyMock).toHaveBeenCalledTimes(1);
+    expect(taskStore.get('task-daily_dungeon_once')?.metadata).toMatchObject({
+      rewardExpGrantedKey: 'daily_dungeon_once:2026-05-26',
+    });
+    expect(taskStore.get('task-daily_dungeon_once')?.metadata).not.toHaveProperty(
+      'rewardGrantPendingKey',
+    );
+    expect(updateCultivatorMock).toHaveBeenCalledTimes(1);
+
+    await TaskService.recordTaskEvent('cultivator-1', 'dungeon_completed');
+
+    expect(sendMailMock).toHaveBeenCalledTimes(2);
+    expect(updateCultivatorMock).toHaveBeenCalledTimes(1);
+    expect(taskStore.get('task-daily_dungeon_once')?.metadata).toMatchObject({
+      rewardExpGrantedKey: 'daily_dungeon_once:2026-05-26',
+      rewardGrantedKey: 'daily_dungeon_once:2026-05-26',
+    });
+  });
+});
+
+describe('tutorial task reward pacing', () => {
+  it('keeps the three-step tutorial exp reward within the novice pacing band', () => {
+    const totalTutorialExp = getTutorialTaskDefinitions().reduce(
+      (sum, definition) => sum + definition.rewardCultivationExp,
+      0,
+    );
+    const noviceExpCap = EXP_CAP_TABLE['炼气']['初期'];
+    const percent = (totalTutorialExp / noviceExpCap) * 100;
+
+    expect(percent).toBeGreaterThanOrEqual(45);
+    expect(percent).toBeLessThanOrEqual(55);
   });
 });

@@ -1,4 +1,5 @@
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import { useTaskList } from '@app/lib/hooks/useTaskList';
 import { useDungeonViewModel } from '@app/lib/hooks/dungeon/useDungeonViewModel';
 import { Suspense, useCallback } from 'react';
 import { DungeonSceneScreen } from './dungeonScene';
@@ -17,9 +18,11 @@ import { useNavigate, useSearchParams } from 'react-router';
 function DungeonContent() {
   const {
     cultivator,
+    display,
     isLoading: isCultivatorLoading,
     refresh,
   } = useCultivator();
+  const { tasks } = useTaskList(cultivator?.id);
   const [searchParams] = useSearchParams();
   const preSelectedNodeId = searchParams.get('nodeId');
   const navigate = useNavigate();
@@ -54,6 +57,8 @@ function DungeonContent() {
     <DungeonViewRenderer
       viewState={viewState}
       cultivator={cultivator}
+      displayResources={display?.resources}
+      tasks={tasks}
       processing={processing}
       actions={actions}
       onSettlementConfirm={handleSettlementConfirm}
