@@ -42,6 +42,7 @@ import {
   getArtifactStateHash,
   toArtifactFromProduct,
 } from './creationProductArtifactSupport';
+import type { CreationProductRecord } from '@server/lib/repositories/creationProductRepository';
 
 const SELL_SESSION_PREFIX = 'market:sell:session:';
 const SELL_LOCK_PREFIX = 'market:sell:lock:';
@@ -429,7 +430,7 @@ async function loadOwnedMaterials(
 async function loadOwnedArtifacts(
   cultivatorId: string,
   artifactIds: string[],
-): Promise<Artifact[]> {
+): Promise<{ artifacts: Artifact[]; rawRecords: CreationProductRecord[] }> {
   const rows = await creationProductRepository.findArtifactsByIdsAndCultivator(
     cultivatorId,
     artifactIds,
@@ -441,15 +442,10 @@ async function loadOwnedArtifacts(
 
   const order = new Map(artifactIds.map((id, index) => [id, index]));
   rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-  return rows.map(toArtifactFromProduct);
-}
-
-function getEffectsHash(value: unknown): string {
-  try {
-    return JSON.stringify(value ?? []);
-  } catch {
-    return '[]';
-  }
+  return {
+    artifacts: rows.map(toArtifactFromProduct),
+    rawRecords: rows,
+  };
 }
 
 async function getEquippedArtifactIds(cultivatorId: string): Promise<string[]> {
@@ -486,18 +482,19 @@ function buildMaterialSessionSnapshot(
 
 function buildArtifactSessionSnapshot(
   items: Artifact[],
+  rawRecords: CreationProductRecord[],
 ): Record<string, ArtifactSnapshot> {
+  const rawRecordMap = new Map(rawRecords.map((r) => [r.id, r]));
   const snapshot: Record<string, ArtifactSnapshot> = {};
   for (const item of items) {
     if (!item.id) continue;
+    const rawRecord = rawRecordMap.get(item.id);
     snapshot[item.id] = {
       id: item.id,
       quality: getArtifactQuality(item),
       score: item.score || 0,
       slot: item.slot,
-      effectsHash: getEffectsHash({
-        productModel: item.productModel ?? null,
-      }),
+      effectsHash: rawRecord ? getArtifactStateHash(rawRecord) : '[]',
     };
   }
   return snapshot;
@@ -606,7 +603,10 @@ async function previewArtifactSell(
   artifactIds: string[],
 ): Promise<SellPreviewResponse> {
   const ids = normalizeItemIds(artifactIds);
-  const ownedArtifacts = await loadOwnedArtifacts(cultivator.id, ids);
+  const { artifacts: ownedArtifacts, rawRecords } = await loadOwnedArtifacts(
+    cultivator.id,
+    ids,
+  );
   const equippedIds = await getEquippedArtifactIds(cultivator.id);
   ensureArtifactsNotEquipped(ids, equippedIds, '已装备法宝不可回收，请先卸下');
 
@@ -640,6 +640,9 @@ async function previewArtifactSell(
   if (targetArtifacts.length === 0) {
     throw new MarketRecycleError(400, '未找到可回收法宝');
   }
+
+  const targetIds = new Set(targetArtifacts.map((a) => a.id));
+  const targetRawRecords = rawRecords.filter((r) => targetIds.has(r.id));
 
   const items: SellPreviewItem[] = targetArtifacts.map((item) => {
     const unitPrice = calculateArtifactUnitPrice(item);
@@ -675,7 +678,7 @@ async function previewArtifactSell(
     itemIds: ids,
     quotedItems: items,
     quotedTotal: totalSpiritStones,
-    snapshot: buildArtifactSessionSnapshot(targetArtifacts),
+    snapshot: buildArtifactSessionSnapshot(targetArtifacts, targetRawRecords),
     equippedCheckAtPreview: equippedIds,
     createdAt,
   };

@@ -16,10 +16,10 @@ import { describe, expect, it } from 'vitest';
 describe('CultivationUtils', () => {
   describe('calculateExpCap', () => {
     it('应该正确计算各境界阶段的修为上限', () => {
-      expect(calculateExpCap('炼气', '初期')).toBe(2000);
-      expect(calculateExpCap('炼气', '圆满')).toBe(6500);
-      expect(calculateExpCap('筑基', '初期')).toBe(12000);
-      expect(calculateExpCap('金丹', '初期')).toBe(60000);
+      expect(calculateExpCap('炼气', '初期')).toBe(250);
+      expect(calculateExpCap('炼气', '圆满')).toBe(2500);
+      expect(calculateExpCap('筑基', '初期')).toBe(1500);
+      expect(calculateExpCap('金丹', '初期')).toBe(9000);
     });
   });
 
@@ -27,7 +27,7 @@ describe('CultivationUtils', () => {
     it('应该创建默认的修为进度数据', () => {
       const progress = createDefaultCultivationProgress('炼气', '初期');
       expect(progress.cultivation_exp).toBe(0);
-      expect(progress.exp_cap).toBe(2000);
+      expect(progress.exp_cap).toBe(250);
       expect(progress.comprehension_insight).toBe(0);
       expect(progress.breakthrough_failures).toBe(0);
       expect(progress.bottleneck_state).toBe(false);

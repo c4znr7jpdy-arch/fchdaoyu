@@ -1,5 +1,6 @@
 import type { Material } from '@shared/types/cultivator';
 import { describe, expect, it } from 'vitest';
+import type { PlayerInfo } from '../types';
 import { RewardFactory } from './RewardFactory';
 
 describe('RewardFactory', () => {
@@ -44,5 +45,42 @@ describe('RewardFactory', () => {
     const material = reward.data as Material;
     expect(material.type).toBe('skill_manual');
     expect(material.details).toBeUndefined();
+  });
+
+  it('副本基础修为使用统一 dungeon 场景预算', () => {
+    const playerInfo: PlayerInfo = {
+      name: '韩立',
+      realm: '筑基 初期',
+      gender: '男',
+      age: 30,
+      lifespan: 180,
+      personality: '谨慎',
+      attributes: {
+        vitality: 40,
+        spirit: 36,
+        wisdom: 30,
+        speed: 28,
+        willpower: 32,
+      },
+      spiritual_roots: ['木(80)'],
+      fates: [],
+      skills: [],
+      spirit_stones: 0,
+      background: '',
+      resourceCaps: {
+        maxHp: 100,
+        maxMp: 100,
+      },
+    };
+
+    const rewards = RewardFactory.generateBaseRewards(
+      '筑基',
+      'S',
+      0,
+      playerInfo,
+    );
+    const expReward = rewards.find((reward) => reward.type === 'cultivation_exp');
+
+    expect(expReward?.value).toBe(375);
   });
 });

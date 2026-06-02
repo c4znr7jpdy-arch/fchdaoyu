@@ -1,7 +1,4 @@
-import {
-  BASE_EXP_PER_YEAR,
-  EXP_CAP_TABLE,
-} from '@shared/config/cultivationProgress';
+import { EXP_CAP_TABLE } from '@shared/config/cultivationProgress';
 import {
   BOTTLENECK_EXP_PENALTY,
   BOTTLENECK_THRESHOLD,
@@ -32,6 +29,7 @@ import type {
   Cultivator,
   SpiritualRoot,
 } from '@shared/types/cultivator';
+import { calculateRetreatBaseExp } from '@shared/engine/cultivation/ExpBudgetCalculator';
 
 /**
  * 计算当前境界阶段的修为上限
@@ -185,8 +183,13 @@ export function calculateCultivationExp(
   years: number,
   rng: () => number = Math.random,
 ): CultivationExpResult {
-  // 1. 基础修为
-  const baseExp = BASE_EXP_PER_YEAR[cultivator.realm] ?? BASE_EXP_PER_YEAR['炼气'];
+  // 1. 基础修为：由统一场景预算表按当前阶段 cap 计算
+  const baseExp = calculateRetreatBaseExp(
+    cultivator.realm,
+    cultivator.realm_stage,
+    years,
+    cultivator.cultivation_progress?.exp_cap,
+  );
 
   // 2. 灵根系数
   const spiritualRootMultiplier = calculateSpiritualRootMultiplier(
@@ -209,7 +212,6 @@ export function calculateCultivationExp(
   // 7. 计算基础修为获取
   let exp_gained =
     baseExp *
-    years *
     spiritualRootMultiplier *
     techniqueMultiplier *
     yearsMultiplier *

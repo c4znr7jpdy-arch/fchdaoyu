@@ -1,4 +1,4 @@
-import { BASE_EXP_PER_YEAR } from '@shared/config/cultivationProgress';
+import { calculatePillExp } from '@shared/engine/cultivation/ExpBudgetCalculator';
 import { getConsumableQualityScalar } from '@shared/config/consumableSystem';
 import type { Quality, RealmType } from '@shared/types/constants';
 
@@ -17,10 +17,7 @@ export function buildCultivationGain(
   realm: RealmType,
   quality: Quality,
 ): number {
-  return Math.max(
-    1,
-    Math.floor(BASE_EXP_PER_YEAR[realm] * getConsumableQualityScalar(quality) * 2),
-  );
+  return calculatePillExp(realm, getConsumableQualityScalar(quality));
 }
 
 export function buildInsightGain(quality: Quality): number {

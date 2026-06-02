@@ -5,7 +5,7 @@ import {
   GameSceneSection,
 } from '@app/components/game-shell';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
-import { InkBadge, InkButton, InkInput, InkNotice } from '@app/components/ui';
+import { InkButton, InkInput, InkNotice } from '@app/components/ui';
 
 import { useRetreatViewModel } from '../hooks/useRetreatViewModel';
 import { BreakthroughConfirmModal } from './BreakthroughConfirmModal';

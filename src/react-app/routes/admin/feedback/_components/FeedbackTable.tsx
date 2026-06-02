@@ -137,10 +137,14 @@ export function FeedbackTable() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? '更新状态失败');
-      const message =
-        data.statusChanged && !data.notifiedUser
-          ? '状态已更新，但未找到用户角色，站内信未发送'
-          : '状态已更新并通知用户';
+      let message: string;
+      if (data.rewardGranted) {
+        message = '状态已更新并通知用户，已发放 8000 灵石奖励';
+      } else if (data.statusChanged && !data.notifiedUser) {
+        message = '状态已更新，但未找到用户角色，站内信未发送';
+      } else {
+        message = '状态已更新并通知用户';
+      }
       pushToast({ message, tone: 'success' });
       await fetchFeedbacks();
     } catch (error) {
@@ -332,7 +336,9 @@ export function FeedbackTable() {
                                 onClick={() => updateStatus(item.id, s)}
                                 variant={item.status === s ? 'primary' : 'secondary'}
                               >
-                                {STATUS_LABELS[s]}
+                                {s === 'resolved'
+                                  ? `${STATUS_LABELS[s]} (+8000灵石)`
+                                  : STATUS_LABELS[s]}
                               </InkButton>
                             ))}
                           </div>

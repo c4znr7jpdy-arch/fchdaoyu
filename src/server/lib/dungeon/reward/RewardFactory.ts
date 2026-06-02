@@ -12,15 +12,16 @@
 
 import type { ResourceOperation } from '@shared/engine/resource/types';
 import { YieldCalculator } from '@shared/engine/yield/YieldCalculator';
+import { calculateDungeonExp } from '@shared/engine/cultivation/ExpBudgetCalculator';
 import type {
   ElementType,
   MaterialType,
   Quality,
+  RealmStage,
   RealmType,
 } from '@shared/types/constants';
 import { QUALITY_VALUES, REALM_VALUES } from '@shared/types/constants';
-import type { Cultivator, Material } from '@shared/types/cultivator';
-import { calculateCultivationExp } from '@server/utils/cultivationUtils';
+import type { Material } from '@shared/types/cultivator';
 import type { PlayerInfo } from '../types';
 import {
   REALM_QUALITY_CAP,
@@ -70,38 +71,20 @@ export class RewardFactory {
       });
     }
 
-    // 2. 修为奖励 (基于闭关引擎等效年限)
-    const tierYears: Record<string, number> = {
-      S: 20,
-      A: 10,
-      B: 5,
-      C: 2,
-      D: 1,
-    };
-    const equivalentYears = tierYears[tier] || 1;
-
-    // 构造一个模拟的 Cultivator 对象以复用修为计算公式
-    const mockCultivator = {
-      realm: playerInfo.realm.split(' ')[0] as RealmType,
-      spiritual_roots: playerInfo.spiritual_roots.map((r) => {
-        const match = r.match(/(.*?)\((\d+)\)/);
-        return {
-          element: match ? match[1] : '金',
-          strength: match ? parseInt(match[2], 10) : 50,
-        };
-      }),
-      cultivations: [], // 无法获取功法品级，使用默认系数
-      attributes: playerInfo.attributes,
-      cultivation_progress: { bottleneck_state: false },
-    } as unknown as Cultivator;
-
-    const expResult = calculateCultivationExp(mockCultivator, equivalentYears);
-    const cultivationExp = expResult.exp_gained;
+    // 2. 修为奖励（使用统筹计算器 dungeon 场景）
+    const realmStr = playerInfo.realm.split(' ')[0] as RealmType;
+    const stageStr = (playerInfo.realm.split(' ')[1] || '初期') as RealmStage;
+    const cultivationExp = calculateDungeonExp(
+      realmStr,
+      stageStr,
+      tier,
+      dangerBonus,
+    );
 
     if (cultivationExp > 0) {
       rewards.push({
         type: 'cultivation_exp',
-        value: Math.floor(cultivationExp * (1 + dangerBonus * 0.2)),
+        value: cultivationExp,
       });
     }
 

@@ -10,6 +10,7 @@ import {
 import { requireAdmin } from '@server/lib/hono/middleware';
 import type { AppEnv } from '@server/lib/hono/types';
 import { MailService } from '@server/lib/services/MailService';
+import { updateSpiritStones } from '@server/lib/services/cultivatorService';
 import { and, eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -42,28 +43,37 @@ const UpdateFeedbackStatusSchema = z.object({
   adminMessage: z.string().trim().max(1000).optional(),
 });
 
+const FEEDBACK_RESOLVE_REWARD = 8000;
+
 function buildFeedbackStatusMailContent(params: {
   feedbackType: FeedbackType;
   status: FeedbackStatus;
   adminMessage?: string;
   feedbackContent: string;
 }) {
-  const summary =
-    params.feedbackContent.length > 80
-      ? `${params.feedbackContent.slice(0, 80)}...`
-      : params.feedbackContent;
-
   const message = params.adminMessage?.trim();
 
-  return [
+  const lines = [
     '你提交的反馈工单状态已更新。',
     '',
     `反馈类型：${TYPE_LABELS[params.feedbackType]}`,
     `当前状态：${STATUS_LABELS[params.status]}`,
-    `反馈摘要：${summary}`,
+    '',
+    '── 你的反馈内容 ──',
+    params.feedbackContent,
+    '──────────────',
     '',
     `管理员留言：${message || '感谢你的反馈，我们会持续跟进。'}`,
-  ].join('\n');
+  ];
+
+  if (params.status === 'resolved') {
+    lines.push(
+      '',
+      `奖励发放：你的问题已解决，特发放 ${FEEDBACK_RESOLVE_REWARD} 灵石作为奖励。`,
+    );
+  }
+
+  return lines.join('\n');
 }
 
 const router = new Hono<AppEnv>();
@@ -165,6 +175,7 @@ router.patch('/:id/status', requireAdmin(), async (c) => {
   }
 
   let notifiedUser = false;
+  let rewardGranted = false;
   if (hasStatusChanged) {
     const q = getExecutor();
     const fallbackCultivator = existing.cultivatorId
@@ -181,6 +192,22 @@ router.patch('/:id/status', requireAdmin(), async (c) => {
       existing.cultivatorId ?? fallbackCultivator?.id;
 
     if (recipientCultivatorId) {
+      // 发放奖励：仅当状态变为 resolved 时固定发放 8000 灵石
+      if (status === 'resolved') {
+        try {
+          await updateSpiritStones(
+            existing.userId,
+            recipientCultivatorId,
+            FEEDBACK_RESOLVE_REWARD,
+          );
+          rewardGranted = true;
+        } catch (err) {
+          console.warn(
+            `Failed to grant feedback reward for feedback ${id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+
       await MailService.sendMail(
         recipientCultivatorId,
         '反馈工单状态更新',
@@ -205,6 +232,7 @@ router.patch('/:id/status', requireAdmin(), async (c) => {
     feedback: updated,
     statusChanged: hasStatusChanged,
     notifiedUser,
+    rewardGranted,
   });
 });
 

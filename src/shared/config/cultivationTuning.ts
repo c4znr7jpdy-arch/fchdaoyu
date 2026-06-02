@@ -11,7 +11,7 @@ import type { Quality } from '@shared/types/constants';
  *  核心公式：
  *    修为 = 基础修为 × 闭关年限 × 灵根系数 × 功法系数
  *          × 年限系数 × 随机波动
- *    若触发顿悟，修为翻倍，额外获得 20~50 感悟值。
+ *    若触发顿悟，修为 ×1.5，额外获得 20~50 感悟值。
  *    若处于瓶颈期，修为减半。
  *    非顿悟时也可获得 0~MAX_NORMAL_INSIGHT 点感悟值。
  * ============================================================
@@ -59,12 +59,16 @@ export const TECHNIQUE_FALLBACK_QUALITY: Quality = '凡品';
 /**
  * 年限系数公式：BASE + SCALE × √(log₁₀(years + 1))
  *
- * 参考值（BASE=0.8, SCALE=0.2）：
- *   1 年 → 0.94    10 年 → 1.13
- *   50 年 → 1.30   100 年 → 1.38   200 年 → 1.46
+ * 短期闭关略有惩罚（<1.0），长闭关有增益但边际递减，
+ * 鼓励充分利用寿元而非无限拉长单次闭关。
+ *
+ * 参考值（BASE=0.88, SCALE=0.20）：
+ *   1 年 → 0.99    10 年 → 1.08
+ *   50 年 → 1.14   100 年 → 1.16   200 年 → 1.18
+ *   500 年 → 1.22  1000 年 → 1.24  5000 年 → 1.27
  */
-export const YEARS_MULTIPLIER_BASE = 0.6;
-export const YEARS_MULTIPLIER_SCALE = 0.4;
+export const YEARS_MULTIPLIER_BASE = 0.88;
+export const YEARS_MULTIPLIER_SCALE = 0.20;
 
 // ──────────────────────────────────────────────
 //  4. 随机波动
@@ -72,8 +76,8 @@ export const YEARS_MULTIPLIER_SCALE = 0.4;
 
 /**
  * 修为随机波动范围。
- * 实际因子 = (1 - HALF_RANGE) + rng() × FULL_RANGE
- * 当前 ±10%：0.9 ~ 1.1
+ * 实际因子 = RANDOM_FACTOR_LOW + rng() × RANDOM_FACTOR_RANGE
+ * 当前：0.8 ~ 1.1（约 ±15%）
  */
 export const RANDOM_FACTOR_LOW = 0.8;
 export const RANDOM_FACTOR_RANGE = 0.3;
@@ -85,7 +89,7 @@ export const RANDOM_FACTOR_RANGE = 0.3;
 /** 顿悟触发概率（固定百分比） */
 export const EPIPHANY_CHANCE = 0.05;
 
-/** 顿悟时修为翻倍乘数 */
+/** 顿悟时修为乘数（1.5 倍） */
 export const EPIPHANY_EXP_MULTIPLIER = 1.5;
 
 /** 顿悟时额外感悟值的下限（含） */
@@ -116,7 +120,7 @@ export const NORMAL_INSIGHT_SCALE = 1.2;
 // ──────────────────────────────────────────────
 
 /** 瓶颈期触发阈值（修为进度百分比） */
-export const BOTTLENECK_THRESHOLD = 75;
+export const BOTTLENECK_THRESHOLD = 90;
 
 /** 瓶颈期内闭关修为衰减乘数 */
 export const BOTTLENECK_EXP_PENALTY = 0.5;

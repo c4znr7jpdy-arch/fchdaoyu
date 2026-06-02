@@ -1566,10 +1566,14 @@ export async function updateCultivationExp(
   // [安全守卫] 夹紧修为变化量并施加上限
   const safeExpDelta = clampResourceDelta(cultivationExpDelta, RESOURCE_SAFETY.cultivation_exp.maxDelta);
 
-  // 计算新的修为值
+  // 正向收益封到当前阶段 exp_cap；负向消耗仍按现有不足校验处理。
+  const cultivationExpCeiling =
+    safeExpDelta > 0
+      ? Math.min(progress.exp_cap, RESOURCE_SAFETY.cultivation_exp.ceiling)
+      : RESOURCE_SAFETY.cultivation_exp.ceiling;
   const newCultivationExp = Math.min(
     progress.cultivation_exp + safeExpDelta,
-    RESOURCE_SAFETY.cultivation_exp.ceiling,
+    cultivationExpCeiling,
   );
   if (newCultivationExp < 0) {
     throw new Error(

@@ -1,4 +1,4 @@
-import { calculateCultivationExp } from '@server/utils/cultivationUtils';
+import { calculateOfflineExp } from '@shared/engine/cultivation/ExpBudgetCalculator';
 import type { ResourceOperation } from '@shared/engine/resource/types';
 import {
   REALM_YIELD_RATES,
@@ -136,14 +136,14 @@ export class YieldCalculator {
       value: spiritStones,
     });
 
-    // 2. 修为奖励（重构：复用闭关系统）
+    // 2. 修为奖励（使用统筹计算器 offline 场景，不触发顿悟）
     if (cultivator) {
-      // 复用 calculateCultivationExp，2小时=闭关1年
-      const expResult = calculateCultivationExp(cultivator, hoursElapsed / 2);
-      if (expResult.exp_gained > 0) {
+      const stage = cultivator.realm_stage ?? '初期';
+      const offlineExp = calculateOfflineExp(realm, stage, hoursElapsed);
+      if (offlineExp > 0) {
         operations.push({
           type: 'cultivation_exp',
-          value: expResult.exp_gained,
+          value: offlineExp,
         });
       }
 
@@ -155,14 +155,6 @@ export class YieldCalculator {
         operations.push({
           type: 'comprehension_insight',
           value: insightGain,
-        });
-      }
-
-      // 顿悟额外感悟值（闭关系统可能触发顿悟）
-      if (expResult.insight_gained > 0) {
-        operations.push({
-          type: 'comprehension_insight',
-          value: expResult.insight_gained,
         });
       }
     } else {

@@ -1,5 +1,10 @@
 import type { CultivationProgress, Cultivator } from '@shared/types/cultivator';
 import {
+  calculateBattleExp,
+  calculateSceneCultivationExp,
+} from '@shared/engine/cultivation/ExpBudgetCalculator';
+import { REALM_ORDER, type RealmType } from '@shared/types/constants';
+import {
   calculateExpProgress,
   canAttemptBreakthrough,
   getCultivationProgress,
@@ -156,57 +161,18 @@ export function calculateBattleExpGain(
   enemy_realm: string,
   victory_type: 'normal' | 'perfect' | 'challenged',
 ): number {
-  // 基础奖励（根据敌人境界）
-  const BASE_REWARDS: Record<string, number> = {
-    炼气: 50,
-    筑基: 200,
-    金丹: 600,
-    元婴: 1500,
-    化神: 3500,
-    炼虚: 7000,
-    合体: 12000,
-    大乘: 20000,
-    渡劫: 35000,
-  };
-
-  const base = BASE_REWARDS[enemy_realm] || 50;
-
   // 境界差系数
-  const REALM_ORDER = [
-    '炼气',
-    '筑基',
-    '金丹',
-    '元婴',
-    '化神',
-    '炼虚',
-    '合体',
-    '大乘',
-    '渡劫',
-  ];
-  const myIndex = REALM_ORDER.indexOf(cultivator.realm);
-  const enemyIndex = REALM_ORDER.indexOf(enemy_realm);
+  const myIndex = REALM_ORDER[cultivator.realm] ?? 0;
+  const enemyIndex = REALM_ORDER[enemy_realm as RealmType] ?? myIndex;
   const realmDiff = enemyIndex - myIndex;
 
-  let realmMultiplier = 1.0;
-  if (realmDiff >= 2) {
-    realmMultiplier = 2.0;
-  } else if (realmDiff === 1) {
-    realmMultiplier = 1.5;
-  } else if (realmDiff === 0) {
-    realmMultiplier = 1.0;
-  } else {
-    realmMultiplier = 0.5;
-  }
-
-  // 胜利类型系数
-  const victoryMultiplier =
-    victory_type === 'perfect'
-      ? 1.3
-      : victory_type === 'challenged'
-        ? 1.2
-        : 1.0;
-
-  return Math.floor(base * realmMultiplier * victoryMultiplier);
+  return calculateBattleExp(
+    cultivator.realm,
+    cultivator.realm_stage,
+    realmDiff,
+    victory_type,
+    cultivator.cultivation_progress?.exp_cap,
+  );
 }
 
 /**
@@ -224,15 +190,12 @@ export function calculateDungeonExpGain(
 
   const exp_cap = cultivator.cultivation_progress.exp_cap;
 
-  // 根据副本完成度给予百分比奖励
-  const percentages: Record<typeof dungeon_result, number> = {
-    perfect: 0.15, // 圆满通关：15%
-    good: 0.1, // 良好通关：10%
-    normal: 0.05, // 普通通关：5%
-    failed: 0.02, // 失败：2%
-  };
-
-  return Math.floor(exp_cap * percentages[dungeon_result]);
+  return calculateSceneCultivationExp('dungeon', {
+    realm: cultivator.realm,
+    realmStage: cultivator.realm_stage,
+    expCap: exp_cap,
+    result: dungeon_result,
+  }).baseExp;
 }
 
 /**
@@ -252,21 +215,17 @@ export function calculatePillExpGain(
     return { exp_gain: 0, can_use: false, reason: '修为数据异常' };
   }
 
-  const exp_cap = cultivator.cultivation_progress.exp_cap;
-
   // 检查丹药使用限制（当前境界服药获得的修为不超过30%）
   // TODO: 需要在cultivation_progress中添加pill_exp_gained字段来追踪
   // 此处暂时允许使用
 
-  const percentages: Record<typeof pill_quality, number> = {
-    凡品: 0.02, // 2%
-    灵品: 0.05, // 5%
-    玄品: 0.1, // 10%
-    真品: 0.2, // 20%
-  };
-
   return {
-    exp_gain: Math.floor(exp_cap * percentages[pill_quality]),
+    exp_gain: calculateSceneCultivationExp('pill', {
+      realm: cultivator.realm,
+      realmStage: cultivator.realm_stage,
+      expCap: cultivator.cultivation_progress.exp_cap,
+      quality: pill_quality,
+    }).baseExp,
     can_use: true,
   };
 }
