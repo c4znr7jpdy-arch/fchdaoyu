@@ -3,6 +3,7 @@ import { InkButton } from '@app/components/ui/InkButton';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { claimTaskReward } from '@app/lib/tasks/taskClient';
 import { cn } from '@shared/lib/cn';
+import { getNoviceEquipmentState } from '@shared/lib/noviceGuidance';
 import type { TaskInstance } from '@shared/types/task';
 import { useState } from 'react';
 
@@ -39,7 +40,7 @@ export function TutorialTaskCard({
   onClaimed?: () => Promise<void> | void;
 }) {
   const { pushToast } = useInkUI();
-  const { refreshCultivator, refreshInventory } = useCultivator();
+  const { cultivator, refreshCultivator, refreshInventory } = useCultivator();
   const [claiming, setClaiming] = useState(false);
   const currentStage =
     task.snapshot.stages.find((stage) => stage.current) ??
@@ -48,7 +49,13 @@ export function TutorialTaskCard({
   const rewardSummary = task.snapshot.rewardSummary ?? task.metadata.rewardSummary ?? [];
   const rewardClaimedAt =
     task.snapshot.rewardClaimedAt ?? task.metadata.rewardClaimedAt;
-  const canClaim = task.status === 'completed' && !rewardClaimedAt;
+  const needsStarterRewardRepair =
+    task.definitionId === 'tutorial_starter_supply' &&
+    Boolean(rewardClaimedAt) &&
+    !task.metadata.rewardGrantedKey &&
+    Boolean(cultivator && !getNoviceEquipmentState(cultivator).hasFullSet);
+  const canClaim =
+    task.status === 'completed' && (!rewardClaimedAt || needsStarterRewardRepair);
 
   const handleClaim = async () => {
     if (!canClaim || claiming) return;
@@ -137,7 +144,11 @@ export function TutorialTaskCard({
       <div className="flex flex-wrap gap-2">
         {canClaim ? (
           <InkButton variant="primary" onClick={handleClaim} disabled={claiming}>
-            {claiming ? '领取中...' : '领取奖励'}
+            {claiming
+              ? '领取中...'
+              : needsStarterRewardRepair
+                ? '补发奖励'
+                : '领取奖励'}
           </InkButton>
         ) : null}
         {task.status !== 'completed' && currentStage

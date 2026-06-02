@@ -43,6 +43,7 @@ import {
   addArtifactToInventory,
   addConsumableToInventory,
   addMaterialToInventory,
+  getInventory,
   getCultivatorByIdUnsafe,
   updateCultivator,
   updateCultivationExp,
@@ -62,7 +63,6 @@ import {
   listCultivatorTasks,
   markTaskRewardGrantPendingForKey,
   markTaskRewardGrantedForKey,
-  markTutorialTaskRewardClaimed,
   type CultivatorTaskRecord,
   updateCultivatorTask,
 } from '@server/lib/repositories/taskRepository';
@@ -1225,6 +1225,66 @@ async function applyTaskRewardAttachment(
   }
 }
 
+async function resolveMissingTaskRewardAttachments(
+  userId: string,
+  cultivatorId: string,
+  attachments: MailAttachment[],
+): Promise<MailAttachment[]> {
+  const inventory = await getInventory(userId, cultivatorId);
+  const missing: MailAttachment[] = [];
+
+  for (const attachment of attachments) {
+    switch (attachment.type) {
+      case 'material': {
+        const ownedQuantity = inventory.materials
+          .filter(
+            (material) =>
+              material.name === attachment.name &&
+              (!attachment.data ||
+                !('rank' in attachment.data) ||
+                material.rank === attachment.data.rank),
+          )
+          .reduce((sum, material) => sum + material.quantity, 0);
+        const deficit = attachment.quantity - ownedQuantity;
+        if (deficit > 0) {
+          missing.push({ ...attachment, quantity: deficit });
+        }
+        break;
+      }
+      case 'consumable': {
+        const ownedQuantity = inventory.consumables
+          .filter(
+            (consumable) =>
+              consumable.name === attachment.name &&
+              (!attachment.data ||
+                !('quality' in attachment.data) ||
+                consumable.quality === attachment.data.quality),
+          )
+          .reduce((sum, consumable) => sum + consumable.quantity, 0);
+        const deficit = attachment.quantity - ownedQuantity;
+        if (deficit > 0) {
+          missing.push({ ...attachment, quantity: deficit });
+        }
+        break;
+      }
+      case 'artifact': {
+        const ownedQuantity = inventory.artifacts.filter(
+          (artifact) => artifact.name === attachment.name,
+        ).length;
+        const deficit = attachment.quantity - ownedQuantity;
+        if (deficit > 0) {
+          missing.push({ ...attachment, quantity: deficit });
+        }
+        break;
+      }
+      case 'spirit_stones':
+        break;
+    }
+  }
+
+  return missing;
+}
+
 export const TaskService = {
   async syncCultivatorTasks(cultivatorId: string): Promise<TaskInstance[]> {
     const context = await loadTaskProgressContextOrThrow(cultivatorId);
@@ -1504,7 +1564,9 @@ export const TaskService = {
     if (task.status !== 'completed') {
       throw new Error('任务尚未完成');
     }
-    if (task.metadata.rewardClaimedAt) {
+    const grantKey = `tutorial:${definition.id}`;
+    const alreadyClaimed = Boolean(task.metadata.rewardClaimedAt);
+    if (task.metadata.rewardGrantedKey === grantKey) {
       throw new Error('奖励已经领取');
     }
 
@@ -1515,23 +1577,32 @@ export const TaskService = {
     const rewards = formatTaskRewardSummary(definition, context.realm);
     const claimedAt = new Date().toISOString();
     const currentMetadata = task.metadata;
+    const attachmentsToApply = alreadyClaimed
+      ? await resolveMissingTaskRewardAttachments(
+          userId,
+          cultivatorId,
+          rewardAttachments,
+        )
+      : rewardAttachments;
 
     await getExecutor().transaction(async (tx) => {
-      const claimedRecord = await markTutorialTaskRewardClaimed(
+      const pendingRecord = await markTaskRewardGrantPendingForKey(
         taskId,
         cultivatorId,
+        grantKey,
         {
           ...currentMetadata,
-          rewardClaimedAt: claimedAt,
+          rewardClaimedAt: currentMetadata.rewardClaimedAt ?? claimedAt,
           rewardSummary: rewards,
+          rewardGrantPendingKey: grantKey,
         },
         tx,
       );
-      if (!claimedRecord) {
+      if (!pendingRecord) {
         throw new Error('奖励已经领取');
       }
 
-      if (definition.rewardCultivationExp > 0) {
+      if (!alreadyClaimed && definition.rewardCultivationExp > 0) {
         await updateCultivationExp(
           userId,
           cultivatorId,
@@ -1541,8 +1612,24 @@ export const TaskService = {
         );
       }
 
-      for (const attachment of rewardAttachments) {
+      for (const attachment of attachmentsToApply) {
         await applyTaskRewardAttachment(userId, cultivatorId, attachment, tx);
+      }
+
+      const grantedRecord = await markTaskRewardGrantedForKey(
+        taskId,
+        cultivatorId,
+        grantKey,
+        {
+          ...withoutRewardGrantPendingKey(
+            pendingRecord.metadata as TaskInstanceMetadata,
+          ),
+          rewardGrantedKey: grantKey,
+        },
+        tx,
+      );
+      if (!grantedRecord) {
+        throw new Error('奖励已经领取');
       }
     });
 

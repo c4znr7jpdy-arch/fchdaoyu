@@ -8,6 +8,7 @@ const {
   findActiveCultivatorRecordByIdMock,
   findCultivatorTaskByDefinitionMock,
   findCultivatorTaskByIdMock,
+  getInventoryMock,
   getExecutorMock,
   getCultivatorByIdUnsafeMock,
   listCultivatorBreakthroughPillsMock,
@@ -16,7 +17,6 @@ const {
   clearTaskRewardGrantPendingForKeyMock,
   markTaskRewardGrantPendingForKeyMock,
   markTaskRewardGrantedForKeyMock,
-  markTutorialTaskRewardClaimedMock,
   sendMailMock,
   updateCultivationExpMock,
   updateCultivatorMock,
@@ -30,6 +30,7 @@ const {
   findActiveCultivatorRecordByIdMock: vi.fn(),
   findCultivatorTaskByDefinitionMock: vi.fn(),
   findCultivatorTaskByIdMock: vi.fn(),
+  getInventoryMock: vi.fn(),
   getExecutorMock: vi.fn(),
   getCultivatorByIdUnsafeMock: vi.fn(),
   listCultivatorBreakthroughPillsMock: vi.fn(),
@@ -38,7 +39,6 @@ const {
   clearTaskRewardGrantPendingForKeyMock: vi.fn(),
   markTaskRewardGrantPendingForKeyMock: vi.fn(),
   markTaskRewardGrantedForKeyMock: vi.fn(),
-  markTutorialTaskRewardClaimedMock: vi.fn(),
   sendMailMock: vi.fn(),
   updateCultivationExpMock: vi.fn(),
   updateCultivatorMock: vi.fn(),
@@ -56,6 +56,7 @@ vi.mock('./cultivatorService', () => ({
   addArtifactToInventory: addArtifactToInventoryMock,
   addConsumableToInventory: addConsumableToInventoryMock,
   addMaterialToInventory: addMaterialToInventoryMock,
+  getInventory: getInventoryMock,
   getCultivatorByIdUnsafe: getCultivatorByIdUnsafeMock,
   updateCultivationExp: updateCultivationExpMock,
   updateCultivator: updateCultivatorMock,
@@ -74,7 +75,6 @@ vi.mock('@server/lib/repositories/taskRepository', () => ({
   listCultivatorTasks: listCultivatorTasksMock,
   markTaskRewardGrantPendingForKey: markTaskRewardGrantPendingForKeyMock,
   markTaskRewardGrantedForKey: markTaskRewardGrantedForKeyMock,
-  markTutorialTaskRewardClaimed: markTutorialTaskRewardClaimedMock,
   updateCultivatorTask: updateCultivatorTaskMock,
 }));
 
@@ -295,23 +295,6 @@ function installTaskStoreMocks() {
     },
   );
 
-  markTutorialTaskRewardClaimedMock.mockImplementation(
-    async (_taskId: string, _cultivatorId: string, metadata: any) => {
-      const record = taskStore.get(_taskId);
-      if (!record || record.metadata?.rewardClaimedAt) {
-        return null;
-      }
-
-      const next = {
-        ...record,
-        metadata,
-        updatedAt: new Date(),
-      };
-      taskStore.set(_taskId, next);
-      return next;
-    },
-  );
-
   markTaskRewardGrantPendingForKeyMock.mockImplementation(
     async (
       _taskId: string,
@@ -396,6 +379,11 @@ describe('TaskService', () => {
     listCultivatorTechniqueQualitiesMock.mockResolvedValue([]);
     listCultivatorBreakthroughPillsMock.mockResolvedValue([]);
     getCultivatorByIdUnsafeMock.mockResolvedValue(null);
+    getInventoryMock.mockResolvedValue({
+      artifacts: [],
+      consumables: [],
+      materials: [],
+    });
     updateCultivatorMock.mockResolvedValue(null);
     getExecutorMock.mockReturnValue({
       transaction: async (callback: (tx: unknown) => Promise<void>) =>
@@ -679,8 +667,35 @@ describe('TaskService', () => {
     ).rejects.toThrow('奖励已经领取');
   });
 
-  it('does not apply tutorial rewards when the claim marker is already taken', async () => {
-    markTutorialTaskRewardClaimedMock.mockResolvedValueOnce(null);
+  it('does not apply tutorial rewards when the grant marker is already taken', async () => {
+    taskStore.set(
+      'task-tutorial_starter_supply',
+      {
+        ...(taskStore.get('task-tutorial_starter_supply') ?? {}),
+        id: 'task-tutorial_starter_supply',
+        cultivatorId: 'cultivator-1',
+        definitionId: 'tutorial_starter_supply',
+        category: 'tutorial',
+        status: 'completed',
+        currentStage: null,
+        objectives: [
+          {
+            objectiveId: 'starter-supply-ready',
+            completed: true,
+            progressValue: 1,
+            completedAt: '2026-05-26T02:00:00.000Z',
+            updatedAt: '2026-05-26T02:00:00.000Z',
+          },
+        ],
+        metadata: {
+          rewardClaimedAt: '2026-05-26T02:00:00.000Z',
+          rewardGrantedKey: 'tutorial:tutorial_starter_supply',
+        },
+        completedAt: new Date('2026-05-26T02:00:00.000Z'),
+        createdAt: new Date('2026-05-26T02:00:00.000Z'),
+        updatedAt: new Date('2026-05-26T02:00:00.000Z'),
+      },
+    );
 
     await expect(
       TaskService.claimTaskReward(
@@ -694,6 +709,50 @@ describe('TaskService', () => {
     expect(updateSpiritStonesMock).not.toHaveBeenCalled();
     expect(addMaterialToInventoryMock).not.toHaveBeenCalled();
     expect(addArtifactToInventoryMock).not.toHaveBeenCalled();
+  });
+
+  it('repairs claimed tutorial rewards that are missing the grant marker', async () => {
+    taskStore.set(
+      'task-tutorial_starter_supply',
+      {
+        ...(taskStore.get('task-tutorial_starter_supply') ?? {}),
+        id: 'task-tutorial_starter_supply',
+        cultivatorId: 'cultivator-1',
+        definitionId: 'tutorial_starter_supply',
+        category: 'tutorial',
+        status: 'completed',
+        currentStage: null,
+        objectives: [
+          {
+            objectiveId: 'starter-supply-ready',
+            completed: true,
+            progressValue: 1,
+            completedAt: '2026-05-26T02:00:00.000Z',
+            updatedAt: '2026-05-26T02:00:00.000Z',
+          },
+        ],
+        metadata: {
+          rewardClaimedAt: '2026-05-26T02:00:00.000Z',
+        },
+        completedAt: new Date('2026-05-26T02:00:00.000Z'),
+        createdAt: new Date('2026-05-26T02:00:00.000Z'),
+        updatedAt: new Date('2026-05-26T02:00:00.000Z'),
+      },
+    );
+
+    const result = await TaskService.claimTaskReward(
+      'user-1',
+      'cultivator-1',
+      'task-tutorial_starter_supply',
+    );
+
+    expect(updateCultivationExpMock).not.toHaveBeenCalled();
+    expect(updateSpiritStonesMock).not.toHaveBeenCalled();
+    expect(addMaterialToInventoryMock).toHaveBeenCalledTimes(2);
+    expect(addArtifactToInventoryMock).toHaveBeenCalledTimes(3);
+    expect(result.task.metadata.rewardGrantedKey).toBe(
+      'tutorial:tutorial_starter_supply',
+    );
   });
 
   it('does not grant daily rewards when the daily pending marker is already held', async () => {
