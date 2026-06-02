@@ -107,20 +107,20 @@ export const EPIPHANY_INSIGHT_RANGE = 31;
 // ──────────────────────────────────────────────
 
 /** 常规感悟值上限 */
-export const MAX_NORMAL_INSIGHT = 20;
+export const MAX_NORMAL_INSIGHT = 40;
 
 /**
  * 常规感悟值缩放因子。
  * 公式：min(MAX, floor(√years × SCALE × rng))
  */
-export const NORMAL_INSIGHT_SCALE = 1.2;
+export const NORMAL_INSIGHT_SCALE = 1.8;
 
 // ──────────────────────────────────────────────
 //  7. 瓶颈期
 // ──────────────────────────────────────────────
 
 /** 瓶颈期触发阈值（修为进度百分比） */
-export const BOTTLENECK_THRESHOLD = 90;
+export const BOTTLENECK_THRESHOLD = 70;
 
 /** 瓶颈期内闭关修为衰减乘数 */
 export const BOTTLENECK_EXP_PENALTY = 0.5;

@@ -582,7 +582,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
       type: 'reflect',
       conditions: [{ type: 'chance', params: { value: 0.3 } }],
       params: {
-        ratio: { base: 0.03, scale: 'quality', coefficient: 0.01 },
+        ratio: { base: 0.12, scale: 'quality', coefficient: 0.06 },
       },
     },
     listenerSpec: {
@@ -721,9 +721,9 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
       params: {
         target: 'mp',
         value: {
-          base: { base: 5, scale: 'quality', coefficient: 6 },
+          base: { base: 5, scale: 'quality', coefficient: 8 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.05,
+          coefficient: 0.25,
         },
       },
     },
@@ -1206,7 +1206,7 @@ export const ARTIFACT_AFFIXES: AffixDefinition[] = [
       type: 'reflect',
       conditions: [{ type: 'is_critical', params: {} }],
       params: {
-        ratio: { base: 0.04, scale: 'quality', coefficient: 0.02 },
+        ratio: { base: 0.12, scale: 'quality', coefficient: 0.07 },
       },
     },
     listenerSpec: {
