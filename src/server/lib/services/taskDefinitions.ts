@@ -7,6 +7,7 @@ import type {
   TaskInstanceMetadata,
   TaskStageDefinition,
 } from '@shared/types/task';
+import type { DailyTaskDifficulty } from '@shared/engine/cultivation/exp-gain-strategies/types';
 import { ServerEnemyCopyProvider } from '@server/lib/services/ServerEnemyCopyProvider';
 
 const challengeEnemyGenerator = new EnemyGenerator({
@@ -40,10 +41,11 @@ export interface BreakthroughTaskDefinition
 }
 
 export interface DailyTaskDefinition
-  extends Omit<TaskDefinition, 'stages' | 'category' | 'dailyKind' | 'repeat'> {
+  extends Omit<TaskDefinition, 'stages' | 'category' | 'dailyKind' | 'repeat' | 'difficulty'> {
   category: 'daily';
   repeat: 'daily';
   dailyKind: TaskDailyKind;
+  difficulty: DailyTaskDifficulty;
   rewardAttachments: NonNullable<TaskDefinition['rewardAttachments']>;
   stages: TaskStageTemplate[];
 }

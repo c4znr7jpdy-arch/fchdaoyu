@@ -1,6 +1,7 @@
 import type { ConditionStatusKey } from './condition';
 import type { Quality, RealmType } from './constants';
 import type { MailAttachment } from './mail';
+import type { DailyTaskDifficulty } from '@shared/engine/cultivation/exp-gain-strategies/types';
 
 export type TaskCategory = 'breakthrough_major' | 'daily';
 
@@ -109,6 +110,7 @@ export interface TaskDefinition {
   toRealm?: RealmType;
   repeat?: TaskRepeat;
   dailyKind?: TaskDailyKind;
+  difficulty?: DailyTaskDifficulty;
   rewardAttachments?: MailAttachment[];
   stages: TaskStageDefinition[];
 }

@@ -20,7 +20,8 @@ export type ExpGainSource =
   | 'dungeon' // 副本探索
   | 'pill' // 炼丹服用
   | 'event' // 奇遇事件
-  | 'reward'; // 系统奖励
+  | 'reward' // 系统奖励
+  | 'daily_task'; // 日常任务
 
 /**
  * 修为增加结果
