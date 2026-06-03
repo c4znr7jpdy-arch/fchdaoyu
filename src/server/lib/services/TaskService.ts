@@ -687,7 +687,15 @@ function resolveObjectiveProgress(
 function resolveStageLinks(
   taskId: string,
   stage: TaskStageTemplate,
+  objectiveProgresses: TaskObjectiveProgress[],
 ): TaskActionLink[] {
+  const pendingDungeonObjective = stage.objectives.find((objective) => {
+    if (objective.kind !== 'complete_dungeon') return false;
+    return objectiveProgresses.some(
+      (progress) => progress.id === objective.id && !progress.completed,
+    );
+  });
+
   return stage.links.map((link) => {
     switch (link.kind) {
       case 'alchemy':
@@ -695,7 +703,15 @@ function resolveStageLinks(
       case 'cultivator':
         return { label: link.label, href: '/game/cultivator' };
       case 'dungeon':
-        return { label: link.label, href: '/game/dungeon' };
+        return {
+          label: link.label,
+          href:
+            pendingDungeonObjective?.kind === 'complete_dungeon'
+              ? `/game/map?intent=dungeon&nodeId=${encodeURIComponent(
+                  pendingDungeonObjective.mapNodeId,
+                )}`
+              : '/game/map?intent=dungeon',
+        };
       case 'inn':
         return { label: link.label, href: '/game/inn' };
       case 'inventory':
@@ -881,7 +897,7 @@ function buildTaskSnapshot(
       completionText: stage.completionText,
       completed: stageCompleted,
       current: false,
-      links: resolveStageLinks(record.id, stage),
+      links: resolveStageLinks(record.id, stage, objectiveProgresses),
       objectives: objectiveProgresses,
     });
   }

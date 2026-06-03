@@ -5,15 +5,29 @@ import { useMemo, useState } from 'react';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 import { useNavigate, useSearchParams } from 'react-router';
 
+const MAP_WIDTH = 3056;
+const MAP_HEIGHT = 2143;
 
-const getInitPosition = () => {
+const getInitPosition = (targetNode?: MapNodeInfo | null) => {
   if (typeof window === 'undefined') return { x: -2382, y: -1224 };
+  if (targetNode) {
+    return {
+      x: window.innerWidth * 0.5 - (MAP_WIDTH * targetNode.x) / 100,
+      y: window.innerHeight * 0.45 - (MAP_HEIGHT * targetNode.y) / 100,
+    };
+  }
+
   return window.innerWidth < 768
     ? { x: -2382, y: -1224 }
     : { x: -1318, y: -1262 };
 };
 
 type MapIntent = 'market' | 'dungeon';
+
+type ManualNodeSelection = {
+  nodeId: string | null;
+  requestedNodeId: string | null;
+};
 
 type NodeActionContext = {
   selectedNodeId: string;
@@ -64,8 +78,15 @@ function buildNodeActions(
 export default function MapPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const initPosition = getInitPosition();
+  const requestedNodeId = searchParams.get('nodeId');
+  const requestedNode = requestedNodeId ? (getMapNode(requestedNodeId) ?? null) : null;
+  const [manualSelection, setManualSelection] =
+    useState<ManualNodeSelection | null>(null);
+  const selectedNodeId =
+    manualSelection?.requestedNodeId === requestedNodeId
+      ? manualSelection.nodeId
+      : (requestedNode?.id ?? null);
+  const initPosition = getInitPosition(requestedNode);
   const intent: MapIntent =
     searchParams.get('intent') === 'market' ? 'market' : 'dungeon';
 
@@ -76,7 +97,7 @@ export default function MapPage() {
     : null;
 
   const handleNodeClick = (id: string) => {
-    setSelectedNodeId(id);
+    setManualSelection({ nodeId: id, requestedNodeId });
   };
 
   const nodeContext = useMemo(() => {
@@ -116,6 +137,7 @@ export default function MapPage() {
     <div className="relative h-full overflow-hidden">
       <div className="relative h-full w-full flex-1 cursor-grab active:cursor-grabbing">
         <TransformWrapper
+          key={requestedNode?.id ?? 'default'}
           initialScale={1}
           minScale={0.5}
           maxScale={4}
@@ -130,8 +152,8 @@ export default function MapPage() {
             <div
               className="relative"
               style={{
-                width: '3056px',
-                height: '2143px',
+                width: `${MAP_WIDTH}px`,
+                height: `${MAP_HEIGHT}px`,
               }}
             >
               <div className="bgi-map absolute inset-0 opacity-80" />
@@ -178,7 +200,6 @@ export default function MapPage() {
                   key={node.id}
                   id={node.id}
                   name={node.name}
-                  realmRequirement={node.realm_requirement}
                   x={node.x}
                   y={node.y}
                   marketEnabled={Boolean(node.market_config?.enabled)}
@@ -192,7 +213,6 @@ export default function MapPage() {
                   key={sat.id}
                   id={sat.id}
                   name={sat.name}
-                  realmRequirement={sat.realm_requirement}
                   x={sat.x}
                   y={sat.y}
                   selected={selectedNodeId === sat.id}
@@ -207,7 +227,7 @@ export default function MapPage() {
       {selectedNode && (
         <MapNodeDetail
           node={selectedNode}
-          onClose={() => setSelectedNodeId(null)}
+          onClose={() => setManualSelection({ nodeId: null, requestedNodeId })}
           actions={nodeActions}
         />
       )}

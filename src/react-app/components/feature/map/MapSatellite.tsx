@@ -5,12 +5,12 @@ import { cva, type VariantProps } from 'class-variance-authority';
  * MapSatellite 变体定义
  */
 const mapSatelliteVariants = cva(
-  'absolute transform -translate-x-1/2 -translate-y-1/2 transition-colors duration-200 cursor-pointer',
+  'absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 cursor-pointer',
   {
     variants: {
       selected: {
-        true: 'z-30',
-        false: 'z-10',
+        true: 'z-30 scale-125',
+        false: 'z-10 hover:scale-110',
       },
     },
     defaultVariants: {
@@ -31,12 +31,26 @@ const satelliteMarkerVariants = cva('h-3 w-3 rotate-45 border', {
   },
 });
 
+const satelliteLabelVariants = cva(
+  'absolute top-4 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 text-[10px] leading-4',
+  {
+    variants: {
+      selected: {
+        true: 'z-40 border border-crimson bg-bgpaper text-crimson',
+        false: 'border border-ink/5 bg-background/80 text-ink/85 shadow-none',
+      },
+    },
+    defaultVariants: {
+      selected: false,
+    },
+  },
+);
+
 export interface MapSatelliteProps extends VariantProps<
   typeof mapSatelliteVariants
 > {
   id: string;
   name: string;
-  realmRequirement: string;
   x: number;
   y: number;
   onClick?: (id: string) => void;
@@ -48,7 +62,6 @@ export interface MapSatelliteProps extends VariantProps<
 export function MapSatellite({
   id,
   name,
-  realmRequirement,
   x,
   y,
   selected = false,
@@ -68,12 +81,9 @@ export function MapSatellite({
       {/* Satellite Icon */}
       <div className={cn(satelliteMarkerVariants({ selected }))} />
 
-      {/* Label appears on select */}
-      {selected && (
-        <div className="text-crimson border-crimson bg-bgpaper absolute top-4 left-1/2 z-40 -translate-x-1/2 border border-dashed px-1 text-[10px] whitespace-nowrap">
-          {name} · {realmRequirement}
-        </div>
-      )}
+      <div className={cn(satelliteLabelVariants({ selected }))}>
+        {name}
+      </div>
     </div>
   );
 }

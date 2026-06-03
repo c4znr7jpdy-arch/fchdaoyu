@@ -50,7 +50,6 @@ const labelVariants = cva(
 export interface MapNodeProps extends VariantProps<typeof mapNodeVariants> {
   id: string;
   name: string;
-  realmRequirement: string;
   x: number;
   y: number;
   marketEnabled?: boolean;
@@ -63,7 +62,6 @@ export interface MapNodeProps extends VariantProps<typeof mapNodeVariants> {
 function MapNodeComponent({
   id,
   name,
-  realmRequirement,
   x,
   y,
   marketEnabled = false,
@@ -99,7 +97,7 @@ function MapNodeComponent({
       )}
       {/* Label */}
       <div className={cn(labelVariants({ selected }))}>
-        {displayName} · {realmRequirement}
+        {displayName}
       </div>
     </div>
   );

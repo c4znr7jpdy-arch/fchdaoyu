@@ -457,6 +457,74 @@ describe('TaskService', () => {
     ]);
   });
 
+  it('links specified dungeon objectives to a preselected map node', async () => {
+    taskStore.set(
+      'task-major-1',
+      createFoundationTaskRecord({
+        currentStage: 'foundation-trial',
+        objectives: [
+          {
+            objectiveId: 'craft-pill',
+            completed: true,
+            progressValue: 1,
+            completedAt: '2026-05-21T00:00:00.000Z',
+            updatedAt: '2026-05-21T00:00:00.000Z',
+          },
+          {
+            objectiveId: 'clear-garden',
+            completed: false,
+            progressValue: 0,
+          },
+        ],
+      }),
+    );
+
+    const tasks = await TaskService.syncCultivatorTasks('cultivator-1');
+    const breakthroughTask = tasks.find(
+      (task) => task.definitionId === 'major_breakthrough_炼气_筑基',
+    );
+    const currentStage = breakthroughTask?.snapshot.stages.find(
+      (stage) => stage.current,
+    );
+
+    expect(currentStage).toMatchObject({
+      id: 'foundation-trial',
+      links: [
+        {
+          label: '去云游探秘',
+          href: '/game/map?intent=dungeon&nodeId=SAT_TN_03',
+        },
+        {
+          label: '返回静室',
+          href: '/game/retreat',
+        },
+      ],
+    });
+  });
+
+  it('links generic daily dungeon tasks to the map without preselecting a node', async () => {
+    findActiveCultivatorRecordByIdMock.mockResolvedValue(
+      createCultivatorRecord({
+        realm_stage: '初期',
+      }),
+    );
+    taskStore.set(
+      'task-daily_dungeon_once',
+      createDailyTaskRecord('daily_dungeon_once'),
+    );
+
+    const tasks = await TaskService.syncCultivatorTasks('cultivator-1');
+    const dailyTask = tasks.find((task) => task.definitionId === 'daily_dungeon_once');
+    const currentStage = dailyTask?.snapshot.stages.find((stage) => stage.current);
+
+    expect(currentStage?.links).toEqual([
+      {
+        label: '去云游探秘',
+        href: '/game/map?intent=dungeon',
+      },
+    ]);
+  });
+
   it('resets stale daily tasks when a new day begins', async () => {
     findActiveCultivatorRecordByIdMock.mockResolvedValue(
       createCultivatorRecord({
