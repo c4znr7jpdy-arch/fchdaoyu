@@ -1464,10 +1464,12 @@ export async function updateSpiritStones(
   const safeDelta = clampResourceDelta(delta, RESOURCE_SAFETY.spirit_stones.maxDelta);
 
   const dbInstance = getExecutor(tx);
+  // [安全] 使用 FOR UPDATE 行锁防止并发读写导致的丢失更新
   const cultivator = await dbInstance
     .select({ spirit_stones: schema.cultivators.spirit_stones })
     .from(schema.cultivators)
     .where(eq(schema.cultivators.id, cultivatorId))
+    .for('update')
     .limit(1);
 
   if (cultivator.length === 0) {

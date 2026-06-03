@@ -60,6 +60,7 @@ async function buildItemShowcasePayload(params: {
       element: item.element,
       quality: item.quality,
       description: item.description,
+      productModel: item.productModel,
     };
     return { itemType, itemId, snapshot, text: showcaseText };
   }

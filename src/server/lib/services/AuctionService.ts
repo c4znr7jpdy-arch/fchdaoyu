@@ -27,6 +27,7 @@ const MAX_ACTIVE_LISTINGS_PER_SELLER = 5;
 const LISTING_DURATION_HOURS = 48;
 const FEE_RATE = 0.1; // 10% 手续费
 const AUCTION_MIN_QUALITY: Quality = '玄品';
+const AUCTION_MAX_PRICE = 5_000_000; // 单笔最高 500 万灵石
 
 // ============================================================================
 // Error Codes
@@ -45,6 +46,7 @@ export const AuctionError = {
   INVALID_QUANTITY: 'INVALID_QUANTITY',
   INVALID_ITEM_QUALITY: 'INVALID_ITEM_QUALITY',
   CONSUMABLE_LISTING_DISABLED: 'CONSUMABLE_LISTING_DISABLED',
+  SAME_OWNER: 'SAME_OWNER',
 } as const;
 
 export type AuctionErrorCode = (typeof AuctionError)[keyof typeof AuctionError];
@@ -197,6 +199,12 @@ export async function listItem(input: ListItemInput): Promise<ListItemResult> {
     throw new AuctionServiceError(
       AuctionError.INVALID_PRICE,
       '价格必须至少为 1 灵石',
+    );
+  }
+  if (price > AUCTION_MAX_PRICE) {
+    throw new AuctionServiceError(
+      AuctionError.INVALID_PRICE,
+      `价格不得超过 ${AUCTION_MAX_PRICE.toLocaleString()} 灵石`,
     );
   }
 
@@ -504,6 +512,25 @@ export async function buyItem(input: BuyItemInput): Promise<void> {
 
     // 5. 事务：扣除买家灵石 + 更新拍卖状态 + 发送邮件
     await q.transaction(async (tx) => {
+      // 5.0 禁止同一用户（userId）下不同角色之间的交易（防止小号对敲刷灵石）
+      const [buyerRow] = await tx
+        .select({ userId: schema.cultivators.userId })
+        .from(schema.cultivators)
+        .where(eq(schema.cultivators.id, buyerCultivatorId))
+        .limit(1);
+      const [sellerRow] = await tx
+        .select({ userId: schema.cultivators.userId })
+        .from(schema.cultivators)
+        .where(eq(schema.cultivators.id, listing.sellerId))
+        .limit(1);
+
+      if (buyerRow && sellerRow && buyerRow.userId === sellerRow.userId) {
+        throw new AuctionServiceError(
+          AuctionError.SAME_OWNER,
+          '不可与自己账号下的角色进行交易',
+        );
+      }
+
       // 5.1 扣除买家灵石（原子操作）
       const [updatedBuyer] = await tx
         .update(schema.cultivators)
@@ -569,19 +596,11 @@ export async function buyItem(input: BuyItemInput): Promise<void> {
         tx,
       );
 
-      // 5.5 发送邮件给卖家（灵石）
-      await MailService.sendMail(
+      // 5.5 发送邮件通知卖家（灵石已在 5.2 直接入账，此处仅通知，不含附件）
+      await MailService.sendSystemMail(
         listing.sellerId,
         '拍卖行物品售出',
-        `道友寄售的【${itemSnapshot.name}】已售出，扣除${FEE_RATE * 100}%手续费后获得 ${sellerAmount} 灵石。`,
-        [
-          {
-            type: 'spirit_stones',
-            name: '灵石',
-            quantity: sellerAmount,
-          },
-        ],
-        'reward',
+        `道友寄售的【${itemSnapshot.name}】已售出，扣除${FEE_RATE * 100}%手续费后获得 ${sellerAmount} 灵石（已直接入账）。`,
         tx,
       );
     });
@@ -601,18 +620,18 @@ export async function cancelListing(
   cultivatorId: string,
 ): Promise<void> {
   const q = getExecutor();
-  // 1. 查询拍卖记录
+  // 1. 查询拍卖记录（快速前置校验，减少无效事务开销）
   const listing = await auctionRepository.findById(listingId);
   if (!listing) {
     throw new AuctionServiceError(AuctionError.LISTING_NOT_FOUND, '拍卖不存在');
   }
 
-  // 2. 校验所有权
+  // 2. 前置校验所有权（非事务内，用于快速拒绝）
   if (listing.sellerId !== cultivatorId) {
     throw new AuctionServiceError(AuctionError.NOT_OWNER, '无权操作他人的拍卖');
   }
 
-  // 3. 校验状态
+  // 3. 前置校验状态（非事务内，用于快速拒绝）
   if (listing.status !== 'active') {
     throw new AuctionServiceError(
       AuctionError.LISTING_NOT_FOUND,
@@ -620,12 +639,27 @@ export async function cancelListing(
     );
   }
 
-  // 4. 事务：更新状态 + 发送邮件
+  // 4. 事务：行锁 + 二次校验状态 + 更新 + 发送邮件
   await q.transaction(async (tx) => {
+    // 使用 SELECT FOR UPDATE 获取行锁，防止与购买/过期操作并发冲突
+    const [locked] = await tx
+      .select()
+      .from(schema.auctionListings)
+      .where(eq(schema.auctionListings.id, listingId))
+      .for('update')
+      .limit(1);
+
+    if (!locked || locked.status !== 'active') {
+      throw new AuctionServiceError(
+        AuctionError.LISTING_NOT_FOUND,
+        '此物品已售出或下架',
+      );
+    }
+
     await auctionRepository.updateStatus(tx, listingId, 'cancelled');
 
     // 发送邮件返还物品
-    const itemSnapshot = listing.itemSnapshot as
+    const itemSnapshot = locked.itemSnapshot as
       | Material
       | Artifact
       | Consumable;
@@ -637,7 +671,7 @@ export async function cancelListing(
       `道友寄售的【${itemSnapshot.name}】已下架，附件返还物品。`,
       [
         {
-          type: listing.itemType as 'material' | 'artifact' | 'consumable',
+          type: locked.itemType as 'material' | 'artifact' | 'consumable',
           name: itemSnapshot.name,
           quantity: itemQuantity,
           data: itemSnapshot,

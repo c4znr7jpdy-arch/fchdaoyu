@@ -93,6 +93,7 @@ function parseShowcaseItem(payload: WorldChatItemShowcasePayload): {
           element: item.element,
           quality: item.quality,
           description: item.description,
+          productModel: item.productModel,
         },
       },
     };

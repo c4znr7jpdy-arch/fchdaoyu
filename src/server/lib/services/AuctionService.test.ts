@@ -42,6 +42,7 @@ vi.mock('@server/lib/repositories/auctionRepository', () => ({
 vi.mock('@server/lib/services/MailService', () => ({
   MailService: {
     sendMail: sendMailMock,
+    sendSystemMail: sendMailMock,
   },
 }));
 
@@ -115,6 +116,7 @@ function createExecutor(options: {
   }> = [];
   const deleteCalls: Array<{ table: unknown }> = [];
   let cultivatorUpdateCount = 0;
+  let cultivatorSelectCount = 0;
 
   const executor = {
     select() {
@@ -135,7 +137,24 @@ function createExecutor(options: {
             return {
               where() {
                 return {
-                  limit: async () => [{ money: 0 }],
+                  // 支持 .for('update') 链式调用（cancelListing 行锁）
+                  for(_mode: string) {
+                    return {
+                      limit: async () => [{ money: 0 }],
+                    };
+                  },
+                  limit: async () => {
+                    // 为 buyItem 的 same-owner 校验返回不同的 userId
+                    // 第一次调用返回买家 userId，第二次返回卖家 userId
+                    cultivatorSelectCount++;
+                    if (cultivatorSelectCount === 1) {
+                      return [{ userId: 'buyer-user-1' }];
+                    }
+                    if (cultivatorSelectCount === 2) {
+                      return [{ userId: 'seller-user-2' }];
+                    }
+                    return [{ money: 0 }];
+                  },
                 };
               },
             };

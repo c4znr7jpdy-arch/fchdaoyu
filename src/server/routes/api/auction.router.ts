@@ -29,7 +29,7 @@ const BuySchema = z.object({
 const ListSchema = z.object({
   itemType: z.enum(['material', 'artifact', 'consumable']),
   itemId: z.string().uuid(),
-  price: z.number().int().min(1),
+  price: z.number().int().min(1).max(5_000_000),
   quantity: z.number().int().min(1).default(1),
 });
 
@@ -46,6 +46,7 @@ const statusMap: Record<string, number> = {
   INVALID_QUANTITY: 400,
   INVALID_ITEM_QUALITY: 400,
   CONSUMABLE_LISTING_DISABLED: 400,
+  SAME_OWNER: 403,
 };
 
 function getAuctionErrorStatus(error: AuctionServiceError): number {

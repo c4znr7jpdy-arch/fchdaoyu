@@ -1401,100 +1401,32 @@ mailRouter.post('/claim', requireActiveCultivator(), async (c) => {
   }
 
   const { mailId } = ClaimMailSchema.parse(await c.req.json());
-  const mail = await getExecutor().query.mails.findFirst({
-    where: and(eq(mails.id, mailId), eq(mails.cultivatorId, cultivator.id)),
-  });
 
-  if (!mail) {
-    return c.json({ error: 'Mail not found' }, 404);
-  }
-  if (mail.isClaimed) {
-    return c.json({ error: 'Already claimed' }, 400);
+  // [安全] 分布式锁防止同一邮件被并发领取
+  const claimLockKey = `mail:claim:lock:${mailId}`;
+  const acquiredLock = await redis.set(claimLockKey, 'locked', 'EX', 10, 'NX');
+  if (!acquiredLock) {
+    return c.json({ error: '领取正在处理中，请稍后' }, 429);
   }
 
-  const attachments = (mail.attachments as MailAttachment[]) || [];
-  if (attachments.length === 0) {
-    return c.json({ message: 'No attachments' });
-  }
+  try {
+    const mail = await getExecutor().query.mails.findFirst({
+      where: and(eq(mails.id, mailId), eq(mails.cultivatorId, cultivator.id)),
+    });
 
-  const gains: ResourceOperation[] = [];
-  for (const item of attachments) {
-    switch (item.type) {
-      case 'spirit_stones':
-        gains.push({ type: 'spirit_stones', value: item.quantity });
-        break;
-      case 'material':
-        gains.push({
-          type: 'material',
-          value: item.quantity,
-          data: item.data as Material,
-        });
-        break;
-      case 'consumable':
-        gains.push({
-          type: 'consumable',
-          value: item.quantity,
-          data: item.data as Consumable,
-        });
-        break;
-      case 'artifact':
-        for (let i = 0; i < (item.quantity || 1); i++) {
-          gains.push({
-            type: 'artifact',
-            value: 1,
-            data: item.data as Artifact,
-          });
-        }
-        break;
+    if (!mail) {
+      return c.json({ error: 'Mail not found' }, 404);
     }
-  }
+    if (mail.isClaimed) {
+      return c.json({ error: 'Already claimed' }, 400);
+    }
 
-  const result = await resourceEngine.gain(
-    user.id,
-    cultivator.id,
-    gains,
-    async (tx: DbTransaction) => {
-      await tx
-        .update(mails)
-        .set({ isClaimed: true, isRead: true })
-        .where(eq(mails.id, mailId));
-    },
-  );
-
-  if (!result.success) {
-    return c.json({ error: result.errors?.[0] || '领取失败' }, 500);
-  }
-  return c.json({ success: true });
-});
-
-mailRouter.post('/claim-all', requireActiveCultivator(), async (c) => {
-  const user = c.get('user');
-  const cultivator = c.get('cultivator');
-  if (!user || !cultivator) {
-    return c.json({ error: '未授权访问' }, 401);
-  }
-
-  const pendingMails = await getExecutor().query.mails.findMany({
-    where: and(
-      eq(mails.type, 'reward'),
-      eq(mails.cultivatorId, cultivator.id),
-      eq(mails.isClaimed, false),
-    ),
-  });
-
-  const claimableMails = pendingMails.filter((mail) => {
     const attachments = (mail.attachments as MailAttachment[]) || [];
-    return attachments.length > 0;
-  });
+    if (attachments.length === 0) {
+      return c.json({ message: 'No attachments' });
+    }
 
-  if (claimableMails.length === 0) {
-    return c.json({ success: true, claimedCount: 0, claimedMailIds: [] });
-  }
-
-  const gains: ResourceOperation[] = [];
-  const claimedMailIds = claimableMails.map((mail) => mail.id);
-  for (const mail of claimableMails) {
-    const attachments = (mail.attachments as MailAttachment[]) || [];
+    const gains: ResourceOperation[] = [];
     for (const item of attachments) {
       switch (item.type) {
         case 'spirit_stones':
@@ -1525,29 +1457,132 @@ mailRouter.post('/claim-all', requireActiveCultivator(), async (c) => {
           break;
       }
     }
+
+    const result = await resourceEngine.gain(
+      user.id,
+      cultivator.id,
+      gains,
+      async (tx: DbTransaction) => {
+        // [安全] 条件更新：仅当 isClaimed=false 时才标记，防止并发双领
+        const [updated] = await tx
+          .update(mails)
+          .set({ isClaimed: true, isRead: true })
+          .where(and(eq(mails.id, mailId), eq(mails.isClaimed, false)))
+          .returning({ id: mails.id });
+
+        if (!updated) {
+          throw new Error('邮件已被领取（并发冲突）');
+        }
+      },
+    );
+
+    if (!result.success) {
+      return c.json({ error: result.errors?.[0] || '领取失败' }, 500);
+    }
+    return c.json({ success: true });
+  } finally {
+    await redis.del(claimLockKey);
+  }
+});
+
+mailRouter.post('/claim-all', requireActiveCultivator(), async (c) => {
+  const user = c.get('user');
+  const cultivator = c.get('cultivator');
+  if (!user || !cultivator) {
+    return c.json({ error: '未授权访问' }, 401);
   }
 
-  const result = await resourceEngine.gain(
-    user.id,
-    cultivator.id,
-    gains,
-    async (tx: DbTransaction) => {
-      await tx
-        .update(mails)
-        .set({ isClaimed: true, isRead: true })
-        .where(inArray(mails.id, claimedMailIds));
-    },
-  );
-
-  if (!result.success) {
-    return c.json({ error: result.errors?.[0] || '一键领取失败' }, 500);
+  // [安全] 分布式锁防止同一用户并发批量领取
+  const claimAllLockKey = `mail:claim-all:lock:${cultivator.id}`;
+  const acquiredLock = await redis.set(claimAllLockKey, 'locked', 'EX', 15, 'NX');
+  if (!acquiredLock) {
+    return c.json({ error: '领取正在处理中，请稍后' }, 429);
   }
 
-  return c.json({
-    success: true,
-    claimedCount: claimedMailIds.length,
-    claimedMailIds,
-  });
+  try {
+    const pendingMails = await getExecutor().query.mails.findMany({
+      where: and(
+        eq(mails.type, 'reward'),
+        eq(mails.cultivatorId, cultivator.id),
+        eq(mails.isClaimed, false),
+      ),
+    });
+
+    const claimableMails = pendingMails.filter((mail) => {
+      const attachments = (mail.attachments as MailAttachment[]) || [];
+      return attachments.length > 0;
+    });
+
+    if (claimableMails.length === 0) {
+      return c.json({ success: true, claimedCount: 0, claimedMailIds: [] });
+    }
+
+    const gains: ResourceOperation[] = [];
+    const claimedMailIds = claimableMails.map((mail) => mail.id);
+    for (const mail of claimableMails) {
+      const attachments = (mail.attachments as MailAttachment[]) || [];
+      for (const item of attachments) {
+        switch (item.type) {
+          case 'spirit_stones':
+            gains.push({ type: 'spirit_stones', value: item.quantity });
+            break;
+          case 'material':
+            gains.push({
+              type: 'material',
+              value: item.quantity,
+              data: item.data as Material,
+            });
+            break;
+          case 'consumable':
+            gains.push({
+              type: 'consumable',
+              value: item.quantity,
+              data: item.data as Consumable,
+            });
+            break;
+          case 'artifact':
+            for (let i = 0; i < (item.quantity || 1); i++) {
+              gains.push({
+                type: 'artifact',
+                value: 1,
+                data: item.data as Artifact,
+              });
+            }
+            break;
+        }
+      }
+    }
+
+    const result = await resourceEngine.gain(
+      user.id,
+      cultivator.id,
+      gains,
+      async (tx: DbTransaction) => {
+        // [安全] 条件更新：仅当 isClaimed=false 时才标记，防止并发双领
+        const updatedRows = await tx
+          .update(mails)
+          .set({ isClaimed: true, isRead: true })
+          .where(and(inArray(mails.id, claimedMailIds), eq(mails.isClaimed, false)))
+          .returning({ id: mails.id });
+
+        if (updatedRows.length !== claimedMailIds.length) {
+          throw new Error('部分邮件已被领取（并发冲突）');
+        }
+      },
+    );
+
+    if (!result.success) {
+      return c.json({ error: result.errors?.[0] || '一键领取失败' }, 500);
+    }
+
+    return c.json({
+      success: true,
+      claimedCount: claimedMailIds.length,
+      claimedMailIds,
+    });
+  } finally {
+    await redis.del(claimAllLockKey);
+  }
 });
 
 mailRouter.post('/read', requireActiveCultivator(), async (c) => {
