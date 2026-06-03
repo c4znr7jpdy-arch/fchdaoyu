@@ -165,6 +165,40 @@ describe('dungeon battle router', () => {
     expect(startDungeonMock).not.toHaveBeenCalled();
   });
 
+  it('does not block the first dungeon only because novice equipment is missing', async () => {
+    listCultivatorTasksMock.mockResolvedValueOnce([
+      {
+        definitionId: 'tutorial_first_dungeon',
+        snapshot: {
+          isCompleted: false,
+        },
+      },
+    ]);
+    startDungeonMock.mockResolvedValueOnce({
+      state: {
+        id: 'dungeon-state-1',
+      },
+    });
+
+    const response = await createApp().request('/api/dungeon/start', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        mapNodeId: 'node-1',
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      state: {
+        id: 'dungeon-state-1',
+      },
+    });
+    expect(startDungeonMock).toHaveBeenCalledWith('cultivator-1', 'node-1');
+  });
+
   it('probes the current dungeon enemy via GET /api/dungeon/battle/probe', async () => {
     probeBattleEnemyMock.mockResolvedValueOnce({
       id: 'enemy-1',

@@ -1,7 +1,6 @@
-import type { NoviceReadinessResource } from '@shared/lib/noviceGuidance';
 import {
   NOVICE_DUNGEON_RESOURCE_THRESHOLD,
-  getNoviceEquipmentState,
+  type NoviceReadinessResource,
 } from '@shared/lib/noviceGuidance';
 import type { Cultivator } from '@shared/types/cultivator';
 import type { TaskInstance } from '@shared/types/task';
@@ -76,23 +75,6 @@ export function getNextNoviceHomeAction(
     };
   }
 
-  const equipmentState = input.cultivator
-    ? getNoviceEquipmentState(input.cultivator)
-    : null;
-  if (
-    task.definitionId !== 'tutorial_starter_supply' &&
-    !equipmentState?.hasEquippedFullSet
-  ) {
-    return {
-      title: '📜 装备入门套装',
-      summary: equipmentState?.hasFullSet
-        ? `先去储物袋装备${equipmentState.unequippedNames.join('、')}，再继续后面的入门步骤。`
-        : '尚未找到完整入门装备，先回任务中心确认入门供给是否已领取。',
-      href: equipmentState?.hasFullSet ? '/game/inventory' : '/game/tasks',
-      label: equipmentState?.hasFullSet ? '装备' : '查看',
-    };
-  }
-
   if (task.definitionId === 'tutorial_starter_supply') {
     return {
       title: '📜 入门供给',
@@ -123,7 +105,7 @@ export function getNextNoviceHomeAction(
 
     return {
       title: '📜 低危探秘',
-      summary: '状态与入门套装已备好，去低危秘境学会查探、撤退与结算。',
+      summary: '状态已备好，去低危秘境学会查探、撤退与结算。入门套装建议穿戴，但不强制。',
       href: '/game/dungeon',
       label: '探秘',
     };

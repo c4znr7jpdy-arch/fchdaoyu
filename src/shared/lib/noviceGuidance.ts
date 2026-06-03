@@ -157,15 +157,13 @@ export function evaluateNoviceReadiness(
   }
 
   if (!noviceEquipmentState.hasFullSet) {
-    reasons.push(
-      `尚未领取完整入门装备：${noviceEquipmentState.missingNames.join('、')}。`,
+    hints.push(
+      `尚未找到完整入门装备：${noviceEquipmentState.missingNames.join('、')}，可回任务中心确认入门供给奖励。`,
     );
-    hints.push('先完成入门供给并领取奖励。');
   } else if (!noviceEquipmentState.hasEquippedFullSet) {
-    reasons.push(
-      `入门装备尚未穿戴完整：${noviceEquipmentState.unequippedNames.join('、')}。`,
+    hints.push(
+      `建议先去储物袋穿戴${noviceEquipmentState.unequippedNames.join('、')}，但也可以直接开始低危探秘。`,
     );
-    hints.push('去储物袋装备入门武器、护甲和护身玉佩，再开始第一次探秘。');
   }
 
   if (!hasRecoveryPill) {

@@ -107,7 +107,7 @@ describe('evaluateNoviceReadiness', () => {
     expect(readiness.hasRecoveryPill).toBe(true);
   });
 
-  it('blocks the first dungeon when hp is low or novice equipment is unequipped', () => {
+  it('blocks the first dungeon when hp is low but only warns about unequipped novice equipment', () => {
     const readiness = evaluateNoviceReadiness({
       cultivator: createCultivator({
         equipped: {
@@ -126,7 +126,40 @@ describe('evaluateNoviceReadiness', () => {
     expect(readiness.reasons).toEqual(
       expect.arrayContaining([
         '气血仅 50%，低于首次探秘建议值。',
+      ]),
+    );
+    expect(readiness.reasons).not.toEqual(
+      expect.arrayContaining([
         '入门装备尚未穿戴完整：入门青竹剑、入门护身布甲、入门护身玉佩。',
+      ]),
+    );
+    expect(readiness.hints).toEqual(
+      expect.arrayContaining([
+        '建议先去储物袋穿戴入门青竹剑、入门护身布甲、入门护身玉佩，但也可以直接开始低危探秘。',
+      ]),
+    );
+  });
+
+  it('does not block the first dungeon when only novice equipment is unequipped', () => {
+    const readiness = evaluateNoviceReadiness({
+      cultivator: createCultivator({
+        equipped: {
+          weapon: null,
+          armor: null,
+          accessory: null,
+        },
+      }),
+      selectedNodeRealm: '炼气',
+      hp: { current: 90, max: 100 },
+      mp: { current: 90, max: 100 },
+      isFirstDungeonTutorialActive: true,
+    });
+
+    expect(readiness.shouldBlock).toBe(false);
+    expect(readiness.reasons).toEqual([]);
+    expect(readiness.hints).toEqual(
+      expect.arrayContaining([
+        '建议先去储物袋穿戴入门青竹剑、入门护身布甲、入门护身玉佩，但也可以直接开始低危探秘。',
       ]),
     );
   });

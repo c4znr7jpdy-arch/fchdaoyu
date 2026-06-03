@@ -123,7 +123,7 @@ describe('getNextNoviceHomeAction', () => {
     });
   });
 
-  it('prioritizes equipping the novice set after starter supply is claimed', () => {
+  it('points to starter alchemy after starter supply is claimed even when novice equipment is unequipped', () => {
     const action = getNextNoviceHomeAction({
       tasks: [
         claimed(tutorialTask('tutorial_starter_supply')),
@@ -139,9 +139,9 @@ describe('getNextNoviceHomeAction', () => {
     });
 
     expect(action).toMatchObject({
-      title: '📜 装备入门套装',
-      href: '/game/inventory',
-      label: '装备',
+      title: '📜 第一炉丹',
+      href: '/game/craft/alchemy',
+      label: '开炉',
     });
   });
 
@@ -177,6 +177,31 @@ describe('getNextNoviceHomeAction', () => {
       title: '📜 探秘准备',
       href: '/game/inn',
       label: '调息',
+    });
+  });
+
+  it('points to the first dungeon even when novice equipment is unequipped', () => {
+    const action = getNextNoviceHomeAction({
+      tasks: [
+        claimed(tutorialTask('tutorial_starter_supply')),
+        claimed(tutorialTask('tutorial_first_alchemy')),
+        tutorialTask('tutorial_first_dungeon'),
+      ],
+      cultivator: createCultivator({
+        equipped: {
+          weapon: null,
+          armor: null,
+          accessory: null,
+        },
+      }),
+      hp: { current: 100, max: 100 },
+      mp: { current: 100, max: 100 },
+    });
+
+    expect(action).toMatchObject({
+      title: '📜 低危探秘',
+      href: '/game/dungeon',
+      label: '探秘',
     });
   });
 

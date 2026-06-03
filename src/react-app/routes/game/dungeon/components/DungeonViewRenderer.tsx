@@ -107,6 +107,10 @@ function renderPreparationNotice(
               </p>
             ) : null}
           </div>
+        ) : readiness?.hints.length ? (
+          <InkNotice tone="info">
+            {readiness.hints.slice(0, 2).join(' ')}
+          </InkNotice>
         ) : null}
         <div className="flex flex-wrap gap-2">
           <InkButton href="/game/inn" variant="secondary">

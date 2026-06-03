@@ -888,7 +888,7 @@ const tutorialDefinitions: TutorialTaskDefinition[] = [
       {
         id: 'starter-supply',
         title: '领取供给',
-        description: '先把入门供给收入囊中，穿戴入门武器、护甲与玉佩后，再按卷宗去试第一炉丹与第一次探秘。',
+        description: '先把入门供给收入囊中。入门武器、护甲与玉佩建议尽早穿戴；第一炉丹与低危探秘可按卷宗继续推进。',
         completionText: '供给已备，可以开始熟悉洞府里的修行循环。',
         links: [
           { label: '看道身状态', kind: 'cultivator' },
