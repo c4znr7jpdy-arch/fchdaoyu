@@ -27,7 +27,19 @@ const MAX_ACTIVE_LISTINGS_PER_SELLER = 5;
 const LISTING_DURATION_HOURS = 48;
 const FEE_RATE = 0.1; // 10% 手续费
 const AUCTION_MIN_QUALITY: Quality = '玄品';
-const AUCTION_MAX_PRICE = 5_000_000; // 单笔最高 500 万灵石
+const AUCTION_MAX_PRICE = 9_999_999; // 全局单笔最高 9999999 灵石
+
+/** 各品质寄售价格上限（神品无上限，受全局 AUCTION_MAX_PRICE 约束） */
+const QUALITY_PRICE_CAPS: Partial<Record<Quality, number>> = {
+  凡品: 5_000,
+  灵品: 10_000,
+  玄品: 20_000,
+  真品: 60_000,
+  地品: 160_000,
+  天品: 400_000,
+  仙品: 800_000,
+  // 神品: 无品质上限，仅受 AUCTION_MAX_PRICE 全局上限约束
+};
 
 // ============================================================================
 // Error Codes
@@ -194,7 +206,7 @@ export async function listItem(input: ListItemInput): Promise<ListItemResult> {
   const { cultivatorId, cultivatorName, itemType, itemId, price, quantity } =
     input;
 
-  // 1. 校验价格
+  // 1. 校验价格（全局上限）
   if (price < 1) {
     throw new AuctionServiceError(
       AuctionError.INVALID_PRICE,
@@ -288,6 +300,15 @@ export async function listItem(input: ListItemInput): Promise<ListItemResult> {
       throw new AuctionServiceError(
         AuctionError.INVALID_ITEM_QUALITY,
         `仅玄品及以上物品可寄售，当前为${itemQuality}`,
+      );
+    }
+
+    // 按品质校验价格上限
+    const qualityCap = QUALITY_PRICE_CAPS[itemQuality];
+    if (qualityCap !== undefined && price > qualityCap) {
+      throw new AuctionServiceError(
+        AuctionError.INVALID_PRICE,
+        `${itemQuality}物品价格不得超过 ${qualityCap.toLocaleString()} 灵石`,
       );
     }
 

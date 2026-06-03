@@ -96,6 +96,20 @@ interface ConsumableListFilters {
 
 const PAGE_SIZE = 20;
 const AUCTION_MIN_QUALITY: Quality = '玄品';
+const AUCTION_MAX_PRICE = 9_999_999;
+
+/** 各品质寄售价格上限（与后端 AuctionService 保持一致） */
+const QUALITY_PRICE_CAPS: Partial<Record<Quality, number>> = {
+  凡品: 5_000,
+  灵品: 10_000,
+  玄品: 20_000,
+  真品: 60_000,
+  地品: 160_000,
+  天品: 400_000,
+  仙品: 800_000,
+  // 神品: 无品质上限，仅受 AUCTION_MAX_PRICE 全局上限约束
+};
+
 const defaultPagination: InventoryPagination = {
   page: 1,
   pageSize: PAGE_SIZE,
@@ -150,6 +164,12 @@ function getItemQuality(item: SelectableItem): Quality {
 
   const quality = (item as Artifact | Consumable).quality || '凡品';
   return quality in QUALITY_ORDER ? quality : '凡品';
+}
+
+/** 获取物品品质对应的价格上限，神品返回全局上限 */
+function getMaxPriceForItem(item: SelectableItem): number {
+  const quality = getItemQuality(item);
+  return QUALITY_PRICE_CAPS[quality] ?? AUCTION_MAX_PRICE;
 }
 
 function getAuctionUnsupportedReason(item: SelectableItem): string | null {
@@ -408,6 +428,12 @@ export function ListItemModal({
     const priceNum = parseInt(price);
     if (isNaN(priceNum) || priceNum < 1) {
       setError('价格必须至少为 1 灵石');
+      return;
+    }
+    const maxPrice = getMaxPriceForItem(selectedItem);
+    if (priceNum > maxPrice) {
+      const quality = getItemQuality(selectedItem);
+      setError(`${quality}物品价格不得超过 ${maxPrice.toLocaleString()} 灵石`);
       return;
     }
 
@@ -1074,6 +1100,15 @@ export function ListItemModal({
               onChange={(v) => setPrice(v)}
               placeholder="请输入价格"
             />
+            {selectedItem && (() => {
+              const maxP = getMaxPriceForItem(selectedItem);
+              const q = getItemQuality(selectedItem);
+              return (
+                <p className="text-ink-secondary mt-1 text-xs">
+                  {q}价格上限: {maxP.toLocaleString()} 灵石
+                </p>
+              );
+            })()}
             {price && !isNaN(parseInt(price)) && parseInt(price) >= 1 && (
               <p className="text-ink-secondary mt-2 text-sm">
                 预计收入: {Math.floor(parseInt(price) * 0.9)} 灵石 (10%手续费)

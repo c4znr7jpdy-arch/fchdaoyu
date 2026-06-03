@@ -29,7 +29,7 @@ const BuySchema = z.object({
 const ListSchema = z.object({
   itemType: z.enum(['material', 'artifact', 'consumable']),
   itemId: z.string().uuid(),
-  price: z.number().int().min(1).max(5_000_000),
+  price: z.number().int().min(1).max(9_999_999),
   quantity: z.number().int().min(1).default(1),
 });
 
