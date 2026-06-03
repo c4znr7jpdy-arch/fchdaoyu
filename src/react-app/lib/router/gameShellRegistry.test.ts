@@ -29,6 +29,7 @@ describe('game shell registry', () => {
     expect(resolveGameShellKind('/game')).toBe('viewport');
     expect(resolveGameShellKind('/game/inventory')).toBe('viewport');
     expect(resolveGameShellKind('/game/bet-battle')).toBe('viewport');
+    expect(resolveGameShellKind('/game/settings')).toBe('viewport');
     expect(resolveGameShellKind('/game/battle')).toBe('combat');
     expect(resolveGameShellKind('/game/battle/challenge')).toBe('combat');
     expect(resolveGameShellKind('/game/battle/battle-1')).toBe('combat');

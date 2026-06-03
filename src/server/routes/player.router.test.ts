@@ -36,6 +36,7 @@ function createApp() {
 function createCultivator(overrides: Partial<Cultivator> = {}): Cultivator {
   return {
     id: 'cultivator-1',
+    createdAt: '2026-01-02T03:04:05.000Z',
     name: '韩立',
     gender: '男',
     realm: '炼气',
@@ -122,6 +123,7 @@ describe('player router', () => {
         activeCultivator: {
           cultivator: expect.objectContaining({
             id: 'cultivator-1',
+            createdAt: '2026-01-02T03:04:05.000Z',
             name: '韩立',
           }),
           display: {
@@ -147,7 +149,10 @@ describe('player router', () => {
         },
         cultivators: [
           expect.objectContaining({
-            cultivator: expect.objectContaining({ id: 'cultivator-1' }),
+            cultivator: expect.objectContaining({
+              id: 'cultivator-1',
+              createdAt: '2026-01-02T03:04:05.000Z',
+            }),
             display: expect.objectContaining({
               attrs: expect.objectContaining({ maxMp: 360 }),
             }),

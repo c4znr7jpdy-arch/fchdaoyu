@@ -498,6 +498,18 @@ export const router = createBrowserRouter(
               )}
             />
             <Route
+              path="settings"
+              lazy={lazyRoute(() => import('@app/routes/game/settings/route'))}
+              handle={scene(
+                {
+                  id: 'settings',
+                  presentation: 'service',
+                  summary: '管理角色、账号与模型配置。',
+                },
+                '系统设置',
+              )}
+            />
+            <Route
               path="settings/feedback"
               lazy={lazyRoute(
                 () => import('@app/routes/game/settings/feedback/route'),
@@ -509,20 +521,6 @@ export const router = createBrowserRouter(
                   summary: '把平衡与体验问题留在此处。',
                 },
                 '意见反馈',
-              )}
-            />
-            <Route
-              path="settings/llm-config"
-              lazy={lazyRoute(
-                () => import('@app/routes/game/settings/llm-config/route'),
-              )}
-              handle={scene(
-                {
-                  id: 'llm-config',
-                  presentation: 'service',
-                  summary: '配置你自己的 LLM Provider 与模型参数。',
-                },
-                '模型配置',
               )}
             />
           </Route>

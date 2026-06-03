@@ -244,6 +244,7 @@ async function assembleCultivatorFromRelations(
 
   return {
     id: cultivatorRecord.id,
+    createdAt: cultivatorRecord.createdAt?.toISOString(),
     name: cultivatorRecord.name,
     title: cultivatorRecord.title || undefined,
     gender: (cultivatorRecord.gender as GenderType) || undefined,
@@ -393,6 +394,7 @@ export function createMinimalCultivator(
 ): Cultivator {
   return {
     id: cultivatorRecord.id,
+    createdAt: cultivatorRecord.createdAt?.toISOString(),
     name: cultivatorRecord.name,
     gender: (cultivatorRecord.gender as Cultivator['gender']) || undefined,
     origin: cultivatorRecord.origin || undefined,
@@ -441,6 +443,7 @@ export function createMinimalCultivator(
     condition: ConditionService.tickNaturalRecovery(
       {
         id: cultivatorRecord.id,
+        createdAt: cultivatorRecord.createdAt?.toISOString(),
         name: cultivatorRecord.name,
         gender: (cultivatorRecord.gender as Cultivator['gender']) || undefined,
         origin: cultivatorRecord.origin || undefined,

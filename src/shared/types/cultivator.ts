@@ -254,6 +254,7 @@ export interface CultivationProgress {
 // 角色完整数据模型（与 basic.md 中 JSON Schema 对齐的运行时结构）
 export interface Cultivator {
   id?: string;
+  createdAt?: string;
   name: string;
   title?: string | null;
   gender: GenderType;

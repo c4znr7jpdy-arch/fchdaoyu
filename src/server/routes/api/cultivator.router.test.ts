@@ -527,7 +527,7 @@ describe('cultivator yield route', () => {
         amount: 1200,
         expGain: 80,
         materialCount: 2,
-        materials: generatedMaterials,
+        materials: [],
       }),
     });
     expect(events.slice(1)).toEqual([
@@ -535,8 +535,15 @@ describe('cultivator yield route', () => {
       { type: 'chunk', text: '清光落袖。' },
     ]);
 
-    // 材料和邮件现在在 SSE 流开始前同步完成，不再走 runDetached
-    expect(runDetachedMock).not.toHaveBeenCalled();
+    // 材料和邮件通过 runDetached 异步处理
+    expect(runDetachedMock).toHaveBeenCalledTimes(1);
+    const detachedTask = runDetachedMock.mock.calls[0]?.[0] as
+      | (() => Promise<void>)
+      | undefined;
+    expect(detachedTask).toBeTypeOf('function');
+
+    await detachedTask?.();
+
     expect(getMaterialQualityChanceMapMock).toHaveBeenCalledWith('元婴');
     expect(generateRandomMaterialsMock).toHaveBeenCalledWith(2, {
       qualityChanceMap,
