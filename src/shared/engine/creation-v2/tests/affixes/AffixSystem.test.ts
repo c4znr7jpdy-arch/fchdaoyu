@@ -96,6 +96,33 @@ describe('AffixEffectTranslator', () => {
     if (resultZhen.type === 'damage') {
       // 真品 qualityOrder=3 → 80 + 3*14 = 122
       expect(resultZhen.params.value.base).toBe(122);
+      expect(resultZhen.params.value.coefficient).toBeCloseTo(1.3);
+    }
+
+    const resultShen = translator.translate(toRolledAffix(def), '神品');
+    if (resultShen.type === 'damage') {
+      expect(resultShen.params.value.coefficient).toBeCloseTo(1.7);
+    }
+  });
+
+  it('translate: skill 治疗与法力燃烧属性系数随品质缩放', () => {
+    const healDef = DEFAULT_AFFIX_REGISTRY.queryById('skill-core-heal')!;
+    const healResult = translator.translate(toRolledAffix(healDef), '真品');
+    expect(healResult.type).toBe('heal');
+    if (healResult.type === 'heal') {
+      expect(healResult.params.value.coefficient).toBeCloseTo(0.455);
+    }
+
+    const manaBurnDef = DEFAULT_AFFIX_REGISTRY.queryById(
+      'skill-variant-water-mana-burn',
+    )!;
+    const manaBurnResult = translator.translate(
+      toRolledAffix(manaBurnDef),
+      '神品',
+    );
+    expect(manaBurnResult.type).toBe('mana_burn');
+    if (manaBurnResult.type === 'mana_burn') {
+      expect(manaBurnResult.params.value.coefficient).toBeCloseTo(2.04);
     }
   });
 

@@ -19,13 +19,23 @@ import {
   StackRule,
 } from '../../contracts/battle';
 import { EXCLUSIVE_GROUP } from '../exclusiveGroups';
-import { AffixDefinition } from '../types';
+import type { AffixDefinition, ScalableParam } from '../types';
 
 const DOT_TICK_LISTENER = {
   eventType: GameplayTags.EVENT.ACTION_PRE,
   scope: GameplayTags.SCOPE.OWNER_AS_ACTOR,
   priority: CREATION_LISTENER_PRIORITIES.dotTick,
 } as const;
+
+const QUALITY_COEFFICIENT_STEP = 0.1;
+
+function qualityScaledCoefficient(base: number): ScalableParam {
+  return {
+    base,
+    scale: 'quality',
+    coefficient: base * QUALITY_COEFFICIENT_STEP,
+  };
+}
 
 export const SKILL_AFFIXES: AffixDefinition[] = [
   // ================================================================
@@ -61,7 +71,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 80, scale: 'quality', coefficient: 14 },
           attribute: AttributeType.MAGIC_ATK,
-          coefficient: 1.0,
+          coefficient: qualityScaledCoefficient(1.0),
         },
       },
     },
@@ -97,7 +107,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 86, scale: 'quality', coefficient: 15 },
           attribute: AttributeType.MAGIC_ATK,
-          coefficient: 1.2,
+          coefficient: qualityScaledCoefficient(1.2),
         },
       },
     },
@@ -131,7 +141,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 78, scale: 'quality', coefficient: 14 },
           attribute: AttributeType.MAGIC_ATK,
-          coefficient: 1.15,
+          coefficient: qualityScaledCoefficient(1.15),
         },
       },
     },
@@ -165,7 +175,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 92, scale: 'quality', coefficient: 15 },
           attribute: AttributeType.MAGIC_ATK,
-          coefficient: 0.94,
+          coefficient: qualityScaledCoefficient(0.94),
         },
       },
     },
@@ -199,7 +209,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 60, scale: 'quality', coefficient: 12 },
           attribute: AttributeType.ATK,
-          coefficient: 1.12,
+          coefficient: qualityScaledCoefficient(1.12),
         },
       },
     },
@@ -233,7 +243,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 65, scale: 'quality', coefficient: 13 },
           attribute: AttributeType.ATK,
-          coefficient: 1.18,
+          coefficient: qualityScaledCoefficient(1.18),
         },
       },
     },
@@ -267,7 +277,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 74, scale: 'quality', coefficient: 13 },
           attribute: AttributeType.MAGIC_ATK,
-          coefficient: 0.95,
+          coefficient: qualityScaledCoefficient(0.95),
         },
       },
     },
@@ -301,7 +311,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 70, scale: 'quality', coefficient: 12 },
           attribute: AttributeType.MAGIC_ATK,
-          coefficient: 1.0,
+          coefficient: qualityScaledCoefficient(1.0),
         },
       },
     },
@@ -335,7 +345,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 82, scale: 'quality', coefficient: 14 },
           attribute: AttributeType.ATK,
-          coefficient: 1.0,
+          coefficient: qualityScaledCoefficient(1.0),
         },
       },
     },
@@ -368,7 +378,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 18, scale: 'quality', coefficient: 7 },
           attribute: AttributeType.MAGIC_ATK,
-          coefficient: 0.35,
+          coefficient: qualityScaledCoefficient(0.35),
         },
       },
     },
@@ -401,7 +411,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 12, scale: 'quality', coefficient: 4 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 1,
+          coefficient: qualityScaledCoefficient(1),
         },
       },
     },
@@ -1418,7 +1428,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 14, scale: 'quality', coefficient: 5 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.1,
+          coefficient: qualityScaledCoefficient(0.1),
         },
       },
     },
@@ -1448,7 +1458,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 12, scale: 'quality', coefficient: 12 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 1.2,
+          coefficient: qualityScaledCoefficient(1.2),
         },
       },
     },
@@ -1631,7 +1641,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 90, scale: 'quality', coefficient: 18 },
           attribute: AttributeType.WILLPOWER,
-          coefficient: 12,
+          coefficient: qualityScaledCoefficient(12),
         },
       },
     },
@@ -1795,7 +1805,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 40, scale: 'quality', coefficient: 9 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.45,
+          coefficient: qualityScaledCoefficient(0.45),
         },
       },
     },
@@ -1828,7 +1838,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
         value: {
           base: { base: 28, scale: 'quality', coefficient: 8 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 1.5,
+          coefficient: qualityScaledCoefficient(1.5),
         },
       },
     },
