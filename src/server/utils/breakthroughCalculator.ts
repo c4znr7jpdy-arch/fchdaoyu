@@ -56,7 +56,6 @@ export interface BreakthroughModifiers {
   realmDifficulty: number; // 境界难度系数
   progressMultiplier: number; // 修为进度系数
   insightMultiplier: number; // 感悟系数
-  wisdomMultiplier: number; // 悟性系数
   demonPenalty: number; // 心魔惩罚
   fateBonus: number; // 命格加成
   pillBonus: number; // 破境丹残留加成
@@ -130,12 +129,7 @@ export function calculateBreakthroughChance(
     progress.comprehension_insight,
   );
 
-  // 5. 悟性系数（增强悟性的作用）
-  const wisdomMultiplier = calculateWisdomMultiplier(
-    cultivator.attributes.wisdom,
-  );
-
-  // 6. 心魔惩罚
+  // 5. 心魔惩罚
   const demonPenalty = progress.inner_demon
     ? hasClearMind
       ? 0.98
@@ -161,7 +155,6 @@ export function calculateBreakthroughChance(
         realmDifficulty *
         progressMultiplier *
       insightMultiplier *
-      wisdomMultiplier *
       demonPenalty +
       fateBonus +
       pillBonus +
@@ -185,7 +178,6 @@ export function calculateBreakthroughChance(
       realmDifficulty,
       progressMultiplier,
       insightMultiplier,
-      wisdomMultiplier,
       demonPenalty,
       fateBonus,
       pillBonus,
@@ -297,17 +289,6 @@ function calculateInsightMultiplier(insight: number): number {
 }
 
 /**
- * 计算悟性系数（增强版）
- *
- * 悟性影响突破成功率，且上限更高
- * 公式：1.0 + log10(悟性) / 30
- */
-function calculateWisdomMultiplier(wisdom: number): number {
-  const modifier = Math.log10(wisdom) / 30;
-  return Math.max(0.8, Math.min(1.2, 1.0 + modifier));
-}
-
-/**
  * 生成突破建议
  */
 function generateRecommendation(
@@ -368,7 +349,6 @@ function createInsufficientExpResult(
       realmDifficulty: 0,
       progressMultiplier: 0,
       insightMultiplier: 0,
-      wisdomMultiplier: 0,
       demonPenalty: 0,
       fateBonus: 0,
       pillBonus: 0,
@@ -393,7 +373,6 @@ function createMaxRealmResult(): BreakthroughChanceResult {
       realmDifficulty: 0,
       progressMultiplier: 0,
       insightMultiplier: 0,
-      wisdomMultiplier: 0,
       demonPenalty: 0,
       fateBonus: 0,
       pillBonus: 0,
@@ -433,7 +412,6 @@ export function getBreakthroughChanceExplanation(
 • 境界难度：×${format('.2f')(modifiers.realmDifficulty)}
 • 修为进度：×${format('.2f')(modifiers.progressMultiplier)}
 • 感悟加成：×${format('.2f')(modifiers.insightMultiplier)}
-• 悟性加成：×${format('.2f')(modifiers.wisdomMultiplier)}
 ${modifiers.demonPenalty < 1.0 ? `• 心魔惩罚：×${format('.2f')(modifiers.demonPenalty)}\n` : ''}
 【建议】${result.recommendation}
   `.trim();

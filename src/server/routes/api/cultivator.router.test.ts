@@ -756,7 +756,6 @@ describe('cultivator retreat route', () => {
           realmDifficulty: 1,
           progressMultiplier: 1,
           insightMultiplier: 1,
-          wisdomMultiplier: 1,
           demonPenalty: 1,
           fateBonus: 0.02,
           pillBonus: 0.04,

@@ -175,7 +175,6 @@ export function useRetreatViewModel(): UseRetreatViewModelReturn {
               result.modifiers.realmDifficulty *
               result.modifiers.progressMultiplier *
               result.modifiers.insightMultiplier *
-              result.modifiers.wisdomMultiplier *
               result.modifiers.demonPenalty +
               result.modifiers.toxicityPenalty,
           ),
