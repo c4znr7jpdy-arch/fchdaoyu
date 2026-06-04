@@ -270,6 +270,7 @@ function createCultivator(): Cultivator {
       counters: {
         longTermPillUsesByRealm: {},
         cultivationPillUsesByRealm: {},
+        longevityPillUsesByRealm: {},
       },
       statuses: [],
       timestamps: {

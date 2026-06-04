@@ -58,6 +58,10 @@ const ConditionOperationSchema = z.discriminatedUnion('type', [
     target: z.enum(['cultivation_exp', 'comprehension_insight']),
     value: z.number(),
   }),
+  z.object({
+    type: z.literal('increase_lifespan'),
+    value: z.number().int().min(1),
+  }),
 ]);
 
 const PillSpecSchema = z.object({

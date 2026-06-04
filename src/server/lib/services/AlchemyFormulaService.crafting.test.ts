@@ -607,6 +607,79 @@ describe('craftFromFormula narrative copy', () => {
     });
   });
 
+  it('scales longevity formula lifespan gains and keeps the isolated longevity quota', async () => {
+    executorState.formulaRows = [
+      {
+        ...executorState.formulaRows[0],
+        name: '延寿丹方',
+        description: '此方偏走木性生机，专为固本延寿。',
+        family: 'longevity',
+        pattern: {
+          targetPropertyVector: [{ key: 'extend_lifespan', weight: 1 }],
+          slotCount: 1,
+        },
+        blueprint: {
+          operations: [
+            { type: 'increase_lifespan', value: 50 },
+            { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
+          ],
+          consumeRules: {
+            scene: 'out_of_battle_only',
+            quotaCategory: 'long_term',
+          },
+          targetStability: 76,
+          targetToxicity: 9,
+        },
+      },
+    ];
+    executorState.materialRows = [
+      {
+        ...executorState.materialRows[0],
+        name: '寿元果',
+        description: '果中生机绵长，可固本延寿，续补命元。',
+        element: '木',
+      },
+    ];
+    redisGetMock.mockResolvedValueOnce(
+      JSON.stringify(
+        createAnalysisPayload({
+          plan: {
+            materialVectors: [
+              {
+                materialRef: 'material_1',
+                materialName: '寿元果',
+                properties: [{ key: 'extend_lifespan', weight: 1 }],
+              },
+            ],
+            intentVector: [],
+            focusMode: 'balanced',
+          },
+          aggregatedPropertyVector: [{ key: 'extend_lifespan', weight: 1 }],
+          fitScore: 1,
+          fitBand: 'aligned',
+        }),
+      ),
+    );
+
+    const result = await craftFromFormula(
+      'cultivator-1',
+      'formula-1',
+      ['m1'],
+      undefined,
+      'analysis-1',
+    );
+
+    expect(result.consumable.name).toBe('延寿');
+    expect(result.consumable.spec.kind).toBe('pill');
+    expect(
+      (result.consumable.spec as PillSpec).consumeRules.quotaCategory,
+    ).toBe('longevity');
+    expect((result.consumable.spec as PillSpec).operations).toContainEqual({
+      type: 'increase_lifespan',
+      value: 57,
+    });
+  });
+
   it('preserves clear_mind status effects when crafting breakthrough formulas', async () => {
     executorState.formulaRows = [
       {

@@ -318,10 +318,19 @@ export default function FateReshapePage() {
                 <p>当前会话：未开启</p>
               </div>
             </GameSceneAsideSection>
-            <GameSceneAsideSection title="操作规则" className="text-sm leading-7">
-              <p>开启后会消耗 1 张逆命符，并给出 6 个候选命格。</p>
-              <p className="mt-2">需从中选 3 个，直接全量替换当前命格。</p>
-            </GameSceneAsideSection>
+            <GameSceneAsideSection
+              title="操作规则"
+              className="text-sm leading-7"
+              help={{
+                title: '命格重塑操作规则',
+                content: (
+                  <div className="space-y-2 text-sm leading-7">
+                    <p>开启后会消耗 1 张逆命符，并给出 6 个候选命格。</p>
+                    <p>需从中选 3 个，直接全量替换当前命格。</p>
+                  </div>
+                ),
+              }}
+            />
           </>
         ) : (
           <>
@@ -332,10 +341,19 @@ export default function FateReshapePage() {
                 <p>失效时间：{formatExpireTime(session.expiresAt)}</p>
               </div>
             </GameSceneAsideSection>
-            <GameSceneAsideSection title="确认条件" className="text-sm leading-7">
-              <p>先选满 3 个命格，才可确认全量替换。</p>
-              <p className="mt-2">放弃或超时都会结束本次会话，消耗不返还。</p>
-            </GameSceneAsideSection>
+            <GameSceneAsideSection
+              title="确认条件"
+              className="text-sm leading-7"
+              help={{
+                title: '命格重塑确认条件',
+                content: (
+                  <div className="space-y-2 text-sm leading-7">
+                    <p>先选满 3 个命格，才可确认全量替换。</p>
+                    <p>放弃或超时都会结束本次会话，消耗不返还。</p>
+                  </div>
+                ),
+              }}
+            />
           </>
         )
       }

@@ -127,6 +127,7 @@ describe('CultivatorDisplayAdapter', () => {
       counters: {
         longTermPillUsesByRealm: {},
         cultivationPillUsesByRealm: {},
+        longevityPillUsesByRealm: {},
       },
       statuses: [],
       timestamps: {},
@@ -201,6 +202,7 @@ describe('CultivatorDisplayAdapter', () => {
       counters: {
         longTermPillUsesByRealm: {},
         cultivationPillUsesByRealm: {},
+        longevityPillUsesByRealm: {},
       },
       statuses: [],
       timestamps: {},

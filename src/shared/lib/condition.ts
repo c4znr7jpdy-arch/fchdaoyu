@@ -99,6 +99,7 @@ export function getNaturalRecoveryStatusMultiplier(
         counters: {
           longTermPillUsesByRealm: {},
           cultivationPillUsesByRealm: {},
+          longevityPillUsesByRealm: {},
         },
         statuses: [],
         timestamps: {},

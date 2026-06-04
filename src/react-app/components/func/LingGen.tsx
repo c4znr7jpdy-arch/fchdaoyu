@@ -36,26 +36,28 @@ export function LingGen({
     return null;
   }
 
+  const rootHelpContent = (
+    <div className="text-ink-secondary flex flex-col gap-2 text-sm">
+      <p>灵根是修仙者感应天地灵气的根本。</p>
+      <p>
+        <span className="text-ink font-bold">属性：</span>
+        决定了可修炼的功法属性与法术威力加成（如同属性法术伤害提升）。
+      </p>
+      <p>
+        <span className="text-ink font-bold">强度：</span>
+        灵根越纯净（强度越高），修炼速度越快，感应灵气越容易。
+      </p>
+      <p>单一属性的天灵根修炼速度最快，多属性杂灵根则较慢。</p>
+      <p>
+        灵根有共有 {ELEMENT_VALUES.join('、')}, 其中 风、雷、冰为变异灵根
+      </p>
+    </div>
+  );
+
   const showRootHelp = () => {
     openDialog({
       title: '灵根说明',
-      content: (
-        <div className="text-ink-secondary flex flex-col gap-2 text-sm">
-          <p>灵根是修仙者感应天地灵气的根本。</p>
-          <p>
-            <span className="text-ink font-bold">属性：</span>
-            决定了可修炼的功法属性与法术威力加成（如同属性法术伤害提升）。
-          </p>
-          <p>
-            <span className="text-ink font-bold">强度：</span>
-            灵根越纯净（强度越高），修炼速度越快，感应灵气越容易。
-          </p>
-          <p>单一属性的天灵根修炼速度最快，多属性杂灵根则较慢。</p>
-          <p>
-            灵根有共有 {ELEMENT_VALUES.join('、')}, 其中 风、雷、冰为变异灵根
-          </p>
-        </div>
-      ),
+      content: rootHelpContent,
       confirmLabel: '明悟',
     });
   };
@@ -91,24 +93,28 @@ export function LingGen({
   );
 
   if (showSection) {
-    const sectionContent = (
-      <>
-        {content}
-        <InkButton onClick={showRootHelp}>💡 灵根说明</InkButton>
-      </>
-    );
-
     if (sectionVariant === 'scene') {
       return (
-        <GameSceneSection title={title} contentClassName="space-y-3">
-          {sectionContent}
+        <GameSceneSection
+          title={title}
+          contentClassName="space-y-3"
+          help={{
+            title: '灵根说明',
+            content: rootHelpContent,
+            confirmLabel: '明悟',
+          }}
+        >
+          {content}
         </GameSceneSection>
       );
     }
 
     return (
       <InkSection title={title}>
-        {sectionContent}
+        <>
+          {content}
+          <InkButton onClick={showRootHelp}>💡 灵根说明</InkButton>
+        </>
       </InkSection>
     );
   }

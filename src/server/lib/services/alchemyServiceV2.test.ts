@@ -380,4 +380,45 @@ describe('synthesizeAlchemy', () => {
       ),
     ).toBe(false);
   });
+
+  it('turns lifespan routes into longevity pills with a fixed rolled lifespan value', () => {
+    const result = synthesizeAlchemy(
+      [
+        createMaterial({
+          id: 'm1',
+          materialRef: 'material_1',
+          name: '寿元果',
+          description: '果中生机绵长，可固本延寿，续补命元。',
+          element: '木',
+          type: 'herb',
+        }),
+      ],
+      {
+        materialVectors: [
+          {
+            materialRef: 'material_1',
+            materialName: '寿元果',
+            properties: [{ key: 'extend_lifespan', weight: 1 }],
+          },
+        ],
+        intentVector: [{ key: 'extend_lifespan', weight: 1 }],
+        focusMode: 'focused',
+      },
+      '真品',
+      '金丹',
+      { rng: () => 0.5 },
+    );
+
+    expect(result.family).toBe('longevity');
+    expect(result.propertyVector).toEqual([{ key: 'extend_lifespan', weight: 1 }]);
+    expect(result.operations).toContainEqual({
+      type: 'increase_lifespan',
+      value: 50,
+    });
+    expect(result.operations).toContainEqual({
+      type: 'change_gauge',
+      gauge: 'pillToxicity',
+      delta: 2,
+    });
+  });
 });

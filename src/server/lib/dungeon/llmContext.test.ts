@@ -75,6 +75,7 @@ function createDungeonState(): DungeonState {
       counters: {
         longTermPillUsesByRealm: {},
         cultivationPillUsesByRealm: {},
+        longevityPillUsesByRealm: {},
       },
       statuses: [],
       timestamps: {

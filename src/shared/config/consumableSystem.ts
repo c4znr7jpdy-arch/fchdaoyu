@@ -51,3 +51,26 @@ export const CONSUMABLE_TOXICITY_DEFAULTS = {
   detox: -8,
   poison_control: -5,
 } as const;
+
+export const LIFESPAN_PILL_GAIN_RANGE_BY_QUALITY: Record<
+  Quality,
+  { min: number; max: number }
+> = {
+  凡品: { min: 6, max: 10 },
+  灵品: { min: 12, max: 20 },
+  玄品: { min: 24, max: 36 },
+  真品: { min: 40, max: 60 },
+  地品: { min: 70, max: 95 },
+  天品: { min: 105, max: 135 },
+  仙品: { min: 145, max: 175 },
+  神品: { min: 180, max: 200 },
+};
+
+export function rollLifespanPillGain(
+  quality: Quality,
+  rng: () => number = Math.random,
+): number {
+  const range = LIFESPAN_PILL_GAIN_RANGE_BY_QUALITY[quality];
+  const roll = Math.max(0, Math.min(0.999999, rng()));
+  return range.min + Math.floor(roll * (range.max - range.min + 1));
+}

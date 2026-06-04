@@ -98,6 +98,36 @@ describe('toPillDisplayModel', () => {
     expect(model.detailGroups[1].lines).not.toContain('丹毒 -18');
   });
 
+  it('renders longevity pills with lifespan gain and isolated quota text', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'longevity',
+        operations: [
+          { type: 'increase_lifespan', value: 58 },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          quotaCategory: 'longevity',
+        },
+        alchemyMeta: {
+          source: 'improvised',
+          sourceMaterials: ['寿元果'],
+          stability: 76,
+          toxicityRating: 18,
+          tags: ['extend_lifespan', 'longevity'],
+        },
+      }),
+      { realm: '筑基' },
+    );
+
+    expect(model.primaryEffect).toBe('寿元 +58 年');
+    expect(model.keywordLabels).toEqual(['延寿', '寿元 +58 年', '寿元丹上限 8 次']);
+    expect(model.detailGroups[0].lines).toContain('寿元 +58 年');
+    expect(model.detailGroups[1].lines).toContain('寿元丹服用上限：8 次');
+  });
+
   it('uses condition templates for breakthrough status names', () => {
     const model = toPillDisplayModel(
       createPill({

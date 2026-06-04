@@ -306,10 +306,19 @@ export default function GongfaCreationPage() {
               <p>待处理新法：{pendingReplaceHref ? '有' : '无'}</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="参悟提醒" className="text-sm leading-7">
-            <p>若已有待纳入的新功法，先处理旧法取舍，再继续开悟。</p>
-            <p className="mt-2">缺底稿时可去问法寻卷补齐。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="参悟提醒"
+            className="text-sm leading-7"
+            help={{
+              title: '功法参悟提醒',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>若已有待纳入的新功法，先处理旧法取舍，再继续开悟。</p>
+                  <p>缺底稿时可去问法寻卷补齐。</p>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

@@ -30,14 +30,35 @@ export default function EnlightenmentPage() {
               <p>功法参悟：更偏根基、修炼速度与长期属性。</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="先做什么" className="text-sm leading-7">
-            <p>若缺秘籍底稿，宜先去问法寻卷。</p>
-            <p className="mt-2">若已有待纳入的新法门，处理取舍优先级最高。</p>
-          </GameSceneAsideSection>
-          <GameSceneAsideSection title="藏经细则" className="text-sm leading-7">
-            <p>神通推演更偏施法方向，功法参悟更偏根基与长期成长。</p>
-            <p className="mt-2">缺秘籍时仍可参悟，但底稿越足，成果越稳。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="藏经说明"
+            className="text-sm leading-7"
+            help={{
+              title: '藏经阁参悟说明',
+              content: (
+                <div className="space-y-3 text-sm leading-7">
+                  <div>
+                    <p className="text-ink font-medium">先做什么</p>
+                    <p className="text-ink-secondary">
+                      若缺秘籍底稿，宜先去问法寻卷。
+                    </p>
+                    <p className="text-ink-secondary">
+                      若已有待纳入的新法门，处理取舍优先级最高。
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-ink font-medium">藏经细则</p>
+                    <p className="text-ink-secondary">
+                      神通推演更偏施法方向，功法参悟更偏根基与长期成长。
+                    </p>
+                    <p className="text-ink-secondary">
+                      缺秘籍时仍可参悟，但底稿越足，成果越稳。
+                    </p>
+                  </div>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

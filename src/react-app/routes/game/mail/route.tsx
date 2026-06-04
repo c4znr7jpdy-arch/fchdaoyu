@@ -224,10 +224,19 @@ export default function MailPage() {
               <p>待领附件：{pendingAttachments} 封</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="操作说明" className="text-sm leading-7">
-            <p>点击玉简可展开全文，未读会即时回写。</p>
-            <p className="mt-2">奖励类来函支持就地领取，不必离开当前场景。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="操作说明"
+            className="text-sm leading-7"
+            help={{
+              title: '传音玉简操作说明',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>点击玉简可展开全文，未读会即时回写。</p>
+                  <p>奖励类来函支持就地领取，不必离开当前场景。</p>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

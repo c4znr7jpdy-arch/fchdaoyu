@@ -73,6 +73,10 @@ function getProgressTargetLabel(
     : '道心感悟';
 }
 
+function getLifespanGainText(value: number): string {
+  return `寿元 +${Math.max(0, Math.floor(value))} 年`;
+}
+
 function getBreakthroughPurposeLabel(spec: PillSpec): string | null {
   return (
     spec.alchemyMeta.breakthroughLabel ??
@@ -100,6 +104,8 @@ export function getPillFamilyLabel(family: PillFamily): string {
       return '炼体';
     case 'marrow_wash':
       return '洗髓';
+    case 'longevity':
+      return '延寿';
     case 'hybrid':
       return '复合';
   }
@@ -113,6 +119,8 @@ export function describePillOperation(operation: ConditionOperation): string {
       return getGaugeChangeText(operation.delta);
     case 'gain_progress':
       return `${getProgressTargetLabel(operation.target)} +${operation.value}`;
+    case 'increase_lifespan':
+      return getLifespanGainText(operation.value);
     case 'remove_status':
       return `化解「${getStatusName(operation.status)}」`;
     case 'add_status':
@@ -212,12 +220,34 @@ function buildPrimaryEffect(spec: PillSpec): string {
       );
       return advance ? describePillOperation(advance) : '推进修炼进度';
     }
+    case 'longevity': {
+      const lifespan = spec.operations.find(
+        (
+          operation,
+        ): operation is Extract<
+          ConditionOperation,
+          { type: 'increase_lifespan' }
+        > => operation.type === 'increase_lifespan',
+      );
+      return lifespan ? describePillOperation(lifespan) : '延续寿元';
+    }
   }
 }
 
 function buildKeywordLabels(spec: PillSpec, realm?: RealmType): string[] {
+  const lifespan = spec.operations.find(
+    (
+      operation,
+    ): operation is Extract<
+      ConditionOperation,
+      { type: 'increase_lifespan' }
+    > => operation.type === 'increase_lifespan',
+  );
   const labels = [
     getPillFamilyLabel(spec.family),
+    spec.family === 'longevity' && lifespan
+      ? getLifespanGainText(lifespan.value)
+      : null,
     spec.family === 'breakthrough' ? getBreakthroughPurposeLabel(spec) : null,
     getPillUsageKeywordLabel(spec.consumeRules.quotaCategory, realm),
   ].filter((label): label is string => Boolean(label));

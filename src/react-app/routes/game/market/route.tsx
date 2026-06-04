@@ -393,16 +393,25 @@ export default function MarketPage() {
               <p>刷新倒计时：{timeLeft}</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="入场条件" className="text-sm leading-7">
-            {access.allowed ? (
-              <p>当前层可自由进入，宜趁刷新前比价出手。</p>
-            ) : (
-              <p>{access.reason || '当前层不可进入'}</p>
-            )}
-            {typeof access.entryFee === 'number' ? (
-              <p className="mt-2">入场耗费：{access.entryFee} 灵石</p>
-            ) : null}
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="入场条件"
+            className="text-sm leading-7"
+            help={{
+              title: '坊市入场条件',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  {access.allowed ? (
+                    <p>当前层可自由进入，宜趁刷新前比价出手。</p>
+                  ) : (
+                    <p>{access.reason || '当前层不可进入'}</p>
+                  )}
+                  {typeof access.entryFee === 'number' ? (
+                    <p>入场耗费：{access.entryFee} 灵石</p>
+                  ) : null}
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

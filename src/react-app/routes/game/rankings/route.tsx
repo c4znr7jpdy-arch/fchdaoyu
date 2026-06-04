@@ -8,7 +8,6 @@ import {
   GameSceneNote,
   GameSceneTabs,
 } from '@app/components/game-shell';
-import { InkModal } from '@app/components/layout';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
   InkButton,
@@ -49,7 +48,6 @@ export default function RankingsPage() {
   const [error, setError] = useState<string>('');
   const [probing, setProbing] = useState<string | null>(null);
   const [dialog, setDialog] = useState<InkDialogState | null>(null);
-  const [showRules, setShowRules] = useState(false);
   const [selectedItemDetail, setSelectedItemDetail] =
     useState<ItemDetailPayload | null>(null);
 
@@ -369,11 +367,49 @@ export default function RankingsPage() {
                 ) : null}
               </div>
             </GameSceneAsideSection>
-            <GameSceneAsideSection title="结算奖励" className="text-sm leading-7">
+            <GameSceneAsideSection
+              title="结算奖励"
+              className="text-sm leading-7"
+              help={{
+                title: '万界金榜奖励规则',
+                content: (
+                  <div className="space-y-3">
+                    <InkNotice tone="info" className="text-sm">
+                      每日凌晨自动结算，根据排名发放灵石奖励。
+                    </InkNotice>
+                    <InkList dense>
+                      <InkListItem
+                        title="🏆 第一名"
+                        meta={`${RANKING_REWARDS[1]} 灵石`}
+                      />
+                      <InkListItem
+                        title="🥈 第二名"
+                        meta={`${RANKING_REWARDS[2]} 灵石`}
+                      />
+                      <InkListItem
+                        title="🥉 第三名"
+                        meta={`${RANKING_REWARDS[3]} 灵石`}
+                      />
+                      <InkListItem
+                        title="✨ 第 4-10 名"
+                        meta={`${RANKING_REWARDS['4-10']} 灵石`}
+                      />
+                      <InkListItem
+                        title="🔹 第 11-50 名"
+                        meta={`${RANKING_REWARDS['11-50']} 灵石`}
+                      />
+                      <InkListItem
+                        title="🔸 第 51-100 名"
+                        meta={`${RANKING_REWARDS['51-100']} 灵石`}
+                      />
+                    </InkList>
+                  </div>
+                ),
+              }}
+            >
               <p>第一名：{RANKING_REWARDS[1]} 灵石</p>
               <p>第二名：{RANKING_REWARDS[2]} 灵石</p>
               <p>第三名：{RANKING_REWARDS[3]} 灵石</p>
-              <p className="mt-2">更多档位可点下方“奖励说明”查看。</p>
             </GameSceneAsideSection>
           </>
         }
@@ -389,9 +425,6 @@ export default function RankingsPage() {
             disabled={loadingRankings}
           >
             {loadingRankings ? '推演中…' : '刷新榜单'}
-          </InkButton>
-          <InkButton onClick={() => setShowRules(true)} variant="secondary">
-            奖励说明
           </InkButton>
         </div>
 
@@ -491,33 +524,6 @@ export default function RankingsPage() {
         onClose={() => setSelectedItemDetail(null)}
         viewerRealm={cultivator?.realm}
       />
-
-      <InkModal
-        isOpen={showRules}
-        onClose={() => setShowRules(false)}
-        title="万界金榜奖励规则"
-      >
-        <InkNotice tone="info" className="text-sm">
-          每日凌晨自动结算，根据排名发放灵石奖励。
-        </InkNotice>
-        <InkList dense>
-          <InkListItem title="🏆 第一名" meta={`${RANKING_REWARDS[1]} 灵石`} />
-          <InkListItem title="🥈 第二名" meta={`${RANKING_REWARDS[2]} 灵石`} />
-          <InkListItem title="🥉 第三名" meta={`${RANKING_REWARDS[3]} 灵石`} />
-          <InkListItem
-            title="✨ 第 4-10 名"
-            meta={`${RANKING_REWARDS['4-10']} 灵石`}
-          />
-          <InkListItem
-            title="🔹 第 11-50 名"
-            meta={`${RANKING_REWARDS['11-50']} 灵石`}
-          />
-          <InkListItem
-            title="🔸 第 51-100 名"
-            meta={`${RANKING_REWARDS['51-100']} 灵石`}
-          />
-        </InkList>
-      </InkModal>
     </>
   );
 }

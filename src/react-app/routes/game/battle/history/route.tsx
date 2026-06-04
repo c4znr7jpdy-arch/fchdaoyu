@@ -84,9 +84,18 @@ export default function BattleHistoryPage() {
               <p>收录战绩：{records.length} 场</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="查看建议" className="text-sm leading-7">
-            <p>想继续挑战可回天骄榜；想看单场过程则点入战绩卡片。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="查看建议"
+            className="text-sm leading-7"
+            help={{
+              title: '战绩查看建议',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>想继续挑战可回天骄榜；想看单场过程则点入战绩卡片。</p>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

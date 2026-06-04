@@ -116,6 +116,9 @@ function OperationEditor({
           <option value="gain_progress">
             {getOperationTypeAlias('gain_progress')}
           </option>
+          <option value="increase_lifespan">
+            {getOperationTypeAlias('increase_lifespan')}
+          </option>
         </InkSelect>
 
         {operation.type === 'restore_resource' ? (
@@ -303,6 +306,15 @@ function OperationEditor({
               placeholder="例如：120"
             />
           </>
+        ) : null}
+
+        {operation.type === 'increase_lifespan' ? (
+          <InkInput
+            label="寿元年数"
+            value={operation.value}
+            onChange={(value) => setField('value', value)}
+            placeholder="例如：60"
+          />
         ) : null}
       </div>
 

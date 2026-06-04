@@ -32,7 +32,8 @@ describe('dungeon battle init helpers', () => {
         },
         counters: {
           longTermPillUsesByRealm: {},
-      cultivationPillUsesByRealm: {},
+          cultivationPillUsesByRealm: {},
+          longevityPillUsesByRealm: {},
         },
         statuses: [weakness],
         timestamps: {

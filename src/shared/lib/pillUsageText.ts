@@ -13,6 +13,10 @@ export function getCultivationPillUsageLimit(realm: RealmType): number {
   return CULTIVATION_PILL_USAGE_LIMITS[realm];
 }
 
+export function getLongevityPillUsageLimit(realm: RealmType): number {
+  return REALM_PILL_USAGE_LIMITS[realm];
+}
+
 export function getPillUsageKeywordLabel(
   quotaCategory: PillQuotaCategory,
   realm?: RealmType,
@@ -22,14 +26,18 @@ export function getPillUsageKeywordLabel(
   }
 
   if (!realm) {
-    return '服用上限随境界变化';
+    return quotaCategory === 'longevity'
+      ? '寿元丹上限随境界变化'
+      : '服用上限随境界变化';
   }
 
-  return `服用上限 ${
-    quotaCategory === 'cultivation'
-      ? getCultivationPillUsageLimit(realm)
-      : getRealmPillUsageLimit(realm)
-  } 次`;
+  if (quotaCategory === 'longevity') {
+    return `寿元丹上限 ${getLongevityPillUsageLimit(realm)} 次`;
+  }
+
+  return `服用上限 ${quotaCategory === 'cultivation'
+    ? getCultivationPillUsageLimit(realm)
+    : getRealmPillUsageLimit(realm)} 次`;
 }
 
 export function getPillUsageRuleText(
@@ -41,14 +49,18 @@ export function getPillUsageRuleText(
   }
 
   if (!realm) {
-    return '服用上限：随当前境界变化';
+    return quotaCategory === 'longevity'
+      ? '寿元丹服用上限：随当前境界变化'
+      : '服用上限：随当前境界变化';
   }
 
-  return `服用上限：${
-    quotaCategory === 'cultivation'
-      ? getCultivationPillUsageLimit(realm)
-      : getRealmPillUsageLimit(realm)
-  } 次`;
+  if (quotaCategory === 'longevity') {
+    return `寿元丹服用上限：${getLongevityPillUsageLimit(realm)} 次`;
+  }
+
+  return `服用上限：${quotaCategory === 'cultivation'
+    ? getCultivationPillUsageLimit(realm)
+    : getRealmPillUsageLimit(realm)} 次`;
 }
 
 export function getPillUsageLimitReachedText(
@@ -57,6 +69,10 @@ export function getPillUsageLimitReachedText(
   limit: number,
 ): string {
   return `${
-    quotaCategory === 'cultivation' ? '该修为丹' : '该丹药'
+    quotaCategory === 'cultivation'
+      ? '该修为丹'
+      : quotaCategory === 'longevity'
+        ? '该寿元丹'
+        : '该丹药'
   }服用次数已达上限（当前境界 ${used}/${limit}），无法继续服用。`;
 }

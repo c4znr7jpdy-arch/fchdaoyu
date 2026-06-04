@@ -210,6 +210,40 @@ function createTemperingPill(): Consumable {
   };
 }
 
+function createLongevityPill(): Consumable {
+  return {
+    id: 'pill-longevity',
+    name: '延寿丹',
+    type: '丹药',
+    quality: '真品',
+    quantity: 1,
+    description: '固本延寿。',
+    spec: {
+      kind: 'pill',
+      family: 'longevity',
+      operations: [
+        { type: 'increase_lifespan', value: 48 },
+        { type: 'change_gauge', gauge: 'pillToxicity', delta: 9 },
+      ],
+      consumeRules: {
+        scene: 'out_of_battle_only',
+        quotaCategory: 'longevity',
+      },
+      alchemyMeta: {
+        source: 'improvised',
+        sourceMaterials: ['寿元果'],
+        analysisVersion: 2,
+        propertyVector: [{ key: 'extend_lifespan', weight: 1 }],
+        sourceMaterialVectors: [],
+        dominantElement: '木',
+        stability: 76,
+        toxicityRating: 18,
+        tags: ['extend_lifespan', 'longevity'],
+      },
+    },
+  };
+}
+
 describe('PillOperationExecutor', () => {
   it('restores percent-based hp from max hp instead of filling to full', () => {
     const cultivator = createCultivator();
@@ -332,6 +366,7 @@ describe('PillOperationExecutor', () => {
           筑基: 3,
         },
         cultivationPillUsesByRealm: {},
+        longevityPillUsesByRealm: {},
       },
     };
 
@@ -349,6 +384,55 @@ describe('PillOperationExecutor', () => {
         (status) => status.key === 'clear_mind',
       ),
     ).toBe(true);
+  });
+
+  it('applies longevity pills to lifespan and an isolated longevity quota counter', () => {
+    const cultivator = createCultivator();
+
+    const result = PillOperationExecutor.execute(
+      cultivator,
+      createLongevityPill(),
+      new Date('2026-05-25T12:00:00.000Z'),
+    );
+
+    expect(result.cultivator.lifespan).toBe(228);
+    expect(
+      result.cultivator.condition?.counters.longevityPillUsesByRealm.筑基,
+    ).toBe(1);
+    expect(
+      result.cultivator.condition?.counters.longTermPillUsesByRealm.筑基 ?? 0,
+    ).toBe(0);
+    expect(
+      result.cultivator.condition?.counters.cultivationPillUsesByRealm.筑基 ?? 0,
+    ).toBe(0);
+  });
+
+  it('rejects longevity pills at their isolated quota limit without mutating lifespan', () => {
+    const cultivator = createCultivator();
+    cultivator.condition = {
+      ...ConditionService.normalizeCondition(cultivator),
+      counters: {
+        longTermPillUsesByRealm: {
+          筑基: 7,
+        },
+        cultivationPillUsesByRealm: {},
+        longevityPillUsesByRealm: {
+          筑基: 8,
+        },
+      },
+    };
+
+    expect(() =>
+      PillOperationExecutor.execute(
+        cultivator,
+        createLongevityPill(),
+        new Date('2026-05-25T12:00:00.000Z'),
+      ),
+    ).toThrow('该寿元丹服用次数已达上限');
+
+    expect(cultivator.lifespan).toBe(180);
+    expect(cultivator.condition.counters.longTermPillUsesByRealm.筑基).toBe(7);
+    expect(cultivator.condition.counters.longevityPillUsesByRealm.筑基).toBe(8);
   });
 
   it('levels up tempering tracks and applies the matching attribute reward', () => {

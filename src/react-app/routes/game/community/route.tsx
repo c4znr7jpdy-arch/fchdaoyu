@@ -61,10 +61,19 @@ export default function CommunityPage() {
       title="玩家交流群"
       description="与道友同修，共论仙途。这里收束了当前 QQ 社群入口与加群提醒，方便离开洞府后继续论道。"
       aside={
-        <GameSceneAsideSection title="入群提醒" className="text-sm leading-7">
-          <p>复制群号后，可在 QQ 内直接搜索群号申请入群。</p>
-          <p className="mt-2">若管理员调整官方群号，此页会同步展示最新配置。</p>
-        </GameSceneAsideSection>
+        <GameSceneAsideSection
+          title="入群提醒"
+          className="text-sm leading-7"
+          help={{
+            title: '玩家交流群入群提醒',
+            content: (
+              <div className="space-y-2 text-sm leading-7">
+                <p>复制群号后，可在 QQ 内直接搜索群号申请入群。</p>
+                <p>若管理员调整官方群号，此页会同步展示最新配置。</p>
+              </div>
+            ),
+          }}
+        />
       }
     >
       <div className="space-y-4">

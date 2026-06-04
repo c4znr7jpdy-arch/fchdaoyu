@@ -67,6 +67,7 @@ function createCondition(overrides: Partial<CultivatorCondition> = {}): Cultivat
     counters: {
       longTermPillUsesByRealm: {},
       cultivationPillUsesByRealm: {},
+      longevityPillUsesByRealm: {},
     },
     statuses: [],
     timestamps: {

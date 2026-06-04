@@ -403,10 +403,19 @@ export default function ManualDrawPage() {
               <p>当前卷池：{currentConfig.tabLabel}</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="卷池规则" className="text-sm leading-7">
-            <p>{currentConfig.usageHint}</p>
-            <p className="mt-2">抽出的秘籍会直接落入材料背包，供藏经阁后续使用。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="卷池规则"
+            className="text-sm leading-7"
+            help={{
+              title: `${currentConfig.tabLabel}卷池规则`,
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>{currentConfig.usageHint}</p>
+                  <p>抽出的秘籍会直接落入材料背包，供藏经阁后续使用。</p>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >
@@ -448,13 +457,6 @@ export default function ManualDrawPage() {
                   </p>
                 </div>
               </div>
-              <div className="border-gold/30 bg-bgpaper mt-3 border border-dashed px-4 py-3">
-                <p className="text-ink-secondary text-xs">规则说明</p>
-                <p className="text-ink-primary mt-1 text-sm leading-6">
-                  {currentConfig.usageHint}
-                </p>
-              </div>
-
               <div className="mt-5 flex flex-wrap gap-3">
                 <InkButton
                   disabled={pendingDrawCount !== null || currentCount < 1}

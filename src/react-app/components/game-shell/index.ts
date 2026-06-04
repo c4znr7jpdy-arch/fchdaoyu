@@ -11,6 +11,7 @@ export {
 } from './GameSceneFrame';
 export {
   GameSceneSection,
+  type GameSceneHelp,
   type GameSceneSectionProps,
 } from './GameSceneSection';
 export {

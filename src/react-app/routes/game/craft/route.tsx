@@ -30,14 +30,35 @@ export default function CraftPage() {
               <p>炼丹房：草木灵药调性，求疗伤、破境与炼体诸丹。</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="造物要诀" className="text-sm leading-7">
-            <p>品阶越高、五行越契合，成品越稳。</p>
-            <p className="mt-2">神念描述会直接影响成品的方向与气质。</p>
-          </GameSceneAsideSection>
-          <GameSceneAsideSection title="造物细则" className="text-sm leading-7">
-            <p>造物需消耗对应灵材，材料品阶与五行属性都会影响成品品质。</p>
-            <p className="mt-2">炼器铸骨立形，炼丹调和药性；决定路线后再入炉更清楚。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="造物说明"
+            className="text-sm leading-7"
+            help={{
+              title: '造物要诀与细则',
+              content: (
+                <div className="space-y-3 text-sm leading-7">
+                  <div>
+                    <p className="text-ink font-medium">造物要诀</p>
+                    <p className="text-ink-secondary">
+                      品阶越高、五行越契合，成品越稳。
+                    </p>
+                    <p className="text-ink-secondary">
+                      神念描述会直接影响成品的方向与气质。
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-ink font-medium">造物细则</p>
+                    <p className="text-ink-secondary">
+                      造物需消耗对应灵材，材料品阶与五行属性都会影响成品品质。
+                    </p>
+                    <p className="text-ink-secondary">
+                      炼器铸骨立形，炼丹调和药性；决定路线后再入炉更清楚。
+                    </p>
+                  </div>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

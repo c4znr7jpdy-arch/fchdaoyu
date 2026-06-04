@@ -30,6 +30,7 @@ const PILL_FAMILY_LABELS: Record<ConsumablePillDraft['family'], string> = {
   breakthrough: '破境',
   tempering: '炼体',
   marrow_wash: '洗髓',
+  longevity: '延寿',
   hybrid: '复合',
 };
 
@@ -40,6 +41,7 @@ const PILL_QUOTA_CATEGORY_LABELS: Record<
   none: '不限额',
   long_term: '境界总上限',
   cultivation: '修为丹上限',
+  longevity: '寿元丹上限',
 };
 
 const ALCHEMY_SOURCE_LABELS: Record<
@@ -57,6 +59,7 @@ const OPERATION_TYPE_LABELS: Record<DraftOperationType, string> = {
   add_status: '添加状态',
   advance_track: '推进炼体',
   gain_progress: '增加进度',
+  increase_lifespan: '增加寿元',
 };
 
 const DURATION_KIND_LABELS = {

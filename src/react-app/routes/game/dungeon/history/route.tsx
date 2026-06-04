@@ -203,10 +203,19 @@ export default function DungeonHistoryPage() {
               <p>当前页次：{pagination.page} / {Math.max(pagination.totalPages, 1)}</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="奖励品阶" className="text-sm leading-7">
-            <p>S / A 越高，表示本次探险机缘与回收层级越高。</p>
-            <p className="mt-2">展开单条札记可继续查看逐回合路线。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="奖励品阶"
+            className="text-sm leading-7"
+            help={{
+              title: '探险奖励品阶',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>S / A 越高，表示本次探险机缘与回收层级越高。</p>
+                  <p>展开单条札记可继续查看逐回合路线。</p>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

@@ -4,7 +4,6 @@ import {
   GameSceneNote,
   GameSceneSection,
 } from '@app/components/game-shell';
-import { useInkUI } from '@app/components/providers/InkUIProvider';
 import { InkButton, InkInput, InkNotice } from '@app/components/ui';
 
 import { useRetreatViewModel } from '../hooks/useRetreatViewModel';
@@ -166,7 +165,6 @@ function getRetreatGuidanceText({
 }
 
 export function RetreatView() {
-  const { openDialog } = useInkUI();
   const {
     cultivator,
     isLoading,
@@ -266,21 +264,6 @@ export function RetreatView() {
   });
   const missingRequirements =
     currentMajorTask?.snapshot.missingRequirements.slice(0, 2) ?? [];
-  const openBreakthroughHelp = () => {
-    openDialog({
-      title: '突破火候说明',
-      content: (
-        <BreakthroughHelpContent
-          breakthroughType={cultivationProgress?.breakthroughType ?? null}
-          canBreakthrough={Boolean(cultivationProgress?.canBreakthrough)}
-          isMajorBreakthrough={isMajorBreakthrough}
-          majorBreakthroughBlocked={majorBreakthroughBlocked}
-        />
-      ),
-      confirmLabel: '知晓了',
-      cancelLabel: null,
-    });
-  };
 
   return (
     <GameSceneFrame
@@ -293,7 +276,20 @@ export function RetreatView() {
         ) : undefined
       }
     >
-      <GameSceneSection>
+      <GameSceneSection
+        title="闭关与突破"
+        help={{
+          title: '突破火候说明',
+          content: (
+            <BreakthroughHelpContent
+              breakthroughType={cultivationProgress?.breakthroughType ?? null}
+              canBreakthrough={Boolean(cultivationProgress?.canBreakthrough)}
+              isMajorBreakthrough={isMajorBreakthrough}
+              majorBreakthroughBlocked={majorBreakthroughBlocked}
+            />
+          ),
+        }}
+      >
         <div className="border-ink/10 bg-bgpaper/70 space-y-5 border border-dashed px-4 py-4 md:px-5">
           <div className="space-y-3 text-sm leading-7">
             <p>
@@ -310,9 +306,6 @@ export function RetreatView() {
                 />
               ) : null}
               <span className="text-ink-secondary">{guidanceText}</span>
-              <InkButton onClick={openBreakthroughHelp} variant="ghost">
-                查看说明
-              </InkButton>
             </div>
           </div>
 

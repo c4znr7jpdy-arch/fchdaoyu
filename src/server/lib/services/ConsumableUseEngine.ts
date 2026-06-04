@@ -81,11 +81,16 @@ export const ConsumableUseEngine = {
 
     const execution = PillOperationExecutor.execute(cultivator, consumable);
     const nextCultivator = execution.cultivator;
+    const lifespanGain = Math.max(
+      0,
+      Math.floor(nextCultivator.lifespan) - Math.floor(cultivator.lifespan),
+    );
 
     await getExecutor().transaction(async (tx) => {
       await tx
         .update(schema.cultivators)
         .set({
+          lifespan: Math.round(nextCultivator.lifespan),
           vitality: Math.round(nextCultivator.attributes.vitality),
           spirit: Math.round(nextCultivator.attributes.spirit),
           wisdom: Math.round(nextCultivator.attributes.wisdom),
@@ -114,9 +119,11 @@ export const ConsumableUseEngine = {
             .map(describeTrackLevelUp)
             .join('，')}。`
         : '';
+    const lifespanMessage = lifespanGain > 0 ? ` 寿元 +${lifespanGain} 年。` : '';
 
     return {
-      message: `${consumable.name}已服下，药力已经入体。${trackMessage}`.trim(),
+      message:
+        `${consumable.name}已服下，药力已经入体。${lifespanMessage}${trackMessage}`.trim(),
       consumable,
     };
   },

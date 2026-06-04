@@ -4,6 +4,10 @@ import type { ReactNode } from 'react';
 import { useMatches } from 'react-router';
 import { getGameSceneGroupTitle } from './gameNavigation';
 import { resolveGameSceneFrameHeader } from './gameSceneFrameHeader';
+import {
+  GameSceneHelpButton,
+  type GameSceneHelp,
+} from './GameSceneSection';
 
 export interface GameSceneFrameProps {
   title?: ReactNode;
@@ -126,15 +130,25 @@ export function GameSceneAsideSection({
   title,
   children,
   className,
+  help,
 }: {
   title: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
   className?: string;
+  help?: GameSceneHelp;
 }) {
   return (
     <section className={cn('min-w-0', className)}>
-      <div className="text-battle-muted mb-2 text-[0.75rem] tracking-[0.2em]">
-        {title}
+      <div
+        className={cn(
+          'flex min-w-0 items-center justify-between gap-2',
+          children && 'mb-2',
+        )}
+      >
+        <div className="text-battle-muted min-w-0 text-[0.75rem] tracking-[0.2em]">
+          {title}
+        </div>
+        {help ? <GameSceneHelpButton help={help} /> : null}
       </div>
       {children}
     </section>

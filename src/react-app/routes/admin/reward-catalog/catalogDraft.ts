@@ -41,7 +41,8 @@ export type DraftOperationType =
   | 'remove_status'
   | 'add_status'
   | 'advance_track'
-  | 'gain_progress';
+  | 'gain_progress'
+  | 'increase_lifespan';
 
 export interface BaseDraftItem {
   id: string;
@@ -258,6 +259,9 @@ function operationToDraft(operation: RewardCatalogPillOperation): PillOperationD
       draft.target = operation.target as 'cultivation_exp' | 'comprehension_insight';
       draft.value = String(operation.value ?? '');
       break;
+    case 'increase_lifespan':
+      draft.value = String(operation.value ?? '');
+      break;
   }
 
   return draft;
@@ -421,6 +425,11 @@ function draftOperationToValue(operation: PillOperationDraft) {
         type: 'gain_progress' as const,
         target: operation.target,
         value: parseInteger(operation.value, '进度数值'),
+      };
+    case 'increase_lifespan':
+      return {
+        type: 'increase_lifespan' as const,
+        value: parseInteger(operation.value, '寿元年数'),
       };
   }
 }

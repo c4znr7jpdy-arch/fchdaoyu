@@ -345,10 +345,19 @@ export default function SkillCreationPage() {
               <p>预计感悟：{displayEstimatedCost?.comprehension ?? 0}</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="推演提醒" className="text-sm leading-7">
-            <p>目标策略是必填项，决定神通的施法方向与覆盖范围。</p>
-            <p className="mt-2">若已有待纳入的新神通，请先处理旧术取舍。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="推演提醒"
+            className="text-sm leading-7"
+            help={{
+              title: '神通推演提醒',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>目标策略是必填项，决定神通的施法方向与覆盖范围。</p>
+                  <p>若已有待纳入的新神通，请先处理旧术取舍。</p>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

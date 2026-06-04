@@ -265,10 +265,19 @@ export default function RefinePage() {
               <p>预计灵石：{displayEstimatedCost?.spiritStones ?? 0}</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="成器提醒" className="text-sm leading-7">
-            <p>槽位决定器型，灵材决定骨相，意念决定成品气质。</p>
-            <p className="mt-2">若资源不足或规则冲突，先在主区修正后再起炉。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="成器提醒"
+            className="text-sm leading-7"
+            help={{
+              title: '炼器成器提醒',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>槽位决定器型，灵材决定骨相，意念决定成品气质。</p>
+                  <p>若资源不足或规则冲突，先在主区修正后再起炉。</p>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

@@ -203,6 +203,7 @@ function createDungeonState(mapNodeId: string): DungeonState {
       counters: {
         longTermPillUsesByRealm: {},
         cultivationPillUsesByRealm: {},
+        longevityPillUsesByRealm: {},
       },
       statuses: [],
       timestamps: {

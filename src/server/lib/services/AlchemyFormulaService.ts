@@ -280,10 +280,12 @@ function buildFallbackFormulaRecordDescription(
       ? '缓推肉身淬炼之势'
       : formula.family === 'cultivation'
         ? '积蓄修为，温养道基'
-        : formula.family === 'insight'
-          ? '澄明心识，引动悟机'
-          : formula.family === 'marrow_wash'
-            ? '引药力洗筋伐髓'
+      : formula.family === 'insight'
+        ? '澄明心识，引动悟机'
+        : formula.family === 'marrow_wash'
+          ? '引药力洗筋伐髓'
+          : formula.family === 'longevity'
+            ? '固本延寿，续补命元'
             : '收束药性归于一脉';
 
   return `此方重在${directionText}，药性取向为${formatAlchemyPropertyVector(formula.pattern.targetPropertyVector)}，${formula.pattern.slotCount}味合炉${qualityText}。`;
@@ -691,6 +693,13 @@ function scaleFormulaOperations(
     }
 
     if (operation.type === 'advance_track') {
+      return {
+        ...operation,
+        value: Math.max(1, Math.floor(operation.value * fitMultiplier)),
+      };
+    }
+
+    if (operation.type === 'increase_lifespan') {
       return {
         ...operation,
         value: Math.max(1, Math.floor(operation.value * fitMultiplier)),

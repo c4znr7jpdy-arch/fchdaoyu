@@ -26,10 +26,14 @@ const EXECUTION_ORDER: ConditionOperation['type'][] = [
   'restore_resource',
   'change_gauge',
   'gain_progress',
+  'increase_lifespan',
   'remove_status',
   'add_status',
   'advance_track',
 ];
+
+const MAX_LIFESPAN_DELTA = 100_000;
+const MAX_LIFESPAN_TOTAL = 10_000_000;
 
 const BREAKTHROUGH_SUPPORT_STATUSES: ConditionStatusKey[] = [
   'breakthrough_focus',
@@ -302,6 +306,27 @@ function applyGainProgressOperation(
   return cultivator;
 }
 
+function applyIncreaseLifespanOperation(
+  cultivator: Cultivator,
+  operation: Extract<ConditionOperation, { type: 'increase_lifespan' }>,
+): Cultivator {
+  if (!Number.isFinite(operation.value) || operation.value <= 0) {
+    throw new Error('寿元丹药效异常，无法服用。');
+  }
+
+  const delta = clamp(
+    Math.floor(operation.value),
+    1,
+    MAX_LIFESPAN_DELTA,
+  );
+  cultivator.lifespan = clamp(
+    Math.floor(cultivator.lifespan) + delta,
+    0,
+    MAX_LIFESPAN_TOTAL,
+  );
+  return cultivator;
+}
+
 function sortOperations(operations: ConditionOperation[]): ConditionOperation[] {
   return [...operations].sort(
     (left, right) =>
@@ -395,6 +420,25 @@ export const PillOperationExecutor = {
       };
     }
 
+    if (consumable.spec.consumeRules.quotaCategory === 'longevity') {
+      const used =
+        nextCondition.counters.longevityPillUsesByRealm[nextCultivator.realm] ?? 0;
+      const limit = REALM_PILL_USAGE_LIMITS[nextCultivator.realm];
+      if (used >= limit) {
+        throw new Error(getPillUsageLimitReachedText('longevity', used, limit));
+      }
+      nextCondition = {
+        ...nextCondition,
+        counters: {
+          ...nextCondition.counters,
+          longevityPillUsesByRealm: {
+            ...nextCondition.counters.longevityPillUsesByRealm,
+            [nextCultivator.realm]: used + 1,
+          },
+        },
+      };
+    }
+
     for (const operation of sortOperations(consumable.spec.operations)) {
       switch (operation.type) {
         case 'restore_resource':
@@ -419,6 +463,9 @@ export const PillOperationExecutor = {
           break;
         case 'gain_progress':
           applyGainProgressOperation(nextCultivator, operation);
+          break;
+        case 'increase_lifespan':
+          applyIncreaseLifespanOperation(nextCultivator, operation);
           break;
         case 'remove_status':
           nextCondition = applyRemoveStatusOperation(nextCondition, operation);

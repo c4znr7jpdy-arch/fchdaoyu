@@ -53,10 +53,19 @@ export default function RedeemCodePage() {
       title="兑换码"
       description="天机有契，凭码领缘。奖励不直接落袋，而是经由玉简投递，适合作为轻量服务页嵌回主游戏壳。"
       aside={
-        <GameSceneAsideSection title="使用说明" className="text-sm leading-7">
-          <p>兑换成功后，奖励会通过传音玉简发放。</p>
-          <p className="mt-2">码值会自动转为大写，避免手误失配。</p>
-        </GameSceneAsideSection>
+        <GameSceneAsideSection
+          title="使用说明"
+          className="text-sm leading-7"
+          help={{
+            title: '兑换码使用说明',
+            content: (
+              <div className="space-y-2 text-sm leading-7">
+                <p>兑换成功后，奖励会通过传音玉简发放。</p>
+                <p>码值会自动转为大写，避免手误失配。</p>
+              </div>
+            ),
+          }}
+        />
       }
     >
       <div className="space-y-4">

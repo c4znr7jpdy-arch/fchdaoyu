@@ -460,10 +460,19 @@ export default function AuctionPage() {
               <p>我的寄售：{myListings.length} / 5</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="成交规则" className="text-sm leading-7">
-            <p>寄售成功后按时限等待成交；自己的货单不可回购。</p>
-            <p className="mt-2">卖家实际到手为标价的九成，余下一成视作抽成。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="成交规则"
+            className="text-sm leading-7"
+            help={{
+              title: '拍卖行成交规则',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>寄售成功后按时限等待成交；自己的货单不可回购。</p>
+                  <p>卖家实际到手为标价的九成，余下一成视作抽成。</p>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

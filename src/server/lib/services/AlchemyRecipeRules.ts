@@ -5,7 +5,10 @@ import {
   QUALITY_STABILITY_BONUS,
   type AlchemyMaterialType,
 } from '@shared/config/alchemyConfig';
-import { getConsumableQualityScalar } from '@shared/config/consumableSystem';
+import {
+  getConsumableQualityScalar,
+  rollLifespanPillGain,
+} from '@shared/config/consumableSystem';
 import {
   buildCultivationGain,
   buildInsightGain,
@@ -71,6 +74,10 @@ export interface AlchemyCultivationSnapshotContext {
   expCap?: number;
 }
 
+export interface AlchemySynthesisOptions {
+  rng?: () => number;
+}
+
 const FOCUS_BONUS: Record<AlchemyFocusMode, number> = {
   focused: 0.8,
   balanced: 0.5,
@@ -125,6 +132,11 @@ function scalePropertyOperation(
         ...operation,
         value: scaleProgressGain(operation.value, factor),
       };
+    case 'increase_lifespan':
+      return {
+        ...operation,
+        value: Math.max(1, Math.floor(operation.value * factor)),
+      };
     case 'change_gauge':
       return {
         ...operation,
@@ -160,6 +172,13 @@ function applyLowStabilityPenalty(
       };
     }
 
+    if (operation.type === 'increase_lifespan') {
+      return {
+        ...operation,
+        value: Math.max(1, Math.floor(operation.value * 0.8)),
+      };
+    }
+
     return operation;
   });
 }
@@ -175,6 +194,8 @@ export function getQuotaCategoryForFamily(
     case 'tempering':
     case 'marrow_wash':
       return 'long_term';
+    case 'longevity':
+      return 'longevity';
     case 'cultivation':
       return 'cultivation';
     case 'breakthrough':
@@ -227,6 +248,7 @@ function buildBasePropertyOperation(
   key: AlchemyPropertyKey,
   quality: Quality,
   cultivationContext: CultivationGainSnapshotInput,
+  options: AlchemySynthesisOptions = {},
 ): ConditionOperation {
   const scalar = getConsumableQualityScalar(quality);
 
@@ -285,6 +307,11 @@ function buildBasePropertyOperation(
         type: 'add_status',
         status: 'breakthrough_focus',
         usesRemaining: 1,
+      };
+    case 'extend_lifespan':
+      return {
+        type: 'increase_lifespan',
+        value: rollLifespanPillGain(quality, options.rng),
       };
     case 'marrow_wash':
       return {
@@ -361,6 +388,7 @@ function buildPropertyOperationSet(
   quality: Quality,
   cultivationContext: AlchemyCultivationSnapshotContext,
   toxicityRating: number,
+  options: AlchemySynthesisOptions = {},
 ): ConditionOperation[] {
   const cultivationGainContext: CultivationGainSnapshotInput = {
     ...cultivationContext,
@@ -371,6 +399,7 @@ function buildPropertyOperationSet(
       property.key,
       quality,
       cultivationGainContext,
+      options,
     );
     const scalar =
       PROPERTY_OPERATION_SCALARS[index] ?? PROPERTY_OPERATION_SCALARS[2];
@@ -594,6 +623,7 @@ export function synthesizeAlchemyFromPlan(
   plan: AlchemyRecipePlan,
   quality: Quality,
   cultivationContextOrRealm: AlchemyCultivationSnapshotContext | RealmType,
+  options: AlchemySynthesisOptions = {},
 ): SynthesizedAlchemyResult {
   const cultivationContext =
     typeof cultivationContextOrRealm === 'string'
@@ -606,6 +636,7 @@ export function synthesizeAlchemyFromPlan(
     quality,
     cultivationContext,
     aggregated.toxicityRating,
+    options,
   );
 
   if (aggregated.stability < 45) {

@@ -192,9 +192,18 @@ function ReplaceContent() {
               <p>已选舍弃：{selectedOldId ? '1 门' : '尚未选择'}</p>
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="决断提醒" className="text-sm leading-7">
-            <p>确认替换后，旧法会永久消散；放弃则本次灵感归空。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="决断提醒"
+            className="text-sm leading-7"
+            help={{
+              title: '法门取舍决断提醒',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>确认替换后，旧法会永久消散；放弃则本次灵感归空。</p>
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >

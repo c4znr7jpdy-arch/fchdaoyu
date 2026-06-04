@@ -64,10 +64,19 @@ export default function FeedbackPage() {
       description="广纳良言，共筑仙途。这里保留表单本体，把反馈类型、内容与外链提交整合进统一服务场景。"
       aside={
         <>
-          <GameSceneAsideSection title="填写建议" className="text-sm leading-7">
-            <p>优先写清复现路径、预期与实际结果，便于尽快定位。</p>
-            <p className="mt-2">平衡性建议尽量附上场景、境界或资源阶段。</p>
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="填写建议"
+            className="text-sm leading-7"
+            help={{
+              title: '意见反馈填写建议',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  <p>优先写清复现路径、预期与实际结果，便于尽快定位。</p>
+                  <p>平衡性建议尽量附上场景、境界或资源阶段。</p>
+                </div>
+              ),
+            }}
+          />
           <GameSceneAsideSection title="GitHub Issue">
             <a
               href={GITHUB_ISSUE_URL}

@@ -40,6 +40,8 @@ function getPillFamilyLabel(family: PillFamily): string {
       return '炼体丹';
     case 'marrow_wash':
       return '洗髓丹';
+    case 'longevity':
+      return '延寿丹';
     case 'hybrid':
       return '和元丹';
   }
@@ -63,6 +65,8 @@ function describeOperation(operation: ConditionOperation): string {
           ? getResourceText('cultivation_exp')
           : '道心感悟'
       } +${operation.value}`;
+    case 'increase_lifespan':
+      return `寿元 +${operation.value} 年`;
     case 'remove_status':
       return `化解「${getStatusName(operation.status)}」`;
     case 'add_status':

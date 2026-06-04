@@ -6,6 +6,7 @@ import type {
   ConditionOperation,
   ConsumableSpec,
   GainProgressOperation,
+  IncreaseLifespanOperation,
   PillSpec,
   RemoveStatusOperation,
   RestoreResourceOperation,
@@ -72,6 +73,12 @@ export function isGainProgressOperation(
   operation: ConditionOperation,
 ): operation is GainProgressOperation {
   return operation.type === 'gain_progress';
+}
+
+export function isIncreaseLifespanOperation(
+  operation: ConditionOperation,
+): operation is IncreaseLifespanOperation {
+  return operation.type === 'increase_lifespan';
 }
 
 export function assertConsumableSpec(

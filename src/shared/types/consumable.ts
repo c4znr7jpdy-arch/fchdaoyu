@@ -14,6 +14,7 @@ export const PILL_FAMILY_VALUES = [
   'breakthrough',
   'tempering',
   'marrow_wash',
+  'longevity',
   'hybrid',
 ] as const;
 
@@ -23,6 +24,7 @@ export const PILL_QUOTA_CATEGORY_VALUES = [
   'none',
   'long_term',
   'cultivation',
+  'longevity',
 ] as const;
 
 export type PillQuotaCategory = (typeof PILL_QUOTA_CATEGORY_VALUES)[number];
@@ -41,6 +43,7 @@ export const ALCHEMY_PROPERTY_KEY_VALUES = [
   'clear_mind_support',
   'protect_meridians_support',
   'breakthrough_support',
+  'extend_lifespan',
   'tempering_vitality',
   'tempering_spirit',
   'tempering_wisdom',
@@ -179,13 +182,19 @@ export interface GainProgressOperation {
   value: number;
 }
 
+export interface IncreaseLifespanOperation {
+  type: 'increase_lifespan';
+  value: number;
+}
+
 export type ConditionOperation =
   | RestoreResourceOperation
   | ChangeGaugeOperation
   | AddStatusOperation
   | RemoveStatusOperation
   | AdvanceTrackOperation
-  | GainProgressOperation;
+  | GainProgressOperation
+  | IncreaseLifespanOperation;
 
 export interface PillSpec {
   kind: 'pill';

@@ -506,19 +506,30 @@ export default function MarketRecyclePage() {
               {!isMaterialTab ? <p>已装备法宝：{equippedIds.size} 件</p> : null}
             </div>
           </GameSceneAsideSection>
-          <GameSceneAsideSection title="回收规矩" className="text-sm leading-7">
-            {isMaterialTab ? (
-              <>
-                <p>凡、灵、玄品材料适合批量清理；高阶材料会先进入鉴定流程。</p>
-                <p className="mt-2">预览过期后需重新鉴定，确认前不会真正成交。</p>
-              </>
-            ) : (
-              <>
-                <p>已装备法宝不可回收；高阶法宝仅支持单件鉴评。</p>
-                <p className="mt-2">凡、灵、玄品法宝可直接纳入批量清理。</p>
-              </>
-            )}
-          </GameSceneAsideSection>
+          <GameSceneAsideSection
+            title="回收规矩"
+            className="text-sm leading-7"
+            help={{
+              title: '坊市鉴宝司回收规矩',
+              content: (
+                <div className="space-y-2 text-sm leading-7">
+                  {isMaterialTab ? (
+                    <>
+                      <p>
+                        凡、灵、玄品材料适合批量清理；高阶材料会先进入鉴定流程。
+                      </p>
+                      <p>预览过期后需重新鉴定，确认前不会真正成交。</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>已装备法宝不可回收；高阶法宝仅支持单件鉴评。</p>
+                      <p>凡、灵、玄品法宝可直接纳入批量清理。</p>
+                    </>
+                  )}
+                </div>
+              ),
+            }}
+          />
         </>
       }
     >
