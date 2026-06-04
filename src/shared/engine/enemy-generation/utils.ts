@@ -36,15 +36,32 @@ export function normalizeOptionalText(value: string | undefined): string | undef
   return trimmed ? trimmed : undefined;
 }
 
+const DIFFICULTY_FACTOR_CURVE = [
+  { difficulty: 0, factor: 0.55 },
+  { difficulty: 25, factor: 0.75 },
+  { difficulty: 50, factor: 0.95 },
+  { difficulty: 70, factor: 1.12 },
+  { difficulty: 85, factor: 1.28 },
+  { difficulty: 100, factor: 1.45 },
+] as const;
+
 export function buildDifficultyFactor(difficulty: number): number {
-  return 0.5 + (difficulty / 100) * 3.5;
+  const normalized = Math.max(0, Math.min(100, difficulty));
+  for (let index = 1; index < DIFFICULTY_FACTOR_CURVE.length; index += 1) {
+    const previous = DIFFICULTY_FACTOR_CURVE[index - 1];
+    const current = DIFFICULTY_FACTOR_CURVE[index];
+    if (normalized <= current.difficulty) {
+      const range = current.difficulty - previous.difficulty;
+      const progress = range > 0 ? (normalized - previous.difficulty) / range : 0;
+      return previous.factor + (current.factor - previous.factor) * progress;
+    }
+  }
+
+  return DIFFICULTY_FACTOR_CURVE[DIFFICULTY_FACTOR_CURVE.length - 1].factor;
 }
 
-export function difficultyToBand(
-  difficulty: number,
-  isBoss: boolean,
-): DifficultyBand {
-  if (isBoss || difficulty >= 85) return 'legendary';
+export function difficultyToBand(difficulty: number): DifficultyBand {
+  if (difficulty >= 85) return 'legendary';
   if (difficulty >= 60) return 'advanced';
   if (difficulty >= 25) return 'variant';
   return 'core';
@@ -155,27 +172,16 @@ export function resolveEnergyBudget(
   bias: number = 0,
   isBoss: boolean = false,
 ): number {
-  const baseByType = {
-    skill: 18,
-    gongfa: 12,
-    artifact: 12,
-  } as const;
-  const scaleByType = {
-    skill: 0.48,
-    gongfa: 0.42,
-    artifact: 0.46,
-  } as const;
+  const isSkill = productType === 'skill';
+  const base = isSkill ? 16 : 12;
+  const scale = isSkill ? 0.32 : 0.26;
+  const bossBonus = isBoss ? (isSkill ? 6 : 5) : 0;
 
   const minByType = CREATION_RESERVED_ENERGY[productType] + 10;
 
   return Math.max(
     minByType,
-    Math.round(
-      baseByType[productType] +
-        difficulty * scaleByType[productType] +
-        bias +
-        (isBoss ? 8 : 0),
-    ),
+    Math.round(base + difficulty * scale + bias + bossBonus),
   );
 }
 
@@ -186,6 +192,6 @@ export function resolveUnlockScore(
 ): number {
   return Math.max(
     0,
-    Math.round(10 + difficulty * 0.82 + bias + (isBoss ? 12 : 0)),
+    Math.round(8 + difficulty * 0.55 + bias + (isBoss ? 10 : 0)),
   );
 }

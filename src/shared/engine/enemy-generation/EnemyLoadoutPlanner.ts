@@ -23,20 +23,38 @@ function uniqueStrings(values: readonly string[]): string[] {
 }
 
 function resolveSkillCount(input: NormalizedEnemyGenerationInput): number {
+  const baseCount =
+    input.difficulty >= 95
+      ? 4
+      : input.difficulty >= 70
+        ? 3
+        : input.difficulty >= 20
+          ? 2
+          : 1;
+  const bossBonus = input.isBoss && input.difficulty >= 60 ? 1 : 0;
+  const ancientBeastBonus =
+    input.race === '古兽' && input.difficulty >= 85 ? 1 : 0;
+
   return Math.min(
     4,
-    2 +
-      (input.difficulty >= 60 ? 1 : 0) +
-      (input.isBoss || (input.race === '古兽' && input.difficulty >= 85) ? 1 : 0),
+    baseCount + bossBonus + ancientBeastBonus,
   );
 }
 
 function resolveArtifactCount(input: NormalizedEnemyGenerationInput): number {
+  const baseCount =
+    input.difficulty >= 90
+      ? 3
+      : input.difficulty >= 65
+        ? 2
+        : input.difficulty >= 30
+          ? 1
+          : 0;
+  const bossBonus = input.isBoss && input.difficulty >= 75 ? 1 : 0;
+
   return Math.min(
     3,
-    1 +
-      (input.difficulty >= 55 ? 1 : 0) +
-      (input.difficulty >= 80 || input.isBoss ? 1 : 0),
+    baseCount + bossBonus,
   );
 }
 
@@ -45,7 +63,7 @@ function resolveDifficultyProfile(
 ): EnemyDifficultyProfile {
   const effectiveDifficulty =
     input.race === '古兽' ? Math.min(100, input.difficulty + 10) : input.difficulty;
-  const band = difficultyToBand(effectiveDifficulty, input.isBoss);
+  const band = difficultyToBand(effectiveDifficulty);
   return {
     band,
     skillCount: resolveSkillCount(input),

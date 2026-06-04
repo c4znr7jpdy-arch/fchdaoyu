@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AbilityFactory } from '@shared/engine/battle-v5/factories/AbilityFactory';
 import { createCombatUnitFromCultivator } from '@shared/engine/battle-v5/adapters/CultivatorCombatAdapter';
+import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
 import { BASIC_SKILLS, BASIC_TECHNIQUES } from '@shared/engine/cultivator/creation/config';
 import { CreationSession } from '@shared/engine/creation-v2/CreationSession';
 import { CreationPhase } from '@shared/engine/creation-v2/core/types';
@@ -137,11 +138,31 @@ function assertV5Compatible(draft: ReturnType<typeof enemyGenerator.buildDraft>)
   }
 }
 
+function stripEnemyLoadout(cultivator: Cultivator): Cultivator {
+  return {
+    ...cultivator,
+    cultivations: [],
+    skills: [],
+    inventory: {
+      ...cultivator.inventory,
+      artifacts: [],
+    },
+    equipped: {
+      weapon: null,
+      armor: null,
+      accessory: null,
+    },
+  };
+}
+
 describe('EnemyGenerator', () => {
   it.each([
-    { difficulty: 0, factor: 0.5 },
-    { difficulty: 50, factor: 2.25 },
-    { difficulty: 100, factor: 4.0 },
+    { difficulty: 0, factor: 0.55 },
+    { difficulty: 25, factor: 0.75 },
+    { difficulty: 50, factor: 0.95 },
+    { difficulty: 70, factor: 1.12 },
+    { difficulty: 85, factor: 1.28 },
+    { difficulty: 100, factor: 1.45 },
   ])('maps difficulty $difficulty to factor $factor', ({ difficulty, factor }) => {
     const draft = enemyGenerator.buildDraft({
       realm: '筑基',
@@ -158,6 +179,59 @@ describe('EnemyGenerator', () => {
       draft.balance.totalAttributeBudget,
     );
   });
+
+  it.each([
+    {
+      difficulty: 10,
+      isBoss: false,
+      expectedBand: 'core',
+      expectedSkills: 1,
+      expectedArtifacts: 0,
+    },
+    {
+      difficulty: 50,
+      isBoss: false,
+      expectedBand: 'variant',
+      expectedSkills: 2,
+      expectedArtifacts: 1,
+    },
+    {
+      difficulty: 70,
+      isBoss: false,
+      expectedBand: 'advanced',
+      expectedSkills: 3,
+      expectedArtifacts: 2,
+    },
+    {
+      difficulty: 95,
+      isBoss: false,
+      expectedBand: 'legendary',
+      expectedSkills: 4,
+      expectedArtifacts: 3,
+    },
+    {
+      difficulty: 8,
+      isBoss: true,
+      expectedBand: 'core',
+      expectedSkills: 1,
+      expectedArtifacts: 0,
+    },
+  ] as const)(
+    'scales loadout for difficulty $difficulty boss=$isBoss',
+    ({ difficulty, isBoss, expectedBand, expectedSkills, expectedArtifacts }) => {
+      const draft = enemyGenerator.buildDraft({
+        realm: '筑基',
+        realmStage: '中期',
+        race: '人族',
+        difficulty,
+        isBoss,
+      });
+
+      expect(draft.balance.band).toBe(expectedBand);
+      expect(draft.cultivator.skills).toHaveLength(expectedSkills);
+      expect(draft.cultivator.inventory.artifacts).toHaveLength(expectedArtifacts);
+    },
+  );
 
   it('redistributes attributes by race profile while preserving total budget', () => {
     const expectations: Record<
@@ -295,6 +369,44 @@ describe('EnemyGenerator', () => {
     expect(normalResult.logs.length).toBeGreaterThan(0);
     expect(bossResult.winner).toBeDefined();
     expect(bossResult.logs.length).toBeGreaterThan(0);
+  });
+
+  it('keeps early and mid difficulty enemies within baseline combat pressure', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const player = createPlayerFixture();
+
+    const lowEnemy = enemyGenerator.buildDraft({
+      realm: '筑基',
+      realmStage: '中期',
+      race: '人族',
+      difficulty: 25,
+    }).cultivator;
+    const midEnemy = enemyGenerator.buildDraft({
+      realm: '筑基',
+      realmStage: '中期',
+      race: '人族',
+      difficulty: 50,
+    }).cultivator;
+    const eliteEnemy = enemyGenerator.buildDraft({
+      realm: '筑基',
+      realmStage: '中期',
+      race: '人族',
+      difficulty: 70,
+    }).cultivator;
+    const nakedLowEnemy = stripEnemyLoadout(lowEnemy);
+
+    const playerPanel = getCultivatorDisplayAttributes(player).attrs;
+    const nakedLowPanel = getCultivatorDisplayAttributes(nakedLowEnemy).attrs;
+    const playerPrimaryOutput = Math.max(playerPanel.atk, playerPanel.magicAtk);
+    const nakedLowPrimaryDefense = Math.max(
+      nakedLowPanel.def,
+      nakedLowPanel.magicDef,
+    );
+
+    expect(nakedLowPrimaryDefense).toBeLessThan(playerPrimaryOutput);
+    expect(simulateBattleV5(player, lowEnemy).winner.id).toBe(player.id);
+    expect(simulateBattleV5(player, midEnemy).turns).toBeGreaterThan(3);
+    expect(simulateBattleV5(player, eliteEnemy).turns).toBeGreaterThan(1);
   });
 
   it('returns the same draft when shared uses the noop copy provider', async () => {
