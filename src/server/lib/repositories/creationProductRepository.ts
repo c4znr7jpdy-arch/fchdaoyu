@@ -81,13 +81,21 @@ export async function findEquippedArtifacts(
   cultivatorId: string,
   q: DbExecutor = getExecutor(),
 ): Promise<CreationProductRecord[]> {
+  return findEquippedByType(cultivatorId, 'artifact', q);
+}
+
+export async function findEquippedByType(
+  cultivatorId: string,
+  productType: CreationProductType,
+  q: DbExecutor = getExecutor(),
+): Promise<CreationProductRecord[]> {
   return q
     .select()
     .from(schema.creationProducts)
     .where(
       and(
         eq(schema.creationProducts.cultivatorId, cultivatorId),
-        eq(schema.creationProducts.productType, 'artifact'),
+        eq(schema.creationProducts.productType, productType),
         eq(schema.creationProducts.isEquipped, true),
       ),
     );
@@ -105,6 +113,24 @@ export async function countByType(
       and(
         eq(schema.creationProducts.cultivatorId, cultivatorId),
         eq(schema.creationProducts.productType, productType),
+      ),
+    );
+  return result.count;
+}
+
+export async function countEquippedByType(
+  cultivatorId: string,
+  productType: CreationProductType,
+  q: DbExecutor = getExecutor(),
+): Promise<number> {
+  const [result] = await q
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.creationProducts)
+    .where(
+      and(
+        eq(schema.creationProducts.cultivatorId, cultivatorId),
+        eq(schema.creationProducts.productType, productType),
+        eq(schema.creationProducts.isEquipped, true),
       ),
     );
   return result.count;
@@ -167,9 +193,17 @@ export async function unequipArtifact(
   id: string,
   q: DbExecutor = getExecutor(),
 ): Promise<void> {
+  await setProductEquipped(id, false, q);
+}
+
+export async function setProductEquipped(
+  id: string,
+  isEquipped: boolean,
+  q: DbExecutor = getExecutor(),
+): Promise<void> {
   await q
     .update(schema.creationProducts)
-    .set({ isEquipped: false })
+    .set({ isEquipped })
     .where(eq(schema.creationProducts.id, id));
 }
 

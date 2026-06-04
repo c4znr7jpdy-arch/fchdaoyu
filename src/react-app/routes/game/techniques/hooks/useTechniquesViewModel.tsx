@@ -4,6 +4,10 @@ import {
   type ProductDisplayModel,
 } from '@app/components/feature/products';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import {
+  MAX_EQUIPPED_GONGFA,
+  MAX_OWNED_CREATION_PRODUCTS_PER_TYPE,
+} from '@shared/config/creationProductLimits';
 import { useCallback, useEffect, useState } from 'react';
 
 export type V2Technique = ProductDisplayModel & { id: string };
@@ -16,6 +20,12 @@ export function useTechniquesViewModel() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [techniques, setTechniques] = useState<V2Technique[]>([]);
   const [techniquesLoading, setTechniquesLoading] = useState(Boolean(cultivator));
+  const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
+  const maxOwnedTechniques = MAX_OWNED_CREATION_PRODUCTS_PER_TYPE;
+  const maxEnabledTechniques = MAX_EQUIPPED_GONGFA;
+  const enabledTechniqueCount = techniques.filter(
+    (technique) => technique.isEquipped,
+  ).length;
 
   const fetchTechniques = useCallback(async () => {
     if (!cultivator) return;
@@ -88,6 +98,41 @@ export function useTechniquesViewModel() {
     setSelectedTechnique(null);
   }, []);
 
+  const toggleTechniqueEnabled = useCallback(
+    async (technique: V2Technique) => {
+      if (!cultivator) return;
+
+      setPendingToggleId(technique.id);
+      try {
+        const res = await fetch('/api/v2/products/equip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: technique.id }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || '功法启停失败');
+        }
+        pushToast({
+          message: data.equipped
+            ? `【${technique.name}】已启用`
+            : `【${technique.name}】已停用`,
+          tone: 'success',
+        });
+        await refreshCultivator();
+        await fetchTechniques();
+      } catch (e) {
+        pushToast({
+          message: e instanceof Error ? e.message : '功法启停失败',
+          tone: 'danger',
+        });
+      } finally {
+        setPendingToggleId(null);
+      }
+    },
+    [cultivator, pushToast, refreshCultivator, fetchTechniques],
+  );
+
   const openForgetConfirm = useCallback(
     (technique: V2Technique) => {
       openDialog({
@@ -134,10 +179,15 @@ export function useTechniquesViewModel() {
     techniques,
     isLoading: isLoading || techniquesLoading,
     note,
+    maxOwnedTechniques,
+    maxEnabledTechniques,
+    enabledTechniqueCount,
     selectedTechnique,
     isModalOpen,
+    pendingToggleId,
     openTechniqueDetail,
     closeTechniqueDetail,
+    toggleTechniqueEnabled,
     openForgetConfirm,
     refreshTechniques: fetchTechniques,
   };

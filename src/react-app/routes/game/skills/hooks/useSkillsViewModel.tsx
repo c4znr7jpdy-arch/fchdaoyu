@@ -5,6 +5,7 @@ import {
 } from '@app/components/feature/products';
 import type { InkDialogState } from '@app/components/ui/InkDialog';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import { MAX_OWNED_CREATION_PRODUCTS_PER_TYPE } from '@shared/config/creationProductLimits';
 import { useCallback, useEffect, useState } from 'react';
 
 export type V2Skill = ProductDisplayModel & { id: string };
@@ -15,12 +16,16 @@ export interface UseSkillsViewModelReturn {
   isLoading: boolean;
   note: string | undefined;
   maxSkills: number;
+  maxOwnedSkills: number;
+  enabledSkillCount: number;
   dialog: InkDialogState | null;
   closeDialog: () => void;
   selectedSkill: V2Skill | null;
   isModalOpen: boolean;
+  pendingToggleId: string | null;
   openSkillDetail: (skill: V2Skill) => void;
   closeSkillDetail: () => void;
+  toggleSkillEnabled: (skill: V2Skill) => Promise<void>;
   openForgetConfirm: (skill: V2Skill) => void;
   refreshSkills: () => void;
 }
@@ -34,8 +39,11 @@ export function useSkillsViewModel(): UseSkillsViewModelReturn {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [skills, setSkills] = useState<V2Skill[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(Boolean(cultivator));
+  const [pendingToggleId, setPendingToggleId] = useState<string | null>(null);
 
   const maxSkills = cultivator?.max_skills ?? 3;
+  const maxOwnedSkills = MAX_OWNED_CREATION_PRODUCTS_PER_TYPE;
+  const enabledSkillCount = skills.filter((skill) => skill.isEquipped).length;
 
   const fetchSkills = useCallback(async () => {
     if (!cultivator) return;
@@ -110,6 +118,41 @@ export function useSkillsViewModel(): UseSkillsViewModelReturn {
     setSelectedSkill(null);
   }, []);
 
+  const toggleSkillEnabled = useCallback(
+    async (skill: V2Skill) => {
+      if (!cultivator) return;
+
+      setPendingToggleId(skill.id);
+      try {
+        const res = await fetch('/api/v2/products/equip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId: skill.id }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || '神通启停失败');
+        }
+        pushToast({
+          message: data.equipped
+            ? `【${skill.name}】已启用`
+            : `【${skill.name}】已停用`,
+          tone: 'success',
+        });
+        await refreshCultivator();
+        await fetchSkills();
+      } catch (e) {
+        pushToast({
+          message: e instanceof Error ? e.message : '神通启停失败',
+          tone: 'danger',
+        });
+      } finally {
+        setPendingToggleId(null);
+      }
+    },
+    [cultivator, pushToast, refreshCultivator, fetchSkills],
+  );
+
   const openForgetConfirm = useCallback(
     (skill: V2Skill) => {
       openDialog({
@@ -152,12 +195,16 @@ export function useSkillsViewModel(): UseSkillsViewModelReturn {
     isLoading: isLoading || skillsLoading,
     note,
     maxSkills,
+    maxOwnedSkills,
+    enabledSkillCount,
     dialog,
     closeDialog,
     selectedSkill,
     isModalOpen,
+    pendingToggleId,
     openSkillDetail,
     closeSkillDetail,
+    toggleSkillEnabled,
     openForgetConfirm,
     refreshSkills: fetchSkills,
   };

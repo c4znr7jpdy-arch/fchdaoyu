@@ -360,6 +360,9 @@ export interface DungeonRoundLlmContext {
   map: {
     name: string;
     realmRequirement: string;
+    difficultyTier: string;
+    difficultyLabel: string;
+    battleDifficultyCap: number;
     tags: string[];
     descriptionSummary: string;
   };

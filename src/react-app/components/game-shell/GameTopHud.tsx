@@ -37,6 +37,13 @@ function HudMeter({
   );
 }
 
+function formatSpiritStones(value: number): string {
+  if (value >= 50000) {
+    return `${Math.floor(value / 10000)}万`;
+  }
+  return String(value);
+}
+
 export function GameTopHud({ snapshot }: { snapshot: GameHudSnapshot | null }) {
   if (!snapshot) return null;
 
@@ -94,7 +101,7 @@ export function GameTopHud({ snapshot }: { snapshot: GameHudSnapshot | null }) {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-battle-muted shrink-0">灵石</span>
                 <span className="text-ink shrink-0 text-right">
-                  {snapshot.spiritStones}
+                  {formatSpiritStones(snapshot.spiritStones)}
                 </span>
               </div>
             </div>

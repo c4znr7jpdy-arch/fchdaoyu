@@ -19,7 +19,7 @@ export class AbilityDataLoader {
     const abilities: Ability[] = [];
 
     for (const row of rows) {
-      if (row.productType === 'artifact' && !row.isEquipped) continue;
+      if (!row.isEquipped) continue;
 
       try {
         const rehydrated = deserializeAndRehydrate(

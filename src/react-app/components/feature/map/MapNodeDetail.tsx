@@ -1,6 +1,14 @@
 import { InkButton } from '@app/components/ui/InkButton';
+import {
+  dungeonDifficultyColorMap,
+  tierColorMap,
+} from '@app/components/ui/InkBadge';
 import { InkTag } from '@app/components/ui/InkTag';
-import type { MapNodeInfo } from '@shared/lib/game/mapSystem';
+import {
+  resolveDungeonMapConfig,
+  type MapNodeInfo,
+} from '@shared/lib/game/mapSystem';
+import { cn } from '@shared/lib/cn';
 import type { ComponentProps } from 'react';
 
 type InkButtonVariant = ComponentProps<typeof InkButton>['variant'];
@@ -26,6 +34,8 @@ export function MapNodeDetail({
   onClose,
   actions,
 }: MapNodeDetailProps) {
+  const dungeonConfig = resolveDungeonMapConfig(node);
+
   return (
     <div className="bg-background absolute right-4 bottom-16 left-4 z-40 md:right-8 md:left-auto md:w-96">
       <div className="p-3">
@@ -40,8 +50,26 @@ export function MapNodeDetail({
           {node.description}
         </p>
 
-        <div className="text-ink-secondary mb-3 text-xs">
-          推荐境界：<span className="text-ink font-semibold">{node.realm_requirement}</span>
+        <div className="text-ink-secondary mb-3 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <span>
+            推荐境界：
+            <span
+              className={cn('font-semibold', tierColorMap[node.realm_requirement])}
+            >
+              {node.realm_requirement}
+            </span>
+          </span>
+          <span>
+            难度：
+            <span
+              className={cn(
+                'font-semibold',
+                dungeonDifficultyColorMap[dungeonConfig.difficultyTier],
+              )}
+            >
+              {dungeonConfig.difficultyLabel}
+            </span>
+          </span>
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">

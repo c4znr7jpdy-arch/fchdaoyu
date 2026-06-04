@@ -7,7 +7,12 @@ import { enemyGenerator } from '@shared/engine/enemyGenerator';
 import { TYPE_DESCRIPTIONS } from '@shared/engine/material/creation/config';
 import { resourceEngine } from '@shared/engine/resource/ResourceEngine';
 import type { ResourceOperation } from '@shared/engine/resource/types';
-import { getMapNode, SatelliteNode } from '@shared/lib/game/mapSystem';
+import {
+  getMapNode,
+  resolveDungeonMapConfig,
+  scaleDungeonBattleDifficulty,
+} from '@shared/lib/game/mapSystem';
+import type { SatelliteNode } from '@shared/lib/game/mapSystem';
 import {
   MaterialType,
   Quality,
@@ -55,7 +60,6 @@ import {
 
 const REDIS_TTL = 3600; // 1 hour expiration for active sessions
 const START_LOCK_TTL_SECONDS = 180;
-const DUNGEON_ENEMY_DIFFICULTY_COEFFICIENT = 0.6;
 const DUNGEON_MATERIAL_TYPE_TABLE = Object.entries(TYPE_DESCRIPTIONS)
   .map(([key, desc]) => `| ${key} | ${desc} |`)
   .join('\n');
@@ -71,13 +75,6 @@ function getDungeonStartLockKey(cultivatorId: string) {
 
 function getDungeonBattleKey(battleId: string) {
   return `dungeon:battle:${battleId}`;
-}
-
-function scaleDungeonEnemyDifficulty(rawDifficulty: number) {
-  return Math.max(
-    0,
-    Math.min(100, Math.round(rawDifficulty * DUNGEON_ENEMY_DIFFICULTY_COEFFICIENT)),
-  );
 }
 
 interface DungeonBattleCachePayload {
@@ -495,12 +492,16 @@ export class DungeonService {
     }
     const realmRequirement = (mapNode as { realm_requirement: string })
       .realm_requirement;
+    const mapConfig = resolveDungeonMapConfig(mapNode);
     const metadata = battleCost.metadata;
     if (!metadata?.race || !metadata.realm_stage) {
       throw new Error('Battle cost metadata must include race and realm_stage');
     }
 
-    const enemyDifficulty = scaleDungeonEnemyDifficulty(battleCost.value);
+    const enemyDifficulty = scaleDungeonBattleDifficulty(
+      battleCost.value,
+      mapConfig,
+    );
 
     const draft = enemyGenerator.buildDraft({
       realm: realmRequirement as import('@shared/types/constants').RealmType,
@@ -510,7 +511,7 @@ export class DungeonService {
       name: metadata.enemy_name,
       background: metadata.background,
       description: metadata.description,
-      isBoss: metadata.is_boss,
+      isBoss: mapConfig.allowBossLoadout && Boolean(metadata.is_boss),
     });
     const enemy = draft.cultivator;
 
@@ -967,11 +968,25 @@ export class DungeonService {
       mapNode && 'realm_requirement' in mapNode
         ? (mapNode as SatelliteNode).realm_requirement
         : ('筑基' as RealmType);
+    const mapConfig = mapNode
+      ? resolveDungeonMapConfig(mapNode)
+      : resolveDungeonMapConfig({
+          id: 'fallback-dungeon-map',
+          name: '未知秘境',
+          parent_id: 'fallback',
+          type: '秘境',
+          realm_requirement: mapRealm,
+          tags: [],
+          description: '',
+          connections: [],
+          x: 0,
+          y: 0,
+        });
     const realmGap = this.calculateRealmGap(state.playerInfo.realm, mapRealm);
     const phase = this.getPhase(state.currentRound, state.maxRounds, realmGap);
     const userContext: DungeonRoundLlmContext = buildDungeonRoundLlmContext({
       state,
-      mapRealm,
+      mapConfig,
       realmGap,
       phase,
     });

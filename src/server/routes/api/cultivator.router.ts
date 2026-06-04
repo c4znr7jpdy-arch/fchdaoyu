@@ -55,6 +55,7 @@ import {
   updateSpiritStones,
 } from '@server/lib/services/cultivatorService';
 import { stream_text } from '@server/utils/aiClient';
+import { stripExpCapForStorage } from '@server/utils/cultivationUtils';
 import {
   getBreakthroughStoryPrompt,
   getLifespanExhaustedStoryPrompt,
@@ -429,7 +430,7 @@ router.post('/inn-recovery', requireActiveCultivator(), async (c) => {
       .update(cultivators)
       .set({
         spirit_stones: sql`${cultivators.spirit_stones} - ${recovery.spiritStoneCost}`,
-        cultivation_progress: recovery.nextCultivationProgress,
+        cultivation_progress: stripExpCapForStorage(recovery.nextCultivationProgress),
         condition: recovery.nextCondition,
       })
       .where(

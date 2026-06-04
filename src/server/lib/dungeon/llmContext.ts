@@ -1,3 +1,4 @@
+import type { ResolvedDungeonMapConfig } from '@shared/lib/game/mapSystem';
 import type { RealmType } from '@shared/types/constants';
 import type { ConditionStatusKey } from '@shared/types/condition';
 import { truncateText } from '@server/utils/llmPayload';
@@ -182,11 +183,11 @@ function buildBattleAftermath(history: History[]): string | undefined {
 
 export function buildDungeonRoundLlmContext(args: {
   state: DungeonState;
-  mapRealm: RealmType;
+  mapConfig: ResolvedDungeonMapConfig;
   realmGap: number;
   phase: string;
 }): DungeonRoundLlmContext {
-  const { state, mapRealm, realmGap, phase } = args;
+  const { state, mapConfig, realmGap, phase } = args;
   const activePressure = state.condition.statuses.some((status) =>
     PRESSURE_STATUS_KEYS.has(status.key),
   );
@@ -200,7 +201,10 @@ export function buildDungeonRoundLlmContext(args: {
     dangerScore: state.dangerScore,
     map: {
       name: state.location.location,
-      realmRequirement: mapRealm,
+      realmRequirement: mapConfig.realmRequirement,
+      difficultyTier: mapConfig.difficultyTier,
+      difficultyLabel: mapConfig.difficultyLabel,
+      battleDifficultyCap: mapConfig.maxEnemyDifficulty,
       tags: state.location.location_tags.slice(0, 6),
       descriptionSummary: truncateText(
         state.location.location_description,

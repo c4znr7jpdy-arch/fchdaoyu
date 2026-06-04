@@ -12,7 +12,7 @@ import {
   type CultivatorRecord,
   type CultivatorRelations,
 } from '@server/lib/repositories/cultivatorRepository';
-import { getOrInitCultivationProgress } from '@server/utils/cultivationUtils';
+import { getOrInitCultivationProgress, stripExpCapForStorage } from '@server/utils/cultivationUtils';
 import {
   calculateSingleArtifactScore,
   calculateSingleElixirScore,
@@ -104,10 +104,10 @@ async function assembleCultivatorFromRelations(
     ),
   );
   const skillProducts = relations.creationProducts.filter(
-    (product) => product.productType === 'skill',
+    (product) => product.productType === 'skill' && product.isEquipped,
   );
   const gongfaProducts = relations.creationProducts.filter(
-    (product) => product.productType === 'gongfa',
+    (product) => product.productType === 'gongfa' && product.isEquipped,
   );
   const artifactProducts = relations.creationProducts.filter(
     (product) => product.productType === 'artifact',
@@ -920,7 +920,7 @@ export async function updateCultivator(
     updateData.closedDoorYearsTotal = updates.closed_door_years_total;
   if (updates.status !== undefined) updateData.status = updates.status;
   if (updates.cultivation_progress !== undefined)
-    updateData.cultivation_progress = updates.cultivation_progress;
+    updateData.cultivation_progress = stripExpCapForStorage(updates.cultivation_progress);
   if (updates.condition !== undefined) {
     updateData.condition = (updates.condition as CultivatorCondition) ?? {};
   }
@@ -1605,7 +1605,7 @@ export async function updateCultivationExp(
 
   await dbInstance
     .update(schema.cultivators)
-    .set({ cultivation_progress: updatedProgress })
+    .set({ cultivation_progress: stripExpCapForStorage(updatedProgress) })
     .where(eq(schema.cultivators.id, cultivatorId));
 }
 

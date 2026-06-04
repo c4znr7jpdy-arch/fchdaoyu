@@ -673,10 +673,11 @@ describe('TaskService', () => {
     expect(dailyTask).toMatchObject({
       metadata: {
         // 灵石 scales by realm + XP added for daily task (normal difficulty at 渡劫/初期)
-        rewardSummary: ['灵石 x9000', '修为 x23'],
+        // exp_cap 现在从代码配置表实时读取（渡劫初期 = 75,000,000），不再使用数据库快照
+        rewardSummary: ['灵石 x9000', '修为 x577500'],
       },
       snapshot: {
-        rewardSummary: ['灵石 x9000', '修为 x23'],
+        rewardSummary: ['灵石 x9000', '修为 x577500'],
       },
     });
 

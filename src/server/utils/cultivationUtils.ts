@@ -32,28 +32,50 @@ import type {
 import { calculateRetreatBaseExp } from '@shared/engine/cultivation/ExpBudgetCalculator';
 
 /**
- * 计算当前境界阶段的修为上限
+ * 从代码配置表实时计算当前境界阶段的修为上限。
+ *
+ * 这是 exp_cap 的唯一权威来源——数据库不再持久化此字段，
+ * 所有读取路径都应通过此函数获取实时值。
  */
-export function calculateExpCap(
+export function resolveLiveExpCap(
   realm: RealmType,
   realm_stage: RealmStage,
 ): number {
   return EXP_CAP_TABLE[realm]?.[realm_stage] ?? EXP_CAP_TABLE['炼气']['初期'];
 }
 
+/**
+ * 返回一份去掉 exp_cap 的 CultivationProgress 副本，用于写入数据库。
+ *
+ * exp_cap 已改为运行时实时计算，不再持久化到数据库快照中，
+ * 避免修改 EXP_CAP_TABLE 后旧快照值不生效的问题。
+ */
+export function stripExpCapForStorage(
+  progress: CultivationProgress,
+): CultivationProgress {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { exp_cap: _removed, ...rest } = progress;
+  return rest as CultivationProgress;
+}
+
 export function getCultivationProgress(
   cultivator: Cultivator,
 ): CultivationProgress {
-  // 确保有修为进度数据
+  // 确保有修为进度数据（用 cultivation_exp 是否存在来判断，exp_cap 已不再持久化）
   if (
     !cultivator.cultivation_progress ||
-    !cultivator.cultivation_progress.exp_cap
+    cultivator.cultivation_progress.cultivation_exp === undefined
   ) {
     cultivator.cultivation_progress = createDefaultCultivationProgress(
       cultivator.realm,
       cultivator.realm_stage,
     );
   }
+  // exp_cap 始终从代码配置表实时读取，不依赖数据库快照
+  cultivator.cultivation_progress.exp_cap = resolveLiveExpCap(
+    cultivator.realm,
+    cultivator.realm_stage,
+  );
   return cultivator.cultivation_progress;
 }
 
@@ -62,13 +84,20 @@ export function getOrInitCultivationProgress(
   realm: RealmType,
   realm_stage: RealmStage,
 ): CultivationProgress {
-  return cultivation_progress && cultivation_progress.exp_cap
-    ? cultivation_progress
-    : createDefaultCultivationProgress(realm, realm_stage);
+  const progress =
+    cultivation_progress && cultivation_progress.cultivation_exp !== undefined
+      ? cultivation_progress
+      : createDefaultCultivationProgress(realm, realm_stage);
+  // exp_cap 始终从代码配置表实时读取，不依赖数据库快照
+  progress.exp_cap = resolveLiveExpCap(realm, realm_stage);
+  return progress;
 }
 
 /**
- * 创建默认的修为进度数据
+ * 创建默认的修为进度数据。
+ *
+ * 注意：exp_cap 仅在内存中填充（便于直接使用），不会持久化到数据库。
+ * 数据库写入时请使用 stripExpCapForStorage() 剥离。
  */
 export function createDefaultCultivationProgress(
   realm: RealmType,
@@ -76,7 +105,7 @@ export function createDefaultCultivationProgress(
 ): CultivationProgress {
   return {
     cultivation_exp: 0,
-    exp_cap: calculateExpCap(realm, realm_stage),
+    exp_cap: resolveLiveExpCap(realm, realm_stage),
     comprehension_insight: 0,
     breakthrough_failures: 0,
     bottleneck_state: false,

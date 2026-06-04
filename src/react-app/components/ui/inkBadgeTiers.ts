@@ -4,6 +4,7 @@ import {
   SkillGrade,
   SpiritualRootGrade,
 } from '@shared/types/constants';
+import type { DungeonDifficultyTier } from '@shared/lib/game/mapSystem';
 
 /**
  * 品阶类型：品质、灵根等级、技能等级、境界
@@ -48,3 +49,12 @@ export const tierColorMap: Record<Tier, string> = {
   大乘: 'text-tier-xian',
   渡劫: 'text-tier-shen',
 };
+
+export const dungeonDifficultyColorMap: Record<DungeonDifficultyTier, string> =
+  {
+    easy: 'text-tier-fan',
+    normal: 'text-tier-ling',
+    hard: 'text-tier-xuan',
+    elite: 'text-tier-zhen',
+    boss: 'text-tier-shen',
+  };

@@ -8,6 +8,7 @@ import {
   AbilityListCard,
 } from '@app/components/feature/products';
 import {
+  InkBadge,
   InkButton,
   InkDialog,
   InkNotice,
@@ -25,12 +26,16 @@ export function SkillsView() {
     isLoading,
     note,
     maxSkills,
+    maxOwnedSkills,
+    enabledSkillCount,
     dialog,
     closeDialog,
     selectedSkill,
     isModalOpen,
+    pendingToggleId,
     openSkillDetail,
     closeSkillDetail,
+    toggleSkillEnabled,
     openForgetConfirm,
   } = useSkillsViewModel();
 
@@ -58,9 +63,9 @@ export function SkillsView() {
         <>
           <GameSceneAsideSection title="术册摘要">
             <div className="space-y-2 text-sm leading-7">
-              <p>已习神通：{skills.length} 门</p>
-              <p>可承道基：{maxSkills} 门</p>
-              <p>剩余空位：{Math.max(maxSkills - skills.length, 0)} 门</p>
+              <p>已藏神通：{skills.length} / {maxOwnedSkills} 门</p>
+              <p>已启用：{enabledSkillCount} / {maxSkills} 门</p>
+              <p>可启用空位：{Math.max(maxSkills - enabledSkillCount, 0)} 门</p>
             </div>
           </GameSceneAsideSection>
           <GameSceneAsideSection title="下一步" className="text-sm leading-7">
@@ -80,12 +85,27 @@ export function SkillsView() {
               <AbilityListCard
                 key={skill.id}
                 product={skill}
+                extraBadges={
+                  <InkBadge tone={skill.isEquipped ? 'accent' : 'default'}>
+                    {skill.isEquipped ? '已启用' : '已停用'}
+                  </InkBadge>
+                }
                 actions={
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <InkButton variant="secondary" onClick={() => openSkillDetail(skill)}>
                       详情
                     </InkButton>
-                    <InkButton className="px-2" onClick={() => openForgetConfirm(skill)}>
+                    <InkButton
+                      disabled={pendingToggleId === skill.id}
+                      onClick={() => toggleSkillEnabled(skill)}
+                    >
+                      {pendingToggleId === skill.id
+                        ? '处理中…'
+                        : skill.isEquipped
+                          ? '停用'
+                          : '启用'}
+                    </InkButton>
+                    <InkButton className="px-2 text-crimson" onClick={() => openForgetConfirm(skill)}>
                       遗忘
                     </InkButton>
                   </div>

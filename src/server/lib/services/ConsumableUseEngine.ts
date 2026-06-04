@@ -2,6 +2,7 @@ import { getExecutor } from '@server/lib/drizzle/db';
 import * as schema from '@server/lib/drizzle/schema';
 import { redis } from '@server/lib/redis';
 import { parseRedisJson } from '@server/lib/redis/json';
+import { stripExpCapForStorage } from '@server/utils/cultivationUtils';
 import {
   isPillConsumable,
   isTalismanConsumable,
@@ -90,7 +91,9 @@ export const ConsumableUseEngine = {
           wisdom: Math.round(nextCultivator.attributes.wisdom),
           speed: Math.round(nextCultivator.attributes.speed),
           willpower: Math.round(nextCultivator.attributes.willpower),
-          cultivation_progress: nextCultivator.cultivation_progress ?? null,
+          cultivation_progress: nextCultivator.cultivation_progress
+            ? stripExpCapForStorage(nextCultivator.cultivation_progress)
+            : null,
           condition: nextCultivator.condition ?? {},
         })
         .where(eq(schema.cultivators.id, cultivatorId));

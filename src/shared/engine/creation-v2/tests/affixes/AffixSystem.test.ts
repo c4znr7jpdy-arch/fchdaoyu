@@ -126,6 +126,21 @@ describe('AffixEffectTranslator', () => {
     }
   });
 
+  it('translate: skill 属性系数应随随机倍率波动', () => {
+    const def = DEFAULT_AFFIX_REGISTRY.queryById('skill-core-damage')!;
+    const rolled = {
+      ...toRolledAffix(def),
+      finalMultiplier: 1.25,
+    };
+
+    const result = translator.translate(rolled, '真品');
+    expect(result.type).toBe('damage');
+    if (result.type === 'damage') {
+      expect(result.params.value.base).toBeCloseTo(152.5);
+      expect(result.params.value.coefficient).toBeCloseTo(1.625);
+    }
+  });
+
   it('translate: apply_buff（控制 buff）结构正确', () => {
     const def = DEFAULT_AFFIX_REGISTRY.queryById('skill-variant-control-stun')!;
     expect(def).toBeDefined();

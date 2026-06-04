@@ -8,6 +8,7 @@ import {
   AbilityListCard,
 } from '@app/components/feature/products';
 import {
+  InkBadge,
   InkButton,
   InkNotice,
 } from '@app/components/ui';
@@ -20,10 +21,15 @@ export function TechniquesView() {
     techniques,
     isLoading,
     note,
+    maxOwnedTechniques,
+    maxEnabledTechniques,
+    enabledTechniqueCount,
     selectedTechnique,
     isModalOpen,
+    pendingToggleId,
     openTechniqueDetail,
     closeTechniqueDetail,
+    toggleTechniqueEnabled,
     openForgetConfirm,
   } = useTechniquesViewModel();
 
@@ -51,7 +57,8 @@ export function TechniquesView() {
         <>
           <GameSceneAsideSection title="道基摘要">
             <div className="space-y-2 text-sm leading-7">
-              <p>已习功法：{techniques.length} 部</p>
+              <p>已藏功法：{techniques.length} / {maxOwnedTechniques} 部</p>
+              <p>已启用：{enabledTechniqueCount} / {maxEnabledTechniques} 部</p>
               <p>建议先保留与当前流派相合的底层功法。</p>
             </div>
           </GameSceneAsideSection>
@@ -72,12 +79,27 @@ export function TechniquesView() {
               <AbilityListCard
                 key={t.id}
                 product={t}
+                extraBadges={
+                  <InkBadge tone={t.isEquipped ? 'accent' : 'default'}>
+                    {t.isEquipped ? '已启用' : '已停用'}
+                  </InkBadge>
+                }
                 actions={
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <InkButton variant="secondary" onClick={() => openTechniqueDetail(t)}>
                       详情
                     </InkButton>
-                    <InkButton className="px-2" onClick={() => openForgetConfirm(t)}>
+                    <InkButton
+                      disabled={pendingToggleId === t.id}
+                      onClick={() => toggleTechniqueEnabled(t)}
+                    >
+                      {pendingToggleId === t.id
+                        ? '处理中…'
+                        : t.isEquipped
+                          ? '停用'
+                          : '启用'}
+                    </InkButton>
+                    <InkButton className="px-2 text-crimson" onClick={() => openForgetConfirm(t)}>
                       废除
                     </InkButton>
                   </div>

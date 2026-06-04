@@ -23,13 +23,13 @@ import {
 } from '@server/utils/breakthroughCalculator';
 import {
   calculateCultivationExp,
-  calculateExpCap,
   calculateExpLossOnFailure,
   calculateExpProgress,
   canAttemptBreakthrough,
   getBreakthroughType,
   getCultivationProgress,
   isBottleneckReached,
+  resolveLiveExpCap,
 } from '@server/utils/cultivationUtils';
 
 function clamp(value: number, min: number, max: number): number {
@@ -320,7 +320,7 @@ export function attemptBreakthrough(
 
     // 重置修为进度
     progress.cultivation_exp = 0;
-    progress.exp_cap = calculateExpCap(nextStage.realm, nextStage.stage);
+    progress.exp_cap = resolveLiveExpCap(nextStage.realm, nextStage.stage);
     progress.breakthrough_failures = 0;
     progress.bottleneck_state = false;
     progress.inner_demon = false;

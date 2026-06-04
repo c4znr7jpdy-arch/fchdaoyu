@@ -3,6 +3,9 @@ import {
 } from '@server/lib/hono/middleware';
 import type { AppEnv } from '@server/lib/hono/types';
 import * as creationProductRepository from '@server/lib/repositories/creationProductRepository';
+import {
+  MAX_EQUIPPED_GONGFA,
+} from '@shared/config/creationProductLimits';
 import { rehydrateStoredProductModel } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import type { CreationProductType } from '@shared/engine/creation-v2/types';
 import type { ElementType } from '@shared/types/constants';
@@ -13,6 +16,11 @@ const VALID_TYPES = new Set(['skill', 'gongfa', 'artifact']);
 const EquipSchema = z.object({
   productId: z.string().uuid(),
 });
+const PRODUCT_TYPE_LABELS: Record<CreationProductType, string> = {
+  artifact: '法宝',
+  skill: '神通',
+  gongfa: '功法',
+};
 
 const router = new Hono<AppEnv>();
 
@@ -79,26 +87,56 @@ router.post('/equip', requireActiveCultivator(), async (c) => {
   const product = await creationProductRepository.findById(productId);
 
   if (!product || product.cultivatorId !== cultivator.id) {
-    return c.json({ error: '法宝不存在或不属于你' }, 404);
+    return c.json({ error: '产物不存在或不属于你' }, 404);
   }
-  if (product.productType !== 'artifact') {
-    return c.json({ error: '只有法宝才能装备' }, 400);
+
+  const productType = product.productType as CreationProductType;
+  if (!VALID_TYPES.has(productType)) {
+    return c.json({ error: '产物类型无效' }, 400);
   }
-  if (!product.slot) {
-    return c.json({ error: '法宝缺少槽位信息' }, 400);
+
+  if (productType === 'artifact') {
+    if (!product.slot) {
+      return c.json({ error: '法宝缺少槽位信息' }, 400);
+    }
+
+    if (product.isEquipped) {
+      await creationProductRepository.unequipArtifact(productId);
+      return c.json({ success: true, equipped: false });
+    }
+
+    await creationProductRepository.equipArtifact(
+      productId,
+      cultivator.id,
+      product.slot,
+    );
+
+    return c.json({ success: true, equipped: true });
   }
 
   if (product.isEquipped) {
-    await creationProductRepository.unequipArtifact(productId);
+    await creationProductRepository.setProductEquipped(productId, false);
     return c.json({ success: true, equipped: false });
   }
 
-  await creationProductRepository.equipArtifact(
-    productId,
+  const maxEquipped =
+    productType === 'skill'
+      ? (cultivator.max_skills ?? 3)
+      : MAX_EQUIPPED_GONGFA;
+  const equippedCount = await creationProductRepository.countEquippedByType(
     cultivator.id,
-    product.slot,
+    productType,
   );
+  if (equippedCount >= maxEquipped) {
+    return c.json(
+      {
+        error: `${PRODUCT_TYPE_LABELS[productType]}启用数量已达上限，请先停用旧项`,
+      },
+      409,
+    );
+  }
 
+  await creationProductRepository.setProductEquipped(productId, true);
   return c.json({ success: true, equipped: true });
 });
 

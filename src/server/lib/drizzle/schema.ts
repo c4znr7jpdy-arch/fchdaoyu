@@ -766,7 +766,7 @@ export const creationProducts = pgTable(
     quality: varchar('quality', { length: 20 }), // 品质等级，从 balanceMetrics 推算
     slot: varchar('slot', { length: 20 }), // 仅 artifact: weapon | armor | accessory
     score: integer('score').notNull().default(0), // 排行榜评分
-    isEquipped: boolean('is_equipped').notNull().default(false), // 仅 artifact: 装备状态
+    isEquipped: boolean('is_equipped').notNull().default(false), // 三类产物通用生效态；法宝表示装备状态
     productModel: jsonb('product_model').notNull(), // 完整 CreationProductModel 快照
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at')
@@ -788,4 +788,3 @@ export const creationProducts = pgTable(
     ),
   ],
 );
-

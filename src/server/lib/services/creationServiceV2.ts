@@ -31,6 +31,10 @@ import {
   getRefineSpiritStoneMultiplier,
   scaleFateAdjustedValue,
 } from '@shared/lib/fates';
+import {
+  MAX_EQUIPPED_GONGFA,
+  MAX_OWNED_CREATION_PRODUCTS_PER_TYPE,
+} from '@shared/config/creationProductLimits';
 import { getExecutor } from '@server/lib/drizzle/db';
 import { cultivators, materials } from '@server/lib/drizzle/schema';
 import { redis } from '@server/lib/redis';
@@ -46,8 +50,6 @@ import type {
 import type { Material, PreHeavenFate } from '@shared/types/cultivator';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { getCultivatorByIdUnsafe } from './cultivatorService';
-
-const MAX_GONGFA = 5;
 
 /**
  * processCreation 时的玩家侧可选入参。
@@ -300,6 +302,21 @@ function buildCreationPreviewValidation(
     warnings,
     missingMatchingManual,
   };
+}
+
+function getEffectiveProductLimit(
+  productType: CreationProductType,
+  cultivator: { max_skills?: number | null },
+): number | null {
+  if (productType === 'skill') return cultivator.max_skills ?? 3;
+  if (productType === 'gongfa') return MAX_EQUIPPED_GONGFA;
+  return null;
+}
+
+function isEquipManagedProductType(
+  productType: CreationProductType,
+): productType is 'skill' | 'gongfa' {
+  return productType === 'skill' || productType === 'gongfa';
 }
 
 function resolvePreviewExecutionBlockingReason(
@@ -578,22 +595,23 @@ export async function processCreation(
         }
       }
 
-      if (productType === 'skill') {
+      if (isEquipManagedProductType(productType)) {
         currentCount = await creationProductRepository.countByType(
           cultivatorId,
-          'skill',
+          productType,
           tx,
         );
-        maxCount = cultivator.max_skills ?? 3;
+        maxCount = MAX_OWNED_CREATION_PRODUCTS_PER_TYPE;
         if (currentCount >= maxCount) needsReplace = true;
-      } else if (productType === 'gongfa') {
-        currentCount = await creationProductRepository.countByType(
+
+        const effectiveLimit = getEffectiveProductLimit(productType, cultivator);
+        const equippedCount = await creationProductRepository.countEquippedByType(
           cultivatorId,
-          'gongfa',
+          productType,
           tx,
         );
-        maxCount = MAX_GONGFA;
-        if (currentCount >= maxCount) needsReplace = true;
+        row.isEquipped =
+          effectiveLimit !== null && equippedCount < effectiveLimit;
       }
 
       if (needsReplace) {
@@ -674,16 +692,58 @@ export async function confirmCreation(
   const snapshot = deserializeCraftedOutcomeSnapshot(payload.snapshot);
   const outcome = restoreCraftedOutcome(snapshot, new CreationAbilityAdapter());
   const row = toRow(outcome, cultivatorId);
+  const productType = row.productType as CreationProductType;
+
+  const [cultivator] = await getExecutor()
+    .select()
+    .from(cultivators)
+    .where(eq(cultivators.id, cultivatorId))
+    .limit(1);
+  if (!cultivator) {
+    throw new CreationServiceError('道友查无此人', 404);
+  }
 
   let insertedId!: string;
   await getExecutor().transaction(async (tx) => {
+    let replacedWasEquipped = false;
     if (replaceId) {
       // 验证被替换产物归属
       const existing = await creationProductRepository.findById(replaceId, tx);
       if (!existing || existing.cultivatorId !== cultivatorId) {
         throw new CreationServiceError('目标产物不存在或不属于你', 403);
       }
+      if (existing.productType !== productType) {
+        throw new CreationServiceError('只能替换同类产物', 400);
+      }
+      replacedWasEquipped = existing.isEquipped;
       await creationProductRepository.deleteById(replaceId, tx);
+    }
+
+    if (isEquipManagedProductType(productType)) {
+      const currentCount = await creationProductRepository.countByType(
+        cultivatorId,
+        productType,
+        tx,
+      );
+      if (
+        currentCount >= MAX_OWNED_CREATION_PRODUCTS_PER_TYPE &&
+        !replaceId
+      ) {
+        throw new CreationServiceError(
+          `${PRODUCT_TYPE_LABELS[productType]}数量已达上限，请先选择一项替换`,
+          409,
+        );
+      }
+
+      const effectiveLimit = getEffectiveProductLimit(productType, cultivator);
+      const equippedCount = await creationProductRepository.countEquippedByType(
+        cultivatorId,
+        productType,
+        tx,
+      );
+      row.isEquipped =
+        replacedWasEquipped ||
+        (effectiveLimit !== null && equippedCount < effectiveLimit);
     }
 
     const record = await creationProductRepository.insert(row, tx);
