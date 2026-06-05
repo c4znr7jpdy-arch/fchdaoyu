@@ -1,12 +1,6 @@
-import { InkBadge, InkButton, InkList, InkNotice } from '@app/components/ui';
-import {
-  AffixInlineList,
-  toProductDisplayModel,
-  type ProductRecordLike,
-} from '@app/components/feature/products';
-import { ItemCard } from '@app/components/ui/ItemCard';
+import { InkButton, InkList, InkNotice } from '@app/components/ui';
+import { ArtifactListCard } from '@app/components/feature/products';
 import type { Artifact } from '@shared/types/cultivator';
-import { getEquipmentSlotInfo } from '@shared/types/dictionaries';
 
 interface ArtifactsTabProps {
   artifacts: Artifact[];
@@ -45,7 +39,6 @@ export function ArtifactsTab({
   return (
     <InkList>
       {artifacts.map((item) => {
-        const product = toProductDisplayModel(item as ProductRecordLike);
         const equippedNow = Boolean(
           item.id &&
           (equipped.weapon === item.id ||
@@ -53,30 +46,11 @@ export function ArtifactsTab({
             equipped.accessory === item.id),
         );
 
-        const slotInfo = getEquipmentSlotInfo(item.slot);
         return (
-          <ItemCard
+          <ArtifactListCard
             key={item.id ?? item.name}
-            icon={slotInfo.icon}
-            name={item.name}
-            quality={item.quality}
-            badgeExtra={
-              <>
-                <InkBadge tone="default">{item.element}</InkBadge>
-                <InkBadge tone="default">{slotInfo.label}</InkBadge>
-              </>
-            }
-            meta={
-              <div className="space-y-1">
-                <AffixInlineList affixes={product.affixes} />
-                <div className="text-ink-secondary flex flex-wrap gap-2 text-sm">
-                  {equippedNow && (
-                    <span className="text-ink font-medium">已装备</span>
-                  )}
-                </div>
-              </div>
-            }
-            description={item.description}
+            artifact={item}
+            equipped={equippedNow}
             actions={
               <div className="flex gap-2">
                 <InkButton
@@ -106,7 +80,6 @@ export function ArtifactsTab({
                 )}
               </div>
             }
-            layout="col"
           />
         );
       })}

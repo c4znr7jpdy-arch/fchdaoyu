@@ -302,6 +302,15 @@ describe('craftFromFormula narrative copy', () => {
 
     expect(result.valid).toBe(true);
     expect(result.fitBand).toBe('aligned');
+    expect(result.cooldownRemainingSeconds).toBe(30);
+    expect(redisSetMock).toHaveBeenNthCalledWith(
+      1,
+      'alchemy:formula_analysis:cooldown:cultivator-1',
+      '1',
+      'EX',
+      30,
+      'NX',
+    );
     expect(analyzerAnalyzeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         formula: expect.objectContaining({

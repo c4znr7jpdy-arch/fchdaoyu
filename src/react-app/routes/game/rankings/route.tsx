@@ -1,7 +1,7 @@
 import { ItemDetailModal } from '@app/routes/game/inventory/components/ItemDetailModal';
 import type { ItemDetailPayload } from '@app/routes/game/inventory/components/itemDetailPayload';
+import { CultivatorInspectionModal } from '@app/components/feature/cultivator-inspection';
 import { RankingListItem } from '@app/components/feature/ranking/RankingListItem';
-import { formatProbeResultContent } from '@app/components/func/ProbeResult';
 import {
   GameSceneAsideSection,
   GameSceneFrame,
@@ -11,14 +11,13 @@ import {
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import {
   InkButton,
-  InkDialog,
-  type InkDialogState,
   InkList,
   InkListItem,
   InkNotice,
 } from '@app/components/ui';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
 import { RANKING_REWARDS } from '@shared/types/constants';
+import type { Cultivator } from '@shared/types/cultivator';
 import { ItemRankingEntry, RankingsDisplayItem } from '@shared/types/rankings';
 import { useCallback, useEffect, useState } from 'react';
 import { toRankingDetailItem } from './rankingDetailItem';
@@ -47,7 +46,8 @@ export default function RankingsPage() {
   const [challenging, setChallenging] = useState<string | null>(null);
   const [error, setError] = useState<string>('');
   const [probing, setProbing] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<InkDialogState | null>(null);
+  const [inspectedCultivator, setInspectedCultivator] =
+    useState<Cultivator | null>(null);
   const [selectedItemDetail, setSelectedItemDetail] =
     useState<ItemDetailPayload | null>(null);
 
@@ -206,12 +206,7 @@ export default function RankingsPage() {
         throw new Error(result.error || '神识查探失败');
       }
 
-      // 设置对话框
-      setDialog({
-        id: 'probe-result',
-        content: formatProbeResultContent(result.data),
-        confirmLabel: '关闭',
-      });
+      setInspectedCultivator(result.data.cultivator);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : '神识查探失败，请稍后重试';
@@ -517,7 +512,12 @@ export default function RankingsPage() {
         )}
       </GameSceneFrame>
 
-      <InkDialog dialog={dialog} onClose={() => setDialog(null)} />
+      <CultivatorInspectionModal
+        cultivator={inspectedCultivator}
+        isOpen={Boolean(inspectedCultivator)}
+        onClose={() => setInspectedCultivator(null)}
+        mode="cultivator"
+      />
       <ItemDetailModal
         item={selectedItemDetail}
         isOpen={Boolean(selectedItemDetail)}

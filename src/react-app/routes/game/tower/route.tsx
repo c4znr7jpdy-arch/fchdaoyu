@@ -1,4 +1,5 @@
 import { useInkUI } from '@app/components/providers/InkUIProvider';
+import { CultivatorInspectionModal } from '@app/components/feature/cultivator-inspection';
 import {
   GameSceneFrame,
   GameSceneLoading,
@@ -19,7 +20,6 @@ import {
   resolveTowerMilestoneTier,
   TOWER_DIFFICULTY_STEP,
   TOWER_MAX_FLOOR,
-  type TowerBattleContext,
   type TowerBlessingId,
   type TowerSeasonMeta,
   type TowerSettlement,
@@ -28,13 +28,14 @@ import {
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { REALM_VALUES, type RealmType } from '@shared/types/constants';
 import { InkButton } from '@app/components/ui/InkButton';
+import { InkBadge } from '@app/components/ui/InkBadge';
 import { InkCard } from '@app/components/ui/InkCard';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { TowerBlessingDetailModal } from './components/TowerBlessingDetailModal';
-import { TowerEnemyDetailModal } from './components/TowerEnemyDetailModal';
 import { TowerLeaderboard } from './components/TowerLeaderboard';
 import {
+  describeEncounterLabel,
   formatDepthLabel,
   formatSeasonReset,
 } from './utils';
@@ -625,13 +626,6 @@ export default function TowerPage() {
     probe?.battleId === towerState.activeBattleId
       ? probe
       : null;
-  const encounterContext: TowerBattleContext | null = encounterProbe
-    ? {
-        battleId: encounterProbe.battleId,
-        encounter: encounterProbe.encounter,
-        enemy: encounterProbe.enemy,
-      }
-    : null;
   const requestProbeBattleInEffect = useEffectEvent(() => probeBattle());
   const eliteFloors = collectFloorsByKind('elite');
   const bossFloors = collectFloorsByKind('boss');
@@ -940,10 +934,20 @@ export default function TowerPage() {
         />
       </GameSceneFrame>
 
-      <TowerEnemyDetailModal
-        context={encounterContext}
+      <CultivatorInspectionModal
+        cultivator={encounterProbe?.enemy ?? null}
         isOpen={isEnemyDetailOpen}
         onClose={() => setIsEnemyDetailOpen(false)}
+        mode="enemy"
+        badges={
+          encounterProbe
+            ? [
+                <InkBadge key="kind" tone="accent">
+                  {describeEncounterLabel(encounterProbe.encounter.kind)}
+                </InkBadge>,
+              ]
+            : undefined
+        }
       />
       <TowerBlessingDetailModal
         blessingId={selectedBlessingDetail?.blessingId ?? null}

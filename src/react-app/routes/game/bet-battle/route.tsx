@@ -2,7 +2,7 @@ import {
   PillKeywordLine,
   toPillDisplayModel,
 } from '@app/components/feature/consumables';
-import { formatProbeResultContent } from '@app/components/func/ProbeResult';
+import { CultivatorInspectionModal } from '@app/components/feature/cultivator-inspection';
 import { InkSection } from '@app/components/layout';
 import { InkModal } from '@app/components/layout/InkModal';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
@@ -10,13 +10,11 @@ import {
   InkActionGroup,
   InkBadge,
   InkButton,
-  InkDialog,
   InkInput,
   InkList,
   InkNotice,
   InkTabs,
   inkFieldVariants,
-  type InkDialogState,
 } from '@app/components/ui';
 import { tierColorMap, type Tier } from '@app/components/ui/InkBadge';
 import { ItemCard } from '@app/components/ui/ItemCard';
@@ -34,7 +32,12 @@ import { cn } from '@shared/lib/cn';
 import { isPillConsumable } from '@shared/lib/consumables';
 import type { CultivatorCondition } from '@shared/types/condition';
 import { REALM_VALUES, type RealmType } from '@shared/types/constants';
-import type { Artifact, Consumable, Material } from '@shared/types/cultivator';
+import type {
+  Artifact,
+  Consumable,
+  Cultivator,
+  Material,
+} from '@shared/types/cultivator';
 import { useNavigate } from 'react-router';
 
 import {
@@ -450,7 +453,8 @@ export default function BetBattlePage() {
     useState<BetBattleListing | null>(null);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [probingId, setProbingId] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<InkDialogState | null>(null);
+  const [inspectedCultivator, setInspectedCultivator] =
+    useState<Cultivator | null>(null);
   const [selectedStakeDetail, setSelectedStakeDetail] =
     useState<ItemDetailPayload | null>(null);
 
@@ -592,11 +596,7 @@ export default function BetBattlePage() {
       if (!response.ok || !result.success) {
         throw new Error(result.error || '神识查探失败');
       }
-      setDialog({
-        id: 'bet-battle-probe',
-        content: formatProbeResultContent(result.data),
-        confirmLabel: '关闭',
-      });
+      setInspectedCultivator(result.data.cultivator);
     } catch (error) {
       pushToast({
         message: error instanceof Error ? error.message : '神识查探失败',
@@ -836,7 +836,12 @@ export default function BetBattlePage() {
           />
         )}
 
-        <InkDialog dialog={dialog} onClose={() => setDialog(null)} />
+        <CultivatorInspectionModal
+          cultivator={inspectedCultivator}
+          isOpen={Boolean(inspectedCultivator)}
+          onClose={() => setInspectedCultivator(null)}
+          mode="cultivator"
+        />
 
         <ItemDetailModal
           isOpen={!!selectedStakeDetail}

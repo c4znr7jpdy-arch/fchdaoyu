@@ -128,7 +128,7 @@ export function LingGenMini({
 }: Pick<LingGenProps, 'spiritualRoots' | 'title'>) {
   return (
     <div className="space-y-2">
-      <div className="text-sm font-semibold">{title}</div>
+      <div className="font-semibold">{title}</div>
       <div className="flex flex-wrap gap-2">
         {spiritualRoots && spiritualRoots.length > 0 ? (
           spiritualRoots.map((root, idx) => (

@@ -1,6 +1,5 @@
-import { LingGenMini } from '@app/components/func/LingGen';
+import { CultivatorInspectionModal } from '@app/components/feature/cultivator-inspection';
 import { useInkUI } from '@app/components/providers/InkUIProvider';
-import { InkBadge } from '@app/components/ui/InkBadge';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
 import {
@@ -27,7 +26,7 @@ export function BattlePreparation({
   const { openDialog } = useInkUI();
   const { enemy, isProbing, probeEnemy, abandonBattle } =
     useEnemyProbe(battleId);
-  const [showDetails, setShowDetails] = useState(true);
+  const [isEnemyDetailOpen, setIsEnemyDetailOpen] = useState(false);
 
   useEffect(() => {
     if (!enemy && !isProbing) {
@@ -36,7 +35,9 @@ export function BattlePreparation({
   }, [battleId, enemy, isProbing, probeEnemy]);
 
   const handleProbe = () => {
-    setShowDetails(!showDetails);
+    if (enemy) {
+      setIsEnemyDetailOpen(true);
+    }
   };
 
   const handleAbandon = () => {
@@ -107,67 +108,15 @@ export function BattlePreparation({
         </div>
       </div>
 
-      {showDetails && enemy && (
-        <InkCard className="bg-paper-dark space-y-3 p-4">
-          <div className="border-ink/10 flex items-center justify-between border-b pb-2">
-            <h3 className="text-crimson font-bold">
-              {enemy.name}
-              {enemy.title && (
-                <span className="text-ink-secondary ml-2 text-sm">
-                  ({enemy.title})
-                </span>
-              )}
-            </h3>
-            <InkBadge tier={enemy.realm}>{enemy.realm_stage}</InkBadge>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>体魄: {enemy.attributes.vitality}</div>
-            <div>灵力: {enemy.attributes.spirit}</div>
-            <div>悟性: {enemy.attributes.wisdom}</div>
-            <div>速度: {enemy.attributes.speed}</div>
-            <div className="col-span-2">神识: {enemy.attributes.willpower}</div>
-          </div>
-
-          <LingGenMini spiritualRoots={enemy.spiritual_roots} />
-
-          {enemy.skills && enemy.skills.length > 0 ? (
-            <div className="text-sm">
-              <div className="text-ink-secondary mb-1">技能:</div>
-              <div className="space-y-1">
-                {enemy.skills.map((skill, index) => (
-                  <div key={index} className="flex justify-between text-xs">
-                    <span>
-                      {skill.name} ({skill.element})
-                    </span>
-                    <span className="text-ink-secondary">
-                      {skill.description ?? '—'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {enemy.background ? (
-            <p className="text-ink-secondary text-xs leading-relaxed italic">
-              {enemy.background}
-            </p>
-          ) : null}
-        </InkCard>
-      )}
-
       <div className="space-y-3">
-        {!showDetails ? (
-          <InkButton
-            variant="secondary"
-            className="w-full py-3"
-            onClick={handleProbe}
-            disabled={!enemy}
-          >
-            {enemy ? '👁️ 神识查探' : '查探中...'}
-          </InkButton>
-        ) : null}
+        <InkButton
+          variant="secondary"
+          className="w-full py-3"
+          onClick={handleProbe}
+          disabled={!enemy}
+        >
+          {enemy ? '👁️ 神识查探' : '查探中...'}
+        </InkButton>
 
         <InkButton
           variant={battleRisk.shouldWarn ? 'secondary' : 'primary'}
@@ -186,6 +135,13 @@ export function BattlePreparation({
           🏃 放弃战斗（撤退）
         </InkButton>
       </div>
+
+      <CultivatorInspectionModal
+        cultivator={enemy}
+        isOpen={isEnemyDetailOpen}
+        onClose={() => setIsEnemyDetailOpen(false)}
+        mode="enemy"
+      />
     </InkCard>
   );
 }

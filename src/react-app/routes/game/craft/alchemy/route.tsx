@@ -353,7 +353,11 @@ export function AlchemyFormulaAnalysisCard({
             熟练越深，越能把偏差药路勉强拢回丹方主脉；但若低于炸炉线，仍不可强开。
           </p>
           {cooldownRemainingSeconds > 0 ? (
-            <p>{`${cooldownRemainingSeconds} 秒后可再引炉观脉。`}</p>
+            <p>
+              {analysis.fitBand === 'blocked'
+                ? `${cooldownRemainingSeconds} 秒后可重新引炉观脉。`
+                : `本次观脉已留炉路，可直接开炉；${cooldownRemainingSeconds} 秒后可重新引炉观脉。`}
+            </p>
           ) : null}
         </div>
         {analysis.warnings.length > 0 ? (
@@ -992,6 +996,8 @@ export default function AlchemyPage() {
   const displayValidation = validation;
   const displayCanAfford = canAfford;
   const isFormulaMode = activeMode === 'formula';
+  const hasCraftableFormulaAnalysis =
+    !!formulaAnalysis?.analysisId && formulaAnalysis.fitBand !== 'blocked';
   const canAnalyzeFormula =
     !isSubmitting &&
     !isAnalyzingFormula &&
@@ -1006,8 +1012,7 @@ export default function AlchemyPage() {
   const canCraftFormula =
     !isSubmitting &&
     !!selectedFormulaId &&
-    !!formulaAnalysis?.analysisId &&
-    formulaAnalysis.fitBand !== 'blocked' &&
+    hasCraftableFormulaAnalysis &&
     !previewError &&
     estimatedSpiritStones !== null &&
     displayCanAfford &&
@@ -1019,7 +1024,7 @@ export default function AlchemyPage() {
       : !formulaAnalysis?.analysisId
       ? analysisCooldownRemaining > 0
         ? `${analysisCooldownRemaining} 秒后可再观脉`
-        : '辨材定炉'
+        : '引炉观脉'
       : formulaAnalysis.fitBand === 'blocked'
         ? '冲方不可开'
         : '依方成丹';
@@ -1364,7 +1369,7 @@ export default function AlchemyPage() {
           : '请投入灵材并注入丹意。';
   const handlePrimaryAction = () => {
     if (isFormulaMode) {
-      if (formulaAnalysis?.analysisId) {
+      if (hasCraftableFormulaAnalysis) {
         void handleSubmit();
         return;
       }
