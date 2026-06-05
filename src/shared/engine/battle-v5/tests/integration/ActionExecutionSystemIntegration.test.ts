@@ -11,7 +11,12 @@ import {
   ModifierType,
 } from '../../core/types';
 import { EventBus } from '../../core/EventBus';
-import { DamageRequestEvent, SkillCastEvent, SkillPreCastEvent } from '../../core/events';
+import {
+  DamageRequestEvent,
+  HitCheckEvent,
+  SkillCastEvent,
+  SkillPreCastEvent,
+} from '../../core/events';
 import { DamageEffect } from '../../effects/DamageEffect';
 import { AbilityFactory } from '../../factories/AbilityFactory';
 import { ActionExecutionSystem } from '../../systems/ActionExecutionSystem';
@@ -86,6 +91,97 @@ describe('ActionExecutionSystem integration', () => {
     skill.tickCooldown();
     expect(skill.currentCooldown).toBe(0);
     expect(skill.isReady()).toBe(true);
+  });
+});
+
+describe('DamageSystem hit check', () => {
+  beforeEach(() => {
+    EventBus.instance.reset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function publishSkillCast(caster: Unit, target: Unit): HitCheckEvent {
+    const damageSystem = new DamageSystem();
+    const skill = new TrackingSkill();
+    let hitCheckEvent: HitCheckEvent | undefined;
+
+    EventBus.instance.subscribe<HitCheckEvent>('HitCheckEvent', (event) => {
+      hitCheckEvent = event;
+    });
+
+    EventBus.instance.publish<SkillCastEvent>({
+      type: 'SkillCastEvent',
+      timestamp: Date.now(),
+      caster,
+      target,
+      ability: skill,
+    });
+
+    damageSystem.destroy();
+    expect(hitCheckEvent).toBeDefined();
+    return hitCheckEvent!;
+  }
+
+  it('caps final dodge chance at 45%', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const caster = new Unit('caster', '施法者', {
+      [AttributeType.WISDOM]: 0,
+      [AttributeType.WILLPOWER]: 0,
+    });
+    const target = new Unit('target', '目标', {
+      [AttributeType.SPEED]: 3000,
+    });
+    target.attributes.addModifier({
+      id: 'large_evasion_bonus',
+      attrType: AttributeType.EVASION_RATE,
+      type: ModifierType.FIXED,
+      value: 0.4,
+      source: 'test',
+    });
+
+    const hitCheckEvent = publishSkillCast(caster, target);
+
+    expect(hitCheckEvent.isDodged).toBe(false);
+    expect(hitCheckEvent.isHit).toBe(true);
+  });
+
+  it('keeps a 3% minimum dodge chance when accuracy exceeds evasion', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.02);
+    const caster = new Unit('caster', '施法者', {
+      [AttributeType.WISDOM]: 3000,
+      [AttributeType.WILLPOWER]: 3000,
+    });
+    const target = new Unit('target', '目标', {
+      [AttributeType.SPEED]: 0,
+    });
+
+    const hitCheckEvent = publishSkillCast(caster, target);
+
+    expect(hitCheckEvent.isDodged).toBe(true);
+    expect(hitCheckEvent.isHit).toBe(false);
+  });
+
+  it('skips dodge checks for self-targeted casts', () => {
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+    const caster = new Unit('caster', '施法者', {
+      [AttributeType.SPEED]: 3000,
+    });
+    caster.attributes.addModifier({
+      id: 'large_self_evasion_bonus',
+      attrType: AttributeType.EVASION_RATE,
+      type: ModifierType.FIXED,
+      value: 0.4,
+      source: 'test',
+    });
+
+    const hitCheckEvent = publishSkillCast(caster, caster);
+
+    expect(hitCheckEvent.isDodged).toBe(false);
+    expect(hitCheckEvent.isHit).toBe(true);
+    expect(randomSpy).not.toHaveBeenCalled();
   });
 });
 

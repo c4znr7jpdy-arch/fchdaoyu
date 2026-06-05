@@ -36,9 +36,10 @@ export enum AttributeType {
   DEF = 'def',                                 // 物理防御：VITALITY×3
   MAGIC_ATK = 'magicAtk',                      // 法术攻击：SPIRIT×5
   MAGIC_DEF = 'magicDef',                      // 法术防御：WILLPOWER×3
-  CRIT_RATE = 'critRate',                       // 暴击率 (0~0.60)：0.05 + SPEED×0.002 + WISDOM×0.001
-  CRIT_DAMAGE_MULT = 'critDamageMult',          // 暴击伤害倍率 (1.25~2.00)：1.25 + WISDOM×0.005
-  EVASION_RATE = 'evasionRate',                 // 闪避率 (0~0.50)：SPEED×0.003
+  CRIT_RATE = 'critRate',                       // 暴击率 (0~0.60)：0.05 + SPEED×0.0002 + WISDOM×0.0001
+  CRIT_DAMAGE_MULT = 'critDamageMult',          // 暴击伤害倍率 (1.25~2.00)：1.25 + WISDOM×0.0005
+  EVASION_RATE = 'evasionRate',                 // 闪避率 (0~0.30)：SPEED×0.00018
+  ACCURACY = 'accuracy',                         // 命中 (0~0.30)：WISDOM×0.00012 + WILLPOWER×0.00008
   CONTROL_HIT = 'controlHit',                   // 控制命中 (0~0.80)：WILLPOWER×0.003
   CONTROL_RESISTANCE = 'controlResistance',     // 控制抗性 (0~0.80)：WILLPOWER×0.003
   MAX_HP = 'maxHp',                             // 最大气血：200 + VITALITY×16
@@ -49,7 +50,6 @@ export enum AttributeType {
   MAGIC_PENETRATION = 'magicPenetration',        // 法术穿透：削减目标法防 (0~1)
   CRIT_RESIST = 'critResist',                    // 暴击韧性：降低对手暴击率 (0~1)
   CRIT_DAMAGE_REDUCTION = 'critDamageReduction', // 暴击减伤：降低受到暴击倍率 (0~0.5)
-  ACCURACY = 'accuracy',                         // 精准：抵消目标闪避率 (0~0.5)
   HEAL_AMPLIFY = 'healAmplify',                  // 治疗增强 (≥0)
 }
 

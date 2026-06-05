@@ -87,15 +87,15 @@ export class DamageSystem {
     if (caster.id === target.id) {
       hitCheckEvent.isHit = true;
     } else {
-      // ===== ① 身法闪避判定（非线性公式）=====
-      // 目标 EVASION_RATE（派生自 SPEED）减去施法者 ACCURACY，转为百分比
+      // ===== ① 身法闪避判定 =====
+      // 目标 EVASION_RATE 减去施法者 ACCURACY，转为百分比并保留闪避手感上下限
       const evasionRate = target.attributes.getValue(
         AttributeType.EVASION_RATE,
       );
       const accuracy = caster.attributes.getValue(AttributeType.ACCURACY);
       const dodgeChance = Math.max(
-        0,
-        Math.min(80, (evasionRate - accuracy) * 100),
+        3,
+        Math.min(45, (evasionRate - accuracy) * 100),
       );
       if (Math.random() * 100 < dodgeChance) {
         hitCheckEvent.isDodged = true;
