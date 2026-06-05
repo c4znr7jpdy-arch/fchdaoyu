@@ -157,12 +157,12 @@ function stripEnemyLoadout(cultivator: Cultivator): Cultivator {
 
 describe('EnemyGenerator', () => {
   it.each([
-    { difficulty: 0, factor: 0.55 },
-    { difficulty: 25, factor: 0.75 },
-    { difficulty: 50, factor: 0.95 },
-    { difficulty: 70, factor: 1.12 },
-    { difficulty: 85, factor: 1.28 },
-    { difficulty: 100, factor: 1.45 },
+    { difficulty: 0, factor: 0.6 },
+    { difficulty: 25, factor: 0.8 },
+    { difficulty: 50, factor: 1 },
+    { difficulty: 70, factor: 1.2 },
+    { difficulty: 85, factor: 1.5 },
+    { difficulty: 100, factor: 2.0 },
   ])('maps difficulty $difficulty to factor $factor', ({ difficulty, factor }) => {
     const draft = enemyGenerator.buildDraft({
       realm: '筑基',

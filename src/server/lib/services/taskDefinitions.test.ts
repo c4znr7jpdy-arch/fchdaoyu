@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { buildDifficultyFactor } from '@shared/engine/enemy-generation/utils';
+import { REALM_STAGE_CAPS, type RealmStage, type RealmType } from '@shared/types/constants';
 import type { Cultivator } from '@shared/types/cultivator';
 import { getTaskChallengeProfile } from './taskDefinitions';
+
+function sumAttributes(attributes: Cultivator['attributes']): number {
+  return Object.values(attributes).reduce((sum, value) => sum + value, 0);
+}
 
 function createCultivator(overrides: Partial<Cultivator> = {}): Cultivator {
   return {
@@ -110,4 +116,49 @@ describe('taskDefinitions heart demon challenge', () => {
       willpower: 33,
     });
   });
+
+  it.each([
+    {
+      challengeId: 'tribulation_deity',
+      realm: '元婴',
+      realmStage: '圆满',
+      enemyDifficulty: 70,
+    },
+    {
+      challengeId: 'law_insight_void',
+      realm: '化神',
+      realmStage: '圆满',
+      enemyDifficulty: 80,
+    },
+    {
+      challengeId: 'tribulation_body',
+      realm: '炼虚',
+      realmStage: '圆满',
+      enemyDifficulty: 90,
+    },
+    {
+      challengeId: 'heavenly_tribulation_final',
+      realm: '大乘',
+      realmStage: '圆满',
+      enemyDifficulty: 100,
+    },
+  ] as const)(
+    'uses enemy-generator 0-100 difficulty for $challengeId',
+    async ({ challengeId, realm, realmStage, enemyDifficulty }) => {
+      const profile = getTaskChallengeProfile(challengeId);
+      const cultivator = createCultivator({ realm, realm_stage: realmStage });
+
+      const opponent = await profile?.buildOpponent(cultivator);
+
+      expect(profile?.enemyDifficulty).toBe(enemyDifficulty);
+      expect(opponent).toBeTruthy();
+      expect(sumAttributes(opponent!.attributes)).toBe(
+        Math.round(
+          REALM_STAGE_CAPS[realm as RealmType][realmStage as RealmStage] *
+            buildDifficultyFactor(enemyDifficulty) *
+            5,
+        ),
+      );
+    },
+  );
 });

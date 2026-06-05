@@ -101,6 +101,7 @@ export type RuntimeTaskDefinition =
 export interface TaskChallengeProfile {
   id: string;
   title: string;
+  enemyDifficulty?: number;
   buildOpponent: (cultivator: Cultivator) => Cultivator | Promise<Cultivator>;
 }
 
@@ -144,7 +145,7 @@ async function buildGeneratedChallengeOpponent(
   options: {
     name: string;
     race: '灵族' | '魔族' | '古兽';
-    difficulty: number;
+    enemyDifficulty: number;
     narrativeHint: string;
   },
 ): Promise<Cultivator> {
@@ -152,7 +153,7 @@ async function buildGeneratedChallengeOpponent(
     realm: cultivator.realm,
     realmStage: cultivator.realm_stage,
     race: options.race,
-    difficulty: options.difficulty,
+    difficulty: options.enemyDifficulty,
     isBoss: true,
     name: options.name,
     background: options.narrativeHint,
@@ -161,6 +162,13 @@ async function buildGeneratedChallengeOpponent(
   const enriched = await challengeEnemyGenerator.enrichNarrative(draft);
   return enriched.cultivator;
 }
+
+const BREAKTHROUGH_CHALLENGE_ENEMY_DIFFICULTY = {
+  tribulationDeity: 70,
+  lawInsightVoid: 80,
+  tribulationBody: 90,
+  heavenlyTribulationFinal: 100,
+} as const;
 
 const challengeProfiles: TaskChallengeProfile[] = [
   {
@@ -185,33 +193,36 @@ const challengeProfiles: TaskChallengeProfile[] = [
   {
     id: 'tribulation_deity',
     title: '化神之扰',
+    enemyDifficulty: BREAKTHROUGH_CHALLENGE_ENEMY_DIFFICULTY.tribulationDeity,
     buildOpponent: (cultivator) =>
       buildGeneratedChallengeOpponent(cultivator, {
         name: '天劫投影',
         race: '灵族',
-        difficulty: 7,
+        enemyDifficulty: BREAKTHROUGH_CHALLENGE_ENEMY_DIFFICULTY.tribulationDeity,
         narrativeHint: '天劫降临时凝聚而成的劫影，通体天罚雷光流转，奉天命阻断化神之路。',
       }),
   },
   {
     id: 'law_insight_void',
     title: '法则试锋',
+    enemyDifficulty: BREAKTHROUGH_CHALLENGE_ENEMY_DIFFICULTY.lawInsightVoid,
     buildOpponent: (cultivator) =>
       buildGeneratedChallengeOpponent(cultivator, {
         name: '法则残影',
         race: '灵族',
-        difficulty: 8,
+        enemyDifficulty: BREAKTHROUGH_CHALLENGE_ENEMY_DIFFICULTY.lawInsightVoid,
         narrativeHint: '法则碎片凝化的残影，举手投足间隐现天地规则之力，试探悟道者能否承受法则之重。',
       }),
   },
   {
     id: 'tribulation_body',
     title: '雷劫淬体',
+    enemyDifficulty: BREAKTHROUGH_CHALLENGE_ENEMY_DIFFICULTY.tribulationBody,
     buildOpponent: (cultivator) =>
       buildGeneratedChallengeOpponent(cultivator, {
         name: '劫雷化身',
         race: '古兽',
-        difficulty: 9,
+        enemyDifficulty: BREAKTHROUGH_CHALLENGE_ENEMY_DIFFICULTY.tribulationBody,
         narrativeHint: '劫雷凝形的太古兽体，浑身雷弧缠绕，以雷霆之势淬炼渡劫者的道体根基。',
       }),
   },
@@ -229,11 +240,14 @@ const challengeProfiles: TaskChallengeProfile[] = [
   {
     id: 'heavenly_tribulation_final',
     title: '天劫前奏',
+    enemyDifficulty:
+      BREAKTHROUGH_CHALLENGE_ENEMY_DIFFICULTY.heavenlyTribulationFinal,
     buildOpponent: (cultivator) =>
       buildGeneratedChallengeOpponent(cultivator, {
         name: '天道劫影',
         race: '古兽',
-        difficulty: 10,
+        enemyDifficulty:
+          BREAKTHROUGH_CHALLENGE_ENEMY_DIFFICULTY.heavenlyTribulationFinal,
         narrativeHint: '天道意志所化的终极劫影，承载末法时代最后一缕天威，誓要将不配渡劫者碾为齑粉。',
       }),
   },
