@@ -19,7 +19,8 @@ import {
   StackRule,
 } from '../../contracts/battle';
 import { EXCLUSIVE_GROUP } from '../exclusiveGroups';
-import type { AffixDefinition, ScalableParam } from '../types';
+import type { AffixDefinition } from '../types';
+import { qualityScaledCoefficient } from './utils';
 
 const DOT_TICK_LISTENER = {
   eventType: GameplayTags.EVENT.ACTION_PRE,
@@ -27,15 +28,6 @@ const DOT_TICK_LISTENER = {
   priority: CREATION_LISTENER_PRIORITIES.dotTick,
 } as const;
 
-const QUALITY_COEFFICIENT_STEP = 0.1;
-
-function qualityScaledCoefficient(base: number): ScalableParam {
-  return {
-    base,
-    scale: 'quality',
-    coefficient: base * QUALITY_COEFFICIENT_STEP,
-  };
-}
 
 export const SKILL_AFFIXES: AffixDefinition[] = [
   // ================================================================

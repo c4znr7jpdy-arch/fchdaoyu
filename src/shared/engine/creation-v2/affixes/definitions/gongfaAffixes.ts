@@ -6,6 +6,7 @@
  *
  * PBU 换算逻辑：PBU = (∑词缀消耗 * 类别系数 * 效率加成) * 品质乘数 + 极品奖励。
  */
+import { DamageType } from '@shared/engine/battle-v5/core/types';
 import {
   CreationTags,
   ELEMENT_TO_RUNTIME_ABILITY_TAG,
@@ -16,6 +17,7 @@ import { ELEMENT_TO_MATERIAL_TAG } from '../../config/CreationMappings';
 import { AttributeType, ModifierType } from '../../contracts/battle';
 import { EXCLUSIVE_GROUP } from '../exclusiveGroups';
 import { AffixDefinition } from '../types';
+import { qualityScaledCoefficient } from './utils';
 
 export const GONGFA_AFFIXES: AffixDefinition[] = [
   // ================================================================
@@ -1024,9 +1026,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
       params: {
         target: 'mp',
         value: {
-          base: { base: 8, scale: 'quality', coefficient: 3 },
+          base: { base: 80, scale: 'quality', coefficient: 22 },
           attribute: AttributeType.SPIRIT,
-          coefficient: 0.02,
+          coefficient: qualityScaledCoefficient(0.08),
         },
       },
     },
@@ -1241,7 +1243,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
   {
     id: 'gongfa-school-dot-amplify',
     displayName: '异常精通',
-    displayDescription: '异常精通，对带有持续伤害状态的目标造成更高伤害',
+    displayDescription: '异常精通，持续伤害提升',
     category: 'gongfa_school',
     rarity: 'rare',
     match: {
@@ -1264,10 +1266,14 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
           type: 'has_tag',
           params: { tag: GameplayTags.STATUS.CATEGORY.DOT },
         },
+        {
+          type: 'ability_has_tag',
+          params: { damageType: DamageType.DOT },
+        },
       ],
       params: {
         mode: 'increase',
-        value: { base: 0.08, scale: 'quality', coefficient: 0.04 },
+        value: { base: 0.08, scale: 'quality', coefficient: 0.03 },
       },
     },
     listenerSpec: {
