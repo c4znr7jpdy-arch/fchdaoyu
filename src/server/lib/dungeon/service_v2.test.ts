@@ -7,11 +7,13 @@ import type {
   PlayerInfo,
 } from './types';
 
-const { buildDraftMock, getMapNodeMock, redisSetMock } = vi.hoisted(() => ({
-  buildDraftMock: vi.fn(),
-  getMapNodeMock: vi.fn(),
-  redisSetMock: vi.fn(),
-}));
+const { buildDraftMock, enrichNarrativeMock, getMapNodeMock, redisSetMock } =
+  vi.hoisted(() => ({
+    buildDraftMock: vi.fn(),
+    enrichNarrativeMock: vi.fn(),
+    getMapNodeMock: vi.fn(),
+    redisSetMock: vi.fn(),
+  }));
 
 vi.mock('@server/lib/prompts', () => ({
   renderPrompt: vi.fn(),
@@ -26,9 +28,12 @@ vi.mock('@server/utils/aiClient', () => ({
 }));
 
 vi.mock('@shared/engine/enemyGenerator', () => ({
-  enemyGenerator: {
-    buildDraft: buildDraftMock,
-  },
+  EnemyGenerator: vi.fn().mockImplementation(function EnemyGeneratorMock() {
+    return {
+      buildDraft: buildDraftMock,
+      enrichNarrative: enrichNarrativeMock,
+    };
+  }),
 }));
 
 vi.mock('@shared/lib/game/mapSystem', async (importOriginal) => {
@@ -237,6 +242,7 @@ describe('DungeonService dungeon enemy scaling', () => {
         name: input.name,
       }),
     }));
+    enrichNarrativeMock.mockImplementation(async (draft) => draft);
   });
 
   it('uses map realm requirement instead of player realm and disables boss loadout below elite', async () => {
@@ -269,6 +275,7 @@ describe('DungeonService dungeon enemy scaling', () => {
         isBoss: false,
       }),
     );
+    expect(enrichNarrativeMock).toHaveBeenCalledTimes(1);
     expect(session.enemyData).toMatchObject({
       realm: '筑基',
       difficulty: 35,
@@ -305,6 +312,7 @@ describe('DungeonService dungeon enemy scaling', () => {
         isBoss: true,
       }),
     );
+    expect(enrichNarrativeMock).toHaveBeenCalledTimes(1);
     expect(session.enemyData).toMatchObject({
       realm: '化神',
       difficulty: 100,

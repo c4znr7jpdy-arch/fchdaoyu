@@ -1445,9 +1445,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
     grantedAbilityTags: [GameplayTags.TRAIT.COOLDOWN],
     effectTemplate: {
       type: 'cooldown_modify',
-      conditions: [{ type: 'chance', params: { value: 0.35 } }],
+      conditions: [{ type: 'chance', params: { value: 0.2 } }],
       params: {
-        cdModifyValue: { base: -1, scale: 'quality', coefficient: -0.5 },
+        cdModifyValue: { base: -1, scale: 'quality', coefficient: -0.25 },
       },
     },
     listenerSpec: {

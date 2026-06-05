@@ -5,8 +5,9 @@ import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapter
 import { BASIC_SKILLS, BASIC_TECHNIQUES } from '@shared/engine/cultivator/creation/config';
 import { CreationSession } from '@shared/engine/creation-v2/CreationSession';
 import { CreationPhase } from '@shared/engine/creation-v2/core/types';
+import { GameplayTags } from '@shared/engine/shared/tag-domain';
 import { simulateBattleV5 } from '@shared/lib/battle/simulateBattleV5';
-import { REALM_STAGE_CAPS, type EnemyRace } from '@shared/types/constants';
+import { ENEMY_RACE_VALUES, REALM_STAGE_CAPS, type EnemyRace } from '@shared/types/constants';
 import type { Cultivator } from '@shared/types/cultivator';
 import {
   enemyGenerator,
@@ -15,6 +16,10 @@ import {
   EnemyLoadoutPlanner,
   NoopEnemyCopyProvider,
 } from './enemyGenerator';
+import {
+  getEnemyCombatPolicy,
+  validateEnemySkillRoles,
+} from './enemy-generation/EnemyCombatPolicy';
 
 function sumAttributes(attributes: Cultivator['attributes']): number {
   return Object.values(attributes).reduce((sum, value) => sum + value, 0);
@@ -164,6 +169,58 @@ function stripEnemyLoadout(cultivator: Cultivator): Cultivator {
       accessory: null,
     },
   };
+}
+
+function skillFunctionTags(skill: Cultivator['skills'][number]): string[] {
+  return skill.abilityConfig?.tags?.filter((tag) =>
+    tag.startsWith(GameplayTags.ABILITY.FUNCTION.ROOT),
+  ) ?? [];
+}
+
+function isPressureSkill(skill: Cultivator['skills'][number]): boolean {
+  const abilityConfig = skill.abilityConfig;
+  const tags = skillFunctionTags(skill);
+  return Boolean(
+    abilityConfig?.targetPolicy?.team === 'enemy' &&
+      (tags.includes(GameplayTags.ABILITY.FUNCTION.DAMAGE) ||
+        tags.includes(GameplayTags.ABILITY.FUNCTION.CONTROL)),
+  );
+}
+
+function assertThreateningLoadout(
+  draft: ReturnType<typeof enemyGenerator.buildDraft>,
+) {
+  const skills = draft.cultivator.skills;
+  expect(skills.length).toBeGreaterThan(0);
+
+  const skillCount = skills.length as 1 | 2 | 3 | 4;
+  const policy = getEnemyCombatPolicy(draft.input.race);
+  const pressureCount = skills.filter(isPressureSkill).length;
+  const selfTargetCount = skills.filter(
+    (skill) => skill.abilityConfig?.targetPolicy?.team === 'self',
+  ).length;
+  const allFunctionTags = skills.flatMap(skillFunctionTags);
+
+  expect(pressureCount).toBeGreaterThanOrEqual(
+    policy.minPressureBySkillCount[skillCount],
+  );
+  expect(selfTargetCount).toBeLessThanOrEqual(
+    policy.maxSelfTargetBySkillCount[skillCount],
+  );
+  expect(selfTargetCount).toBeLessThan(skills.length);
+  expect(
+    allFunctionTags.every((tag) => tag === GameplayTags.ABILITY.FUNCTION.HEAL),
+  ).toBe(false);
+  expect(
+    allFunctionTags.every((tag) => tag === GameplayTags.ABILITY.FUNCTION.BUFF),
+  ).toBe(false);
+
+  if (skills.length === 1) {
+    expect(isPressureSkill(skills[0]!)).toBe(true);
+  }
+  if (skills.length >= 3) {
+    expect(pressureCount).toBeGreaterThanOrEqual(2);
+  }
 }
 
 describe('EnemyGenerator', () => {
@@ -352,6 +409,59 @@ describe('EnemyGenerator', () => {
         isBoss: combo.isBoss,
       });
       assertV5Compatible(draft);
+    }
+  });
+
+  it('plans race-specific skill roles before crafting products', () => {
+    for (const race of ENEMY_RACE_VALUES) {
+      for (const difficulty of [10, 40, 70, 95] as const) {
+        const draft = enemyGenerator.buildDraft({
+          realm: '金丹',
+          realmStage: '中期',
+          race,
+          difficulty,
+        });
+        const skillRoles = draft.copyFacts.products
+          .filter((product) => product.productType === 'skill')
+          .map((product) => product.role);
+        const expectedRoles = getEnemyCombatPolicy(race).roleOrderBySkillCount[
+          skillRoles.length as 1 | 2 | 3 | 4
+        ];
+
+        expect(skillRoles[0]).toBe(expectedRoles[0]);
+        expect(validateEnemySkillRoles(getEnemyCombatPolicy(race), skillRoles)).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  it('keeps all race x band x boss skill loadouts threatening', () => {
+    const combinations = (
+      [
+        { difficulty: 10, isBoss: false },
+        { difficulty: 40, isBoss: false },
+        { difficulty: 70, isBoss: false },
+        { difficulty: 95, isBoss: false },
+        { difficulty: 95, isBoss: true },
+      ] as const
+    ).flatMap((config) =>
+      ENEMY_RACE_VALUES.map((race) => ({
+        ...config,
+        race,
+      })),
+    );
+
+    for (const combo of combinations) {
+      const draft = enemyGenerator.buildDraft({
+        realm: combo.isBoss ? '元婴' : '金丹',
+        realmStage: combo.isBoss ? '后期' : '中期',
+        race: combo.race,
+        difficulty: combo.difficulty,
+        isBoss: combo.isBoss,
+      });
+
+      assertThreateningLoadout(draft);
     }
   });
 
@@ -563,9 +673,26 @@ describe('EnemyGenerator', () => {
     for (const artifact of loadout.artifacts) {
       expect(() => AbilityFactory.create(artifact.item.abilityConfig!)).not.toThrow();
     }
+
+    const fallbackSkills = loadout.skills.map(
+      (skill) => skill.item as Cultivator['skills'][number],
+    );
+    const policy = getEnemyCombatPolicy(input.race);
+    const skillCount = fallbackSkills.length as 1 | 2 | 3 | 4;
+    const pressureCount = fallbackSkills.filter(isPressureSkill).length;
+    const selfTargetCount = fallbackSkills.filter(
+      (skill) => skill.abilityConfig?.targetPolicy?.team === 'self',
+    ).length;
+
+    expect(pressureCount).toBeGreaterThanOrEqual(
+      policy.minPressureBySkillCount[skillCount],
+    );
+    expect(selfTargetCount).toBeLessThanOrEqual(
+      policy.maxSelfTargetBySkillCount[skillCount],
+    );
   });
 
-  it('keeps low-floor ghost drafts out of tier 3 safe fallback', () => {
+  it('keeps low-floor ghost drafts threatening even when safety fallback is needed', () => {
     const draft = enemyGenerator.buildDraft({
       realm: '筑基',
       realmStage: '初期',
@@ -573,6 +700,7 @@ describe('EnemyGenerator', () => {
       difficulty: 1,
     });
 
-    expect(draft.balance.recoveryTierUsed).toBeLessThan(3);
+    expect(draft.balance.recoveryTierUsed).toBe(3);
+    assertThreateningLoadout(draft);
   });
 });

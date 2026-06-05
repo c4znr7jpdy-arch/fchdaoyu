@@ -4,11 +4,14 @@ import {
 } from '@app/components/feature/consumables';
 import { InkBadge, InkButton, InkList, InkNotice } from '@app/components/ui';
 import { ItemCard } from '@app/components/ui/ItemCard';
-import { isPillConsumable, isTalismanConsumable } from '@shared/lib/consumables';
+import {
+  isPillConsumable,
+  isTalismanConsumable,
+} from '@shared/lib/consumables';
 import type { CultivatorCondition } from '@shared/types/condition';
 import type { RealmType } from '@shared/types/constants';
-import { buildManualDrawHref } from '@shared/types/manualDraw';
 import type { Consumable } from '@shared/types/cultivator';
+import { buildManualDrawHref } from '@shared/types/manualDraw';
 
 interface ConsumablesTabProps {
   consumables: Consumable[];
@@ -81,9 +84,9 @@ export function ConsumablesTab({
             ? '【前往命格重塑功能页启封，开启时立即扣除】'
             : isGongfaDrawTalisman
               ? '【前往问法寻卷，直接消耗符箓抽取功法秘籍】'
-                : isSkillDrawTalisman
-                  ? '【前往问法寻卷，直接消耗符箓抽取神通秘籍】'
-                  : '【需在对应玩法入口校验并锁定，终局结算后扣除】'
+              : isSkillDrawTalisman
+                ? '【前往问法寻卷，直接消耗符箓抽取神通秘籍】'
+                : '【需在对应玩法入口校验并锁定，终局结算后扣除】'
           : '【仅可在场外服用，药力会直接回写当前状态】';
 
         return (
@@ -109,7 +112,11 @@ export function ConsumablesTab({
                 <div className="text-ink-primary text-xs">{usageHint}</div>
               ) : null
             }
-            description={isDirectlyUsable && pillDisplay ? pillDisplay.primaryEffect : item.description}
+            description={
+              isDirectlyUsable && pillDisplay
+                ? pillDisplay.effectSummary
+                : item.description
+            }
             actions={
               <div className="flex gap-2">
                 <InkButton
@@ -135,10 +142,10 @@ export function ConsumablesTab({
                     : canNavigateToScenario
                       ? scenarioActionLabel
                       : isTalisman
-                      ? '场外使用'
-                      : isDirectlyUsable
-                        ? '服用'
-                        : '暂未开放'}
+                        ? '场外使用'
+                        : isDirectlyUsable
+                          ? '服用'
+                          : '暂未开放'}
                 </InkButton>
                 <InkButton variant="primary" onClick={() => onDiscard(item)}>
                   销毁

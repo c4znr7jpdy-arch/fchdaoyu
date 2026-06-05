@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
-import type { Consumable } from '@shared/types/cultivator';
-import type { PillSpec } from '@shared/types/consumable';
 import type { CultivatorCondition } from '@shared/types/condition';
+import type { PillSpec } from '@shared/types/consumable';
+import type { Consumable } from '@shared/types/cultivator';
+import { describe, expect, it } from 'vitest';
 import { toPillDisplayModel } from './pillDisplay';
 
 function createPill(spec: PillSpec, description = '炉火既定，自有丹评。') {
@@ -56,7 +56,12 @@ describe('toPillDisplayModel', () => {
         kind: 'pill',
         family: 'healing',
         operations: [
-          { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.146 },
+          {
+            type: 'restore_resource',
+            resource: 'hp',
+            mode: 'percent',
+            value: 0.146,
+          },
           { type: 'change_gauge', gauge: 'pillToxicity', delta: 4 },
         ],
         consumeRules: {
@@ -84,8 +89,18 @@ describe('toPillDisplayModel', () => {
         kind: 'pill',
         family: 'hybrid',
         operations: [
-          { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.08 },
-          { type: 'restore_resource', resource: 'mp', mode: 'percent', value: 0.06 },
+          {
+            type: 'restore_resource',
+            resource: 'hp',
+            mode: 'percent',
+            value: 0.08,
+          },
+          {
+            type: 'restore_resource',
+            resource: 'mp',
+            mode: 'percent',
+            value: 0.06,
+          },
           { type: 'change_gauge', gauge: 'pillToxicity', delta: 6 },
         ],
         consumeRules: {
@@ -106,12 +121,56 @@ describe('toPillDisplayModel', () => {
     expect(model.primaryEffect).toBe('恢复最大气血 8% / 最大法力 6%');
   });
 
+  it('builds a full effect summary for list cards with multiple non-cost effects', () => {
+    const model = toPillDisplayModel(
+      createPill({
+        kind: 'pill',
+        family: 'healing',
+        operations: [
+          {
+            type: 'restore_resource',
+            resource: 'hp',
+            mode: 'percent',
+            value: 0.12,
+          },
+          {
+            type: 'restore_resource',
+            resource: 'mp',
+            mode: 'percent',
+            value: 0.08,
+          },
+          { type: 'add_status', status: 'clear_mind', usesRemaining: 1 },
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: 7 },
+        ],
+        consumeRules: {
+          scene: 'out_of_battle_only',
+          quotaCategory: 'none',
+        },
+        alchemyMeta: {
+          source: 'improvised',
+          sourceMaterials: ['双生露'],
+          stability: 68,
+          toxicityRating: 21,
+          tags: ['healing', 'mana', 'clear_mind_support'],
+        },
+      }),
+      { realm: '金丹' },
+    );
+
+    expect(model.primaryEffect).toBe('恢复最大气血 12%');
+    expect(model.effectSummary).toBe(
+      '恢复最大气血 12% / 恢复最大法力 8% / 获得「清心」（可用 1 次）',
+    );
+  });
+
   it('treats detox pills as a benefit instead of a cost', () => {
     const model = toPillDisplayModel(
       createPill({
         kind: 'pill',
         family: 'detox',
-        operations: [{ type: 'change_gauge', gauge: 'pillToxicity', delta: -18 }],
+        operations: [
+          { type: 'change_gauge', gauge: 'pillToxicity', delta: -18 },
+        ],
         consumeRules: {
           scene: 'out_of_battle_only',
           quotaCategory: 'none',
@@ -157,7 +216,11 @@ describe('toPillDisplayModel', () => {
     );
 
     expect(model.primaryEffect).toBe('寿元 +58 年');
-    expect(model.keywordLabels).toEqual(['延寿', '寿元 +58 年', '寿元丹上限 8 次']);
+    expect(model.keywordLabels).toEqual([
+      '延寿',
+      '寿元 +58 年',
+      '寿元丹上限 8 次',
+    ]);
     expect(model.detailGroups[0].lines).toContain('寿元 +58 年');
     expect(model.detailGroups[1].lines).toContain('寿元丹服用上限：8 次');
   });
@@ -168,7 +231,11 @@ describe('toPillDisplayModel', () => {
         kind: 'pill',
         family: 'breakthrough',
         operations: [
-          { type: 'add_status', status: 'breakthrough_focus', usesRemaining: 1 },
+          {
+            type: 'add_status',
+            status: 'breakthrough_focus',
+            usesRemaining: 1,
+          },
           { type: 'change_gauge', gauge: 'pillToxicity', delta: 12 },
         ],
         consumeRules: {
@@ -288,7 +355,12 @@ describe('toPillDisplayModel', () => {
         kind: 'pill',
         family: 'healing',
         operations: [
-          { type: 'restore_resource', resource: 'hp', mode: 'percent', value: 0.12 },
+          {
+            type: 'restore_resource',
+            resource: 'hp',
+            mode: 'percent',
+            value: 0.12,
+          },
         ],
         consumeRules: {
           scene: 'out_of_battle_only',
@@ -307,9 +379,9 @@ describe('toPillDisplayModel', () => {
     );
 
     expect(model.detailGroups[2].lines).not.toContain('成丹层级：勉强成丹');
-    expect(model.detailGroups[2].lines.some((line) => line.includes('NaN'))).toBe(
-      false,
-    );
+    expect(
+      model.detailGroups[2].lines.some((line) => line.includes('NaN')),
+    ).toBe(false);
   });
 
   it('uses track config names for tempering and marrow-wash pills', () => {
@@ -504,9 +576,7 @@ describe('toPillDisplayModel', () => {
       '服用上限随境界变化',
       '丹毒 +10',
     ]);
-    expect(model.detailGroups[1].lines).toContain(
-      '服用上限：随当前境界变化',
-    );
+    expect(model.detailGroups[1].lines).toContain('服用上限：随当前境界变化');
     expect(model.keywordLabels.join(' ')).not.toContain('NaN');
     expect(model.keywordLabels.join(' ')).not.toContain('undefined');
   });
@@ -575,8 +645,8 @@ describe('toPillDisplayModel', () => {
     expect(model.primaryEffect).toBe('道心感悟 +8');
     expect(model.keywordLabels).toEqual(['感悟', '丹毒 +5']);
     expect(model.detailGroups[1].lines).not.toContain('服用上限：30 次');
-    expect(
-      model.keywordLabels.some((label) => label.startsWith('剩余')),
-    ).toBe(false);
+    expect(model.keywordLabels.some((label) => label.startsWith('剩余'))).toBe(
+      false,
+    );
   });
 });

@@ -20,6 +20,7 @@ import type {
   RealmStage,
   RealmType,
 } from '@shared/types/constants';
+import type { TargetPolicyConfig } from '@shared/engine/battle-v5/abilities/TargetPolicy';
 
 const PRESET_QUALITY = '凡品' as const;
 const PRESET_EFFECTIVE_ENERGY = 17;
@@ -35,6 +36,7 @@ export interface ComposeProductFromAffixIdsArgs {
   description?: string;
   affixIds: string[];
   requestedSlot?: EquipmentSlot;
+  requestedTargetPolicy?: TargetPolicyConfig;
   realm?: RealmType;
   realmStage?: RealmStage;
   creatorName?: string;
@@ -138,6 +140,9 @@ export function composeProductFromAffixIds(
     productType: args.productType,
     materials: [buildSyntheticMaterial(args)],
     ...(args.requestedSlot ? { requestedSlot: args.requestedSlot } : {}),
+    ...(args.requestedTargetPolicy
+      ? { requestedTargetPolicy: args.requestedTargetPolicy }
+      : {}),
     ...(args.realm ? { realm: args.realm } : {}),
     ...(args.realmStage ? { realmStage: args.realmStage } : {}),
     ...(args.creatorName ? { creatorName: args.creatorName } : {}),
@@ -155,6 +160,9 @@ export function composeProductFromAffixIds(
           slotBias: args.requestedSlot,
           slotBiasSource: 'requested',
         }
+      : {}),
+    ...(args.requestedTargetPolicy
+      ? { targetPolicyBias: args.requestedTargetPolicy }
       : {}),
   };
   session.state.recipeMatch = {

@@ -3,7 +3,7 @@ import { simulateBattleV5 } from '@server/lib/services/simulateBattleV5';
 import type { BattleRecord } from '@server/lib/services/battleResult';
 import { object } from '@server/utils/aiClient'; // AI client helper
 import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
-import { enemyGenerator } from '@shared/engine/enemyGenerator';
+import { EnemyGenerator } from '@shared/engine/enemyGenerator';
 import { TYPE_DESCRIPTIONS } from '@shared/engine/material/creation/config';
 import { resourceEngine } from '@shared/engine/resource/ResourceEngine';
 import type { ResourceOperation } from '@shared/engine/resource/types';
@@ -35,6 +35,7 @@ import {
   updateCultivator,
 } from '../services/cultivatorService';
 import { ConditionService } from '../services/ConditionService';
+import { ServerEnemyCopyProvider } from '../services/ServerEnemyCopyProvider';
 import { TaskService } from '../services/TaskService';
 import { buildDungeonBattleInit } from './battleInit';
 import {
@@ -60,6 +61,12 @@ import {
   DungeonState,
   PlayerInfo,
 } from './types';
+
+const dungeonEnemyGenerator = new EnemyGenerator({
+  copyProvider: new ServerEnemyCopyProvider({
+    enabled: process.env.NODE_ENV !== 'test',
+  }),
+});
 
 const REDIS_TTL = 3600; // 1 hour expiration for active sessions
 const START_LOCK_TTL_SECONDS = 180;
@@ -764,16 +771,18 @@ export class DungeonService {
       mapConfig,
     );
 
-    const draft = enemyGenerator.buildDraft({
-      realm: realmRequirement as import('@shared/types/constants').RealmType,
-      realmStage: metadata.realm_stage,
-      race: metadata.race,
-      difficulty: enemyDifficulty,
-      name: metadata.enemy_name,
-      background: metadata.background,
-      description: metadata.description,
-      isBoss: mapConfig.allowBossLoadout && Boolean(metadata.is_boss),
-    });
+    const draft = await dungeonEnemyGenerator.enrichNarrative(
+      dungeonEnemyGenerator.buildDraft({
+        realm: realmRequirement as import('@shared/types/constants').RealmType,
+        realmStage: metadata.realm_stage,
+        race: metadata.race,
+        difficulty: enemyDifficulty,
+        name: metadata.enemy_name,
+        background: metadata.background,
+        description: metadata.description,
+        isBoss: mapConfig.allowBossLoadout && Boolean(metadata.is_boss),
+      }),
+    );
     const enemy = draft.cultivator;
 
     // 构建 BattleSession，传递状态快照和虚拟气血/法力损失百分比

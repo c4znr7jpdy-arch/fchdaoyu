@@ -3,12 +3,13 @@ import { CreationOrchestrator } from '@shared/engine/creation-v2/CreationOrchest
 import { DEFAULT_AFFIX_REGISTRY } from '@shared/engine/creation-v2/affixes';
 import { composeProductFromAffixIds } from '@shared/engine/creation-v2/composeProductFromAffixIds';
 import { ELEMENT_TO_MATERIAL_TAG, ELEMENT_NAME_PREFIX } from '@shared/engine/creation-v2/config/CreationMappings';
-import { CreationTags } from '@shared/engine/shared/tag-domain';
+import { CreationTags, GameplayTags } from '@shared/engine/shared/tag-domain';
 import {
   buildArtifactFromProductModel,
   buildSkillFromProductModel,
   buildTechniqueFromProductModel,
 } from '@shared/engine/cultivator/creation/intentProducts';
+import type { AbilityConfig } from '@shared/engine/battle-v5/core/configs';
 import type { ArtifactProductModel, GongFaProductModel, SkillProductModel } from '@shared/engine/creation-v2/models';
 import type {
   CreationContextTagBias,
@@ -24,6 +25,7 @@ import type {
 } from '@shared/types/cultivator';
 import { CREATION_RESERVED_ENERGY } from '@shared/engine/creation-v2/config/CreationBalance';
 import { getEnemyArchetype } from './EnemyArchetypeRegistry';
+import { getEnemyCombatPolicy } from './EnemyCombatPolicy';
 import {
   DEFAULT_ENEMY_INTENT_SAFETY_PROFILE,
   type EnemyIntentSafetyProfile,
@@ -64,6 +66,72 @@ function isArtifact(item: RuntimeEnemyProduct): item is Artifact {
 
 function isSkill(item: RuntimeEnemyProduct): item is Skill {
   return 'cooldown' in item;
+}
+
+function abilityTags(abilityConfig: AbilityConfig): string[] {
+  return abilityConfig.tags ?? [];
+}
+
+function hasAbilityFunction(
+  abilityConfig: AbilityConfig,
+  functionTag: string,
+): boolean {
+  return abilityTags(abilityConfig).includes(functionTag);
+}
+
+function targetsEnemy(abilityConfig: AbilityConfig): boolean {
+  return abilityConfig.targetPolicy?.team === 'enemy';
+}
+
+function targetsSelf(abilityConfig: AbilityConfig): boolean {
+  return abilityConfig.targetPolicy?.team === 'self';
+}
+
+function isPressureSkill(skill: Skill): boolean {
+  const abilityConfig = skill.abilityConfig;
+  return Boolean(
+    abilityConfig &&
+      targetsEnemy(abilityConfig) &&
+      (hasAbilityFunction(abilityConfig, GameplayTags.ABILITY.FUNCTION.DAMAGE) ||
+        hasAbilityFunction(abilityConfig, GameplayTags.ABILITY.FUNCTION.CONTROL)),
+  );
+}
+
+function archetypeMatchesSkillRole(
+  archetype: EnemyArchetypeDefinition,
+  intent: EnemyPlannedProductIntent,
+): boolean {
+  if (intent.productType !== 'skill') {
+    return true;
+  }
+
+  switch (intent.role) {
+    case 'offense':
+    case 'control':
+      return archetype.targetPolicy?.team === 'enemy';
+    case 'guard':
+    case 'sustain':
+      return archetype.targetPolicy?.team === 'self';
+    default:
+      return true;
+  }
+}
+
+function prioritizeRoleCompatibleArchetypes(
+  archetypes: EnemyArchetypeDefinition[],
+  intent: EnemyPlannedProductIntent,
+): EnemyArchetypeDefinition[] {
+  if (intent.productType !== 'skill') {
+    return archetypes;
+  }
+
+  const compatible = archetypes.filter((archetype) =>
+    archetypeMatchesSkillRole(archetype, intent),
+  );
+  const incompatible = archetypes.filter(
+    (archetype) => !archetypeMatchesSkillRole(archetype, intent),
+  );
+  return compatible.length > 0 ? [...compatible, ...incompatible] : archetypes;
 }
 
 function sameTargetPolicy(
@@ -176,6 +244,15 @@ export class EnemyCraftExecutor {
       recoveryTierUsed = Math.max(recoveryTierUsed, crafted.recoveryTierUsed);
       return crafted.product;
     });
+    this.validateSkillLoadout(
+      args.input,
+      skills.map(({ item }) => {
+        if (!isSkill(item)) {
+          throw new Error('Expected skill output');
+        }
+        return item;
+      }),
+    );
 
     const artifacts = args.plan.artifacts.map((intent) => {
       const crafted = this.executeIntent(
@@ -198,6 +275,33 @@ export class EnemyCraftExecutor {
     };
   }
 
+  private validateSkillLoadout(
+    input: NormalizedEnemyGenerationInput,
+    skills: Skill[],
+  ): void {
+    const skillCount = skills.length as 1 | 2 | 3 | 4;
+    if (skillCount < 1 || skillCount > 4) {
+      throw new Error(`Invalid enemy skill count: ${skills.length}`);
+    }
+
+    const policy = getEnemyCombatPolicy(input.race);
+    const pressureCount = skills.filter(isPressureSkill).length;
+    const selfTargetCount = skills.filter(
+      (skill) => skill.abilityConfig && targetsSelf(skill.abilityConfig),
+    ).length;
+
+    if (pressureCount < policy.minPressureBySkillCount[skillCount]) {
+      throw new Error(
+        `Enemy skill loadout lacks pressure skills: ${pressureCount}/${policy.minPressureBySkillCount[skillCount]}`,
+      );
+    }
+    if (selfTargetCount > policy.maxSelfTargetBySkillCount[skillCount]) {
+      throw new Error(
+        `Enemy skill loadout has too many self-target skills: ${selfTargetCount}/${policy.maxSelfTargetBySkillCount[skillCount]}`,
+      );
+    }
+  }
+
   private executeIntent(
     input: NormalizedEnemyGenerationInput,
     band: EnemyLoadoutPlan['difficultyProfile']['band'],
@@ -206,7 +310,10 @@ export class EnemyCraftExecutor {
     product: EnemyCraftedProduct;
     recoveryTierUsed: number;
   } {
-    const candidateArchetypes = intent.candidateArchetypeIds.map(getEnemyArchetype);
+    const candidateArchetypes = prioritizeRoleCompatibleArchetypes(
+      intent.candidateArchetypeIds.map(getEnemyArchetype),
+      intent,
+    );
 
     for (const archetype of candidateArchetypes.slice(0, 1)) {
       const crafted = this.tryCraftFromIntent(input, band, intent, archetype, 0);
@@ -444,6 +551,9 @@ export class EnemyCraftExecutor {
       description: fallbackDescription,
       affixIds,
       ...(intent.slot ? { requestedSlot: intent.slot } : {}),
+      ...(archetype.targetPolicy
+        ? { requestedTargetPolicy: archetype.targetPolicy }
+        : {}),
       realm: input.realm,
       realmStage: input.realmStage,
       slugSeed: intent.slugSeed,
@@ -539,8 +649,11 @@ export class EnemyCraftExecutor {
         throw new Error('Expected skill output');
       }
       if (!sameTargetPolicy(item.abilityConfig.targetPolicy, archetype.targetPolicy)) {
-        throw new Error('Skill target policy mismatch');
+        throw new Error(
+          `Skill target policy mismatch: expected ${JSON.stringify(archetype.targetPolicy)}, received ${JSON.stringify(item.abilityConfig.targetPolicy)}`,
+        );
       }
+      this.validateSkillRole(item, intent);
       return;
     }
 
@@ -552,6 +665,53 @@ export class EnemyCraftExecutor {
       if (expectedSlot && item.slot !== expectedSlot) {
         throw new Error('Artifact slot mismatch');
       }
+    }
+  }
+
+  private validateSkillRole(
+    item: Skill,
+    intent: EnemyPlannedProductIntent,
+  ): void {
+    const abilityConfig = item.abilityConfig;
+    if (!abilityConfig) {
+      throw new Error('Missing skill abilityConfig');
+    }
+
+    switch (intent.role) {
+      case 'offense':
+        if (
+          !targetsEnemy(abilityConfig) ||
+          !hasAbilityFunction(abilityConfig, GameplayTags.ABILITY.FUNCTION.DAMAGE)
+        ) {
+          throw new Error('Offense skill must target enemy and deal damage');
+        }
+        return;
+      case 'control':
+        if (
+          !targetsEnemy(abilityConfig) ||
+          !hasAbilityFunction(abilityConfig, GameplayTags.ABILITY.FUNCTION.CONTROL)
+        ) {
+          throw new Error('Control skill must target enemy and apply control');
+        }
+        return;
+      case 'guard':
+        if (
+          !targetsSelf(abilityConfig) ||
+          !hasAbilityFunction(abilityConfig, GameplayTags.ABILITY.FUNCTION.BUFF)
+        ) {
+          throw new Error('Guard skill must target self and apply a buff');
+        }
+        return;
+      case 'sustain':
+        if (
+          !targetsSelf(abilityConfig) ||
+          !hasAbilityFunction(abilityConfig, GameplayTags.ABILITY.FUNCTION.HEAL)
+        ) {
+          throw new Error('Sustain skill must target self and heal');
+        }
+        return;
+      default:
+        return;
     }
   }
 

@@ -1,11 +1,17 @@
 import { ENEMY_RACE_PROFILES } from './EnemyRaceProfileRegistry';
 import { getEnemyPersonas } from './EnemyPersonaRegistry';
+import {
+  getEnemyCombatPolicy,
+  validateEnemySkillRoles,
+} from './EnemyCombatPolicy';
 import type {
   EnemyDifficultyProfile,
   EnemyLoadoutPlan,
   EnemyPersonaArtifactPlan,
   EnemyPersonaDefinition,
+  EnemyPersonaSkillPlan,
   EnemyPlannedProductIntent,
+  EnemySkillRole,
   NormalizedEnemyGenerationInput,
 } from './types';
 import {
@@ -211,9 +217,15 @@ export class EnemyLoadoutPlanner {
     primaryPersona: EnemyPersonaDefinition;
     accentPersona?: EnemyPersonaDefinition;
   }): EnemyPlannedProductIntent[] {
-    const selectedPlans = args.primaryPersona.skills
-      .slice(0, args.difficultyProfile.skillCount)
-      .map((plan) => ({ plan, owner: args.primaryPersona }));
+    const policy = getEnemyCombatPolicy(args.input.race);
+    const roleOrder =
+      policy.roleOrderBySkillCount[
+        args.difficultyProfile.skillCount as 1 | 2 | 3 | 4
+      ];
+    const selectedPlans = roleOrder.map((role) => ({
+      plan: this.resolveSkillPlan(args.primaryPersona, role),
+      owner: args.primaryPersona,
+    }));
 
     if (args.accentPersona) {
       const accentPlan =
@@ -224,10 +236,18 @@ export class EnemyLoadoutPlanner {
         const replaceIndex = selectedPlans.findIndex(
           ({ plan }) => plan.role === accentPlan.role,
         );
-        selectedPlans[replaceIndex >= 0 ? replaceIndex : selectedPlans.length - 1] = {
-          plan: accentPlan,
-          owner: args.accentPersona,
-        };
+        const targetIndex =
+          replaceIndex >= 0 ? replaceIndex : selectedPlans.length - 1;
+        const proposedRoles = selectedPlans.map(({ plan }, index) =>
+          index === targetIndex ? accentPlan.role : plan.role,
+        );
+
+        if (validateEnemySkillRoles(policy, proposedRoles)) {
+          selectedPlans[targetIndex] = {
+            plan: accentPlan,
+            owner: args.accentPersona,
+          };
+        }
       }
     }
 
@@ -252,6 +272,19 @@ export class EnemyLoadoutPlanner {
         ]),
       }),
     );
+  }
+
+  private resolveSkillPlan(
+    persona: EnemyPersonaDefinition,
+    role: EnemySkillRole,
+  ): EnemyPersonaSkillPlan {
+    const plan = persona.skills.find((candidate) => candidate.role === role);
+    if (!plan) {
+      throw new Error(
+        `Enemy persona ${persona.id} is missing required skill role: ${role}`,
+      );
+    }
+    return plan;
   }
 
   private buildArtifactIntents(args: {

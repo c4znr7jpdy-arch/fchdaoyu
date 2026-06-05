@@ -36,6 +36,7 @@ export interface PillDetailGroup {
 export interface PillDisplayModel {
   familyLabel: string;
   primaryEffect: string;
+  effectSummary: string;
   keywordLabels: string[];
   detailGroups: PillDetailGroup[];
   flavorText?: string;
@@ -75,10 +76,7 @@ function getGaugeChangeText(delta: number): string {
 }
 
 function getProgressTargetLabel(
-  target: Extract<
-    ConditionOperation,
-    { type: 'gain_progress' }
-  >['target'],
+  target: Extract<ConditionOperation, { type: 'gain_progress' }>['target'],
 ): string {
   return target === 'cultivation_exp'
     ? getResourceText('cultivation_exp')
@@ -266,8 +264,10 @@ function buildPrimaryEffect(spec: PillSpec): string {
       const gain = spec.operations.find(
         (
           operation,
-        ): operation is Extract<ConditionOperation, { type: 'gain_progress' }> =>
-          operation.type === 'gain_progress',
+        ): operation is Extract<
+          ConditionOperation,
+          { type: 'gain_progress' }
+        > => operation.type === 'gain_progress',
       );
       return gain
         ? `${getProgressTargetLabel(gain.target)} +${gain.value}`
@@ -361,6 +361,13 @@ function buildCoreEffectLines(spec: PillSpec): string[] {
     .map(describePillOperation);
 }
 
+function buildEffectSummary(spec: PillSpec): string {
+  const coreEffectLines = buildCoreEffectLines(spec);
+  return coreEffectLines.length > 0
+    ? coreEffectLines.join(' / ')
+    : buildPrimaryEffect(spec);
+}
+
 function buildCostAndRuleLines(
   spec: PillSpec,
   options?: PillDisplayOptions,
@@ -377,10 +384,7 @@ function buildCostAndRuleLines(
   lines.push('仅可在场外服用');
   const usageRuleText =
     getPillUsageProgressText(spec.consumeRules.quotaCategory, options)?.rule ??
-    getPillUsageRuleText(
-      spec.consumeRules.quotaCategory,
-      options?.realm,
-    );
+    getPillUsageRuleText(spec.consumeRules.quotaCategory, options?.realm);
   if (usageRuleText) {
     lines.push(usageRuleText);
   }
@@ -402,8 +406,7 @@ function buildAlchemyInfoLines(
           : undefined
       : undefined;
   const formulaFitScoreText =
-    alchemyMeta.source === 'formula' &&
-    Number.isFinite(alchemyMeta.fitScore)
+    alchemyMeta.source === 'formula' && Number.isFinite(alchemyMeta.fitScore)
       ? `药性拟合：${Math.round(alchemyMeta.fitScore * 100)}%`
       : undefined;
   const formulaFitMultiplierText =
@@ -441,6 +444,7 @@ export function toPillDisplayModel(
   return {
     familyLabel: getPillFamilyLabel(consumable.spec.family),
     primaryEffect: buildPrimaryEffect(consumable.spec),
+    effectSummary: buildEffectSummary(consumable.spec),
     keywordLabels: buildKeywordLabels(consumable.spec, options),
     detailGroups: [
       {
