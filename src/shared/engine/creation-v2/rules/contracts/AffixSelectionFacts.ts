@@ -2,7 +2,9 @@ import {
   AffixCandidate,
   AffixCategory,
   CreationProductType,
+  GongfaAffixRole,
 } from '../../types';
+import type { ElementType } from '@shared/types/constants';
 
 export interface AffixSelectionBucketCaps {
   highTierTotal?: number;
@@ -12,6 +14,14 @@ export interface AffixSelectionBucketCaps {
 export interface AffixSelectionConstraints {
   categoryCaps: Partial<Record<AffixCategory, number>>;
   bucketCaps?: AffixSelectionBucketCaps;
+  gongfaRoleCaps?: Partial<Record<GongfaAffixRole, number>>;
+}
+
+export interface SelectedGongfaSchoolPlan {
+  primarySelected: boolean;
+  primaryElement?: ElementType;
+  resonanceCount: number;
+  supportCount: number;
 }
 
 export interface AffixSelectionFacts {
@@ -25,4 +35,6 @@ export interface AffixSelectionFacts {
   selectedExclusiveGroups: string[];
   selectedCategoryCounts: Partial<Record<AffixCategory, number>>;
   selectionConstraints: AffixSelectionConstraints;
+  elementBias?: ElementType;
+  selectedGongfaSchoolPlan?: SelectedGongfaSchoolPlan;
 }

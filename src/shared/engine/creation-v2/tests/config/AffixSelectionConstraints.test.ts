@@ -79,6 +79,12 @@ describe('AffixSelectionConstraints', () => {
         gongfa_school: 2,
       }),
       bucketCaps: { highTierTotal: 1 },
+      gongfaRoleCaps: {
+        primary: 1,
+        resonance: 1,
+        support: 3,
+        secret: 1,
+      },
     });
   });
 

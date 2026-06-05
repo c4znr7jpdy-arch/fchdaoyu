@@ -19,6 +19,13 @@ const GONGFA_POOL_CAPS: Partial<Record<AffixCategory, number>> = {
   gongfa_secret: 1,
 };
 
+const GONGFA_ROLE_CAPS = {
+  primary: 1,
+  resonance: 1,
+  support: 3,
+  secret: 1,
+} as const;
+
 const ARTIFACT_POOL_CAPS: Partial<Record<AffixCategory, number>> = {
   artifact_core: 1,
   artifact_panel: 2,
@@ -67,6 +74,7 @@ export function resolveAffixSelectionConstraints(
   return {
     categoryCaps,
     bucketCaps: { highTierTotal: 1 },
+    ...(productType === 'gongfa' ? { gongfaRoleCaps: GONGFA_ROLE_CAPS } : {}),
   };
 }
 
@@ -88,4 +96,3 @@ function countByCategory(
 
 // Re-export defaultMaxAffixCount for external consumers
 export { CREATION_PROJECTION_BALANCE };
-

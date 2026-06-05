@@ -23,6 +23,7 @@ import { CreationTags } from '@shared/engine/shared/tag-domain';
 import { CreationSession } from '@shared/engine/creation-v2/CreationSession';
 import { AffixCandidate, EnergyBudget, CreationIntent, RolledAffix } from '@shared/engine/creation-v2/types';
 import type { AffixDefinition } from '@shared/engine/creation-v2/affixes/types';
+import { EXCLUSIVE_GROUP } from '@shared/engine/creation-v2/affixes/exclusiveGroups';
 import type { ExclusiveGroup } from '@shared/engine/creation-v2/affixes/exclusiveGroups';
 
 /** 辅助函数：将静态定义转换为运行态 RolledAffix 以满足接口契约 */
@@ -41,6 +42,7 @@ function toRolledAffix(def: AffixDefinition): RolledAffix {
     match: def.match,
     tags: flattenAffixMatcherTags(def.match),
     exclusiveGroup: def.exclusiveGroup,
+    selectionMeta: def.selectionMeta,
   };
 }
 
@@ -202,6 +204,11 @@ describe('AffixEffectTranslator', () => {
       const def = DEFAULT_AFFIX_REGISTRY.queryById(affixId);
       expect(def).toBeDefined();
       expect(def?.category).toBe('gongfa_school');
+      expect(def?.exclusiveGroup).toBe(EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL);
+      expect(def?.selectionMeta?.gongfa).toMatchObject({
+        role: 'primary',
+        element,
+      });
       expect(def?.effectTemplate.type).toBe('percent_damage_modifier');
 
       if (def?.effectTemplate.type === 'percent_damage_modifier') {
@@ -388,6 +395,7 @@ describe('AffixSelector', () => {
     category: AffixCandidate['category'] = 'skill_core',
     targetPolicyConstraint?: AffixCandidate['targetPolicyConstraint'],
     applicableArtifactSlots?: AffixCandidate['applicableArtifactSlots'],
+    selectionMeta?: AffixCandidate['selectionMeta'],
   ): AffixCandidate => ({
     id,
     name: id,
@@ -408,6 +416,7 @@ describe('AffixSelector', () => {
     },
     targetPolicyConstraint,
     applicableArtifactSlots,
+    selectionMeta,
   });
 
   const makeIntent = (): CreationIntent => ({
@@ -574,6 +583,166 @@ describe('AffixSelector', () => {
     expect(ids).toContain('armor-core');
     expect(ids).toContain('armor-defense');
     expect(ids).not.toContain('weapon-defense');
+  });
+
+  it('gongfa 多元素候选下最多选中一个主修流派', () => {
+    const primary = (id: string, element: '火' | '冰' | '雷' | '风') =>
+      makeCandidate(
+        id,
+        100,
+        4,
+        EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+        'gongfa_school',
+        undefined,
+        undefined,
+        {
+          gongfa: {
+            role: 'primary',
+            archetype: id,
+            element,
+          },
+        },
+      );
+    const support = (id: string) =>
+      makeCandidate(id, 100, 4, undefined, 'gongfa_school', undefined, undefined, {
+        gongfa: {
+          role: 'support',
+          archetype: id,
+        },
+      });
+    const pool = [
+      makeCandidate('foundation', 100, 4, undefined, 'gongfa_foundation'),
+      primary('fire-primary', '火'),
+      primary('ice-primary', '冰'),
+      primary('thunder-primary', '雷'),
+      primary('wind-primary', '风'),
+      support('support-a'),
+      support('support-b'),
+      support('support-c'),
+    ];
+
+    const result = selector.select(
+      pool,
+      makeBudget(40),
+      {
+        productType: 'gongfa',
+        dominantTags: [
+          ELEMENT_TO_MATERIAL_TAG['火'],
+          ELEMENT_TO_MATERIAL_TAG['冰'],
+          ELEMENT_TO_MATERIAL_TAG['雷'],
+          ELEMENT_TO_MATERIAL_TAG['风'],
+        ],
+        elementBias: '火',
+      },
+      5,
+    );
+    const primaryAffixes = result.affixes.filter(
+      (affix) => affix.selectionMeta?.gongfa?.role === 'primary',
+    );
+
+    expect(primaryAffixes).toHaveLength(1);
+  });
+
+  it('gongfa 三系以上输入应优先进入混元主修', () => {
+    const pool = [
+      makeCandidate('foundation', 100, 4, undefined, 'gongfa_foundation'),
+      makeCandidate(
+        'mixed-primary',
+        1,
+        4,
+        EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+        'gongfa_school',
+        undefined,
+        undefined,
+        {
+          gongfa: {
+            role: 'primary',
+            archetype: 'mixed-elements',
+          },
+        },
+      ),
+      makeCandidate(
+        'fire-primary',
+        10000,
+        4,
+        EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+        'gongfa_school',
+        undefined,
+        undefined,
+        {
+          gongfa: {
+            role: 'primary',
+            archetype: 'fire',
+            element: '火',
+          },
+        },
+      ),
+      makeCandidate('support-a', 100, 4, undefined, 'gongfa_school', undefined, undefined, {
+        gongfa: {
+          role: 'support',
+          archetype: 'support-a',
+        },
+      }),
+    ];
+
+    const result = selector.select(
+      pool,
+      makeBudget(40),
+      {
+        productType: 'gongfa',
+        dominantTags: [
+          ELEMENT_TO_MATERIAL_TAG['火'],
+          ELEMENT_TO_MATERIAL_TAG['冰'],
+          ELEMENT_TO_MATERIAL_TAG['雷'],
+        ],
+        elementBias: '火',
+      },
+      3,
+    );
+
+    expect(result.affixes.map((affix) => affix.id)).toContain('mixed-primary');
+  });
+
+  it('gongfa 火冰雷风实际候选池多次抽取不应出现多个主修', () => {
+    const session = new CreationSession({
+      sessionId: 'gongfa-multi-element-primary-regression',
+      productType: 'gongfa',
+      materials: [],
+    });
+    const elementTags = [
+      ELEMENT_TO_MATERIAL_TAG['火'],
+      ELEMENT_TO_MATERIAL_TAG['冰'],
+      ELEMENT_TO_MATERIAL_TAG['雷'],
+      ELEMENT_TO_MATERIAL_TAG['风'],
+    ];
+
+    syncSessionTags(session, [
+      ...elementTags,
+      CreationTags.MATERIAL.SEMANTIC_BURST,
+      CreationTags.MATERIAL.SEMANTIC_BLADE,
+    ]);
+    session.state.recipeMatch = {
+      recipeId: 'gongfa-multi-element-regression',
+      valid: true,
+      matchedTags: [],
+      unlockedAffixCategories: ['gongfa_foundation', 'gongfa_school'],
+    };
+
+    const pool = new AffixPoolBuilder().build(DEFAULT_AFFIX_REGISTRY, session);
+    const intent: CreationIntent = {
+      productType: 'gongfa',
+      dominantTags: elementTags,
+      elementBias: '火',
+    };
+
+    for (let i = 0; i < 10000; i++) {
+      const result = selector.select(pool, makeBudget(100), intent, 5);
+      const primaryCount = result.affixes.filter(
+        (affix) => affix.selectionMeta?.gongfa?.role === 'primary',
+      ).length;
+
+      expect(primaryCount).toBeLessThanOrEqual(1);
+    }
   });
 
   it('加权选择应大致按权重比例分布（统计验证）', () => {

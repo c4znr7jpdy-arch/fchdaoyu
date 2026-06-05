@@ -444,7 +444,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
   // --- 8 种元素专精 ---
   {
     id: 'gongfa-school-fire-spec',
-    displayName: '火灵根强化',
+    displayName: '火行真解',
     displayDescription: '通晓真火大道，提升火系技能造成的伤害',
     category: 'gongfa_school',
     rarity: 'uncommon',
@@ -455,6 +455,10 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_BURST,
         CreationTags.MATERIAL.SEMANTIC_BLADE,
       ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+    selectionMeta: {
+      gongfa: { role: 'primary', archetype: 'fire', element: '火' },
     },
     weight: 75,
     energyCost: 16,
@@ -481,7 +485,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
   },
   {
     id: 'gongfa-school-ice-spec',
-    displayName: '冰灵根强化',
+    displayName: '寒魄真解',
     displayDescription: '凝绝幽寒，提升冰系技能造成的伤害',
     category: 'gongfa_school',
     rarity: 'uncommon',
@@ -492,6 +496,10 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_BURST,
         CreationTags.MATERIAL.SEMANTIC_BLADE,
       ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+    selectionMeta: {
+      gongfa: { role: 'primary', archetype: 'ice', element: '冰' },
     },
     weight: 72,
     energyCost: 16,
@@ -518,7 +526,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
   },
   {
     id: 'gongfa-school-thunder-spec',
-    displayName: '雷灵根强化',
+    displayName: '惊雷真解',
     displayDescription: '参透雷霆幻变之机，提升雷系技能造成的伤害',
     category: 'gongfa_school',
     rarity: 'uncommon',
@@ -529,6 +537,10 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_BURST,
         CreationTags.MATERIAL.SEMANTIC_BLADE,
       ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+    selectionMeta: {
+      gongfa: { role: 'primary', archetype: 'thunder', element: '雷' },
     },
     weight: 70,
     energyCost: 16,
@@ -555,7 +567,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
   },
   {
     id: 'gongfa-school-wind-spec',
-    displayName: '风灵根强化',
+    displayName: '风行真解',
     displayDescription: '明谙风行之道，提升风系技能造成的伤害',
     category: 'gongfa_school',
     rarity: 'uncommon',
@@ -566,6 +578,10 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_BURST,
         CreationTags.MATERIAL.SEMANTIC_BLADE,
       ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+    selectionMeta: {
+      gongfa: { role: 'primary', archetype: 'wind', element: '风' },
     },
     weight: 68,
     energyCost: 16,
@@ -592,7 +608,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
   },
   {
     id: 'gongfa-school-metal-spec',
-    displayName: '金灵根强化',
+    displayName: '金行真解',
     displayDescription: '金修内蕴之法，提升金系技能造成的伤害',
     category: 'gongfa_school',
     rarity: 'uncommon',
@@ -603,6 +619,10 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_BLADE,
         CreationTags.MATERIAL.SEMANTIC_BURST,
       ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+    selectionMeta: {
+      gongfa: { role: 'primary', archetype: 'metal', element: '金' },
     },
     weight: 65,
     energyCost: 16,
@@ -629,7 +649,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
   },
   {
     id: 'gongfa-school-water-spec',
-    displayName: '水灵根强化',
+    displayName: '水行真解',
     displayDescription: '通悉若水无定之形，提升水系技能造成的伤害',
     category: 'gongfa_school',
     rarity: 'uncommon',
@@ -640,6 +660,10 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_SPIRIT,
         CreationTags.MATERIAL.SEMANTIC_BURST,
       ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+    selectionMeta: {
+      gongfa: { role: 'primary', archetype: 'water', element: '水' },
     },
     weight: 63,
     energyCost: 16,
@@ -666,7 +690,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
   },
   {
     id: 'gongfa-school-wood-spec',
-    displayName: '木灵根强化',
+    displayName: '青木真解',
     displayDescription: '融生克于一体，提升木系技能造成的伤害',
     category: 'gongfa_school',
     rarity: 'uncommon',
@@ -677,6 +701,10 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_LIFE,
         CreationTags.MATERIAL.SEMANTIC_SUSTAIN,
       ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+    selectionMeta: {
+      gongfa: { role: 'primary', archetype: 'wood', element: '木' },
     },
     weight: 60,
     energyCost: 16,
@@ -703,7 +731,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
   },
   {
     id: 'gongfa-school-earth-spec',
-    displayName: '土灵根强化',
+    displayName: '厚土真解',
     displayDescription: '立足浩荡地脉，提升土系技能造成的伤害',
     category: 'gongfa_school',
     rarity: 'uncommon',
@@ -714,6 +742,10 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_GUARD,
         CreationTags.MATERIAL.SEMANTIC_BURST,
       ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+    selectionMeta: {
+      gongfa: { role: 'primary', archetype: 'earth', element: '土' },
     },
     weight: 58,
     energyCost: 16,
@@ -739,6 +771,231 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
     },
   },
 
+  // --- 多元素主修：材料呈现三系以上均衡时，替代多重单元素专精 ---
+  {
+    id: 'gongfa-school-five-phase-flow',
+    displayName: '五行流转',
+    displayDescription: '诸行轮转不息，提升造成的伤害，但单系锋芒不及专修',
+    category: 'gongfa_school',
+    rarity: 'uncommon',
+    match: {
+      any: [
+        ELEMENT_TO_MATERIAL_TAG['金'],
+        ELEMENT_TO_MATERIAL_TAG['木'],
+        ELEMENT_TO_MATERIAL_TAG['水'],
+        ELEMENT_TO_MATERIAL_TAG['火'],
+        ELEMENT_TO_MATERIAL_TAG['土'],
+        ELEMENT_TO_MATERIAL_TAG['风'],
+        ELEMENT_TO_MATERIAL_TAG['雷'],
+        ELEMENT_TO_MATERIAL_TAG['冰'],
+      ],
+    },
+    exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.PRIMARY_SCHOOL,
+    selectionMeta: {
+      gongfa: { role: 'primary', archetype: 'mixed-elements' },
+    },
+    weight: 42,
+    energyCost: 18,
+    applicableTo: ['gongfa'],
+    effectTemplate: {
+      type: 'percent_damage_modifier',
+      params: {
+        mode: 'increase',
+        value: { base: 0.015, scale: 'quality', coefficient: 0.008 },
+        cap: 0.45,
+      },
+    },
+    listenerSpec: {
+      eventType: GameplayTags.EVENT.DAMAGE_REQUEST,
+      scope: GameplayTags.SCOPE.OWNER_AS_CASTER,
+      priority: CREATION_LISTENER_PRIORITIES.damageRequest,
+    },
+  },
+
+  // --- 双元素共鸣：作为主修支脉，而不是第二个完整元素专精 ---
+  {
+    id: 'gongfa-school-ice-thunder-resonance',
+    displayName: '冰雷共鸣',
+    displayDescription: '寒霆相激，雷系技能攻击受控目标时伤害提升',
+    category: 'gongfa_school',
+    rarity: 'rare',
+    match: {
+      all: [ELEMENT_TO_MATERIAL_TAG['冰'], ELEMENT_TO_MATERIAL_TAG['雷']],
+      any: [
+        CreationTags.MATERIAL.SEMANTIC_FREEZE,
+        CreationTags.MATERIAL.SEMANTIC_THUNDER,
+      ],
+    },
+    selectionMeta: {
+      gongfa: {
+        role: 'resonance',
+        archetype: 'ice-thunder',
+        resonanceElements: ['冰', '雷'],
+      },
+    },
+    weight: 24,
+    energyCost: 18,
+    applicableTo: ['gongfa'],
+    effectTemplate: {
+      type: 'percent_damage_modifier',
+      conditions: [
+        {
+          type: 'ability_has_tag',
+          params: { tag: ELEMENT_TO_RUNTIME_ABILITY_TAG['雷'] },
+        },
+        {
+          type: 'has_tag',
+          params: { tag: GameplayTags.STATUS.CONTROL.ROOT },
+        },
+      ],
+      params: {
+        mode: 'increase',
+        value: { base: 0.04, scale: 'quality', coefficient: 0.015 },
+        cap: 0.45,
+      },
+    },
+    listenerSpec: {
+      eventType: GameplayTags.EVENT.DAMAGE_REQUEST,
+      scope: GameplayTags.SCOPE.OWNER_AS_CASTER,
+      priority: CREATION_LISTENER_PRIORITIES.damageRequest,
+    },
+  },
+  {
+    id: 'gongfa-school-wind-fire-resonance',
+    displayName: '风火相生',
+    displayDescription: '风助火势，自身气血充盈时火系技能伤害提升',
+    category: 'gongfa_school',
+    rarity: 'rare',
+    match: {
+      all: [ELEMENT_TO_MATERIAL_TAG['风'], ELEMENT_TO_MATERIAL_TAG['火']],
+      any: [
+        CreationTags.MATERIAL.SEMANTIC_WIND,
+        CreationTags.MATERIAL.SEMANTIC_FLAME,
+        CreationTags.MATERIAL.SEMANTIC_BURST,
+      ],
+    },
+    selectionMeta: {
+      gongfa: {
+        role: 'resonance',
+        archetype: 'wind-fire',
+        resonanceElements: ['风', '火'],
+      },
+    },
+    weight: 24,
+    energyCost: 18,
+    applicableTo: ['gongfa'],
+    effectTemplate: {
+      type: 'percent_damage_modifier',
+      conditions: [
+        {
+          type: 'ability_has_tag',
+          params: { tag: ELEMENT_TO_RUNTIME_ABILITY_TAG['火'] },
+        },
+        { type: 'hp_above', params: { value: 0.8, scope: 'caster' } },
+      ],
+      params: {
+        mode: 'increase',
+        value: { base: 0.035, scale: 'quality', coefficient: 0.015 },
+        cap: 0.45,
+      },
+    },
+    listenerSpec: {
+      eventType: GameplayTags.EVENT.DAMAGE_REQUEST,
+      scope: GameplayTags.SCOPE.OWNER_AS_CASTER,
+      priority: CREATION_LISTENER_PRIORITIES.damageRequest,
+    },
+  },
+  {
+    id: 'gongfa-school-metal-fire-resonance',
+    displayName: '金火锻锋',
+    displayDescription: '烈火锻金，金系技能暴击时伤害提升',
+    category: 'gongfa_school',
+    rarity: 'rare',
+    match: {
+      all: [ELEMENT_TO_MATERIAL_TAG['金'], ELEMENT_TO_MATERIAL_TAG['火']],
+      any: [
+        CreationTags.MATERIAL.SEMANTIC_METAL,
+        CreationTags.MATERIAL.SEMANTIC_FLAME,
+        CreationTags.MATERIAL.SEMANTIC_BLADE,
+      ],
+    },
+    selectionMeta: {
+      gongfa: {
+        role: 'resonance',
+        archetype: 'metal-fire',
+        resonanceElements: ['金', '火'],
+      },
+    },
+    weight: 22,
+    energyCost: 18,
+    applicableTo: ['gongfa'],
+    effectTemplate: {
+      type: 'percent_damage_modifier',
+      conditions: [
+        {
+          type: 'ability_has_tag',
+          params: { tag: ELEMENT_TO_RUNTIME_ABILITY_TAG['金'] },
+        },
+        { type: 'is_critical', params: {} },
+      ],
+      params: {
+        mode: 'increase',
+        value: { base: 0.04, scale: 'quality', coefficient: 0.015 },
+        cap: 0.45,
+      },
+    },
+    listenerSpec: {
+      eventType: GameplayTags.EVENT.DAMAGE_REQUEST,
+      scope: GameplayTags.SCOPE.OWNER_AS_CASTER,
+      priority: CREATION_LISTENER_PRIORITIES.damageRequest,
+    },
+  },
+  {
+    id: 'gongfa-school-water-wood-resonance',
+    displayName: '水木生息',
+    displayDescription: '水养青木，自身拥有护盾时木系技能伤害提升',
+    category: 'gongfa_school',
+    rarity: 'rare',
+    match: {
+      all: [ELEMENT_TO_MATERIAL_TAG['水'], ELEMENT_TO_MATERIAL_TAG['木']],
+      any: [
+        CreationTags.MATERIAL.SEMANTIC_WATER,
+        CreationTags.MATERIAL.SEMANTIC_WOOD,
+        CreationTags.MATERIAL.SEMANTIC_LIFE,
+      ],
+    },
+    selectionMeta: {
+      gongfa: {
+        role: 'resonance',
+        archetype: 'water-wood',
+        resonanceElements: ['水', '木'],
+      },
+    },
+    weight: 22,
+    energyCost: 18,
+    applicableTo: ['gongfa'],
+    effectTemplate: {
+      type: 'percent_damage_modifier',
+      conditions: [
+        {
+          type: 'ability_has_tag',
+          params: { tag: ELEMENT_TO_RUNTIME_ABILITY_TAG['木'] },
+        },
+        { type: 'has_shield', params: { scope: 'caster' } },
+      ],
+      params: {
+        mode: 'increase',
+        value: { base: 0.035, scale: 'quality', coefficient: 0.015 },
+        cap: 0.45,
+      },
+    },
+    listenerSpec: {
+      eventType: GameplayTags.EVENT.DAMAGE_REQUEST,
+      scope: GameplayTags.SCOPE.OWNER_AS_CASTER,
+      priority: CREATION_LISTENER_PRIORITIES.damageRequest,
+    },
+  },
+
   // --- 暴击回蓝 ---
   {
     id: 'gongfa-school-crit-mana',
@@ -753,6 +1010,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_QI,
         CreationTags.MATERIAL.SEMANTIC_THUNDER,
       ],
+    },
+    selectionMeta: {
+      gongfa: { role: 'support', archetype: 'crit-mana' },
     },
     weight: 50,
     energyCost: 12,
@@ -792,6 +1052,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.TYPE_MANUAL,
       ],
     },
+    selectionMeta: {
+      gongfa: { role: 'support', archetype: 'low-mp-burst' },
+    },
     weight: 42,
     energyCost: 12,
     applicableTo: ['gongfa'],
@@ -827,6 +1090,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_BLADE,
         CreationTags.MATERIAL.SEMANTIC_THUNDER,
       ],
+    },
+    selectionMeta: {
+      gongfa: { role: 'support', archetype: 'opening-burst' },
     },
     weight: 38,
     energyCost: 16,
@@ -864,6 +1130,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_BEAST,
       ],
     },
+    selectionMeta: {
+      gongfa: { role: 'support', archetype: 'low-hp-burst' },
+    },
     weight: 40,
     energyCost: 16,
     applicableTo: ['gongfa'],
@@ -898,6 +1167,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_METAL,
         CreationTags.MATERIAL.SEMANTIC_BLADE,
       ],
+    },
+    selectionMeta: {
+      gongfa: { role: 'support', archetype: 'shielded-burst' },
     },
     weight: 35,
     energyCost: 16,
@@ -938,6 +1210,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_BEAST,
       ],
     },
+    selectionMeta: {
+      gongfa: { role: 'support', archetype: 'debuff-exploit' },
+    },
     weight: 30,
     energyCost: 20,
     applicableTo: ['gongfa'],
@@ -976,6 +1251,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_BLOOD,
       ],
     },
+    selectionMeta: {
+      gongfa: { role: 'support', archetype: 'dot-amplify' },
+    },
     weight: 32,
     energyCost: 20,
     applicableTo: ['gongfa'],
@@ -1012,6 +1290,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
         CreationTags.MATERIAL.SEMANTIC_THUNDER,
         CreationTags.MATERIAL.SEMANTIC_ILLUSION,
       ],
+    },
+    selectionMeta: {
+      gongfa: { role: 'support', archetype: 'control-exploit' },
     },
     weight: 35,
     energyCost: 20,
@@ -1058,6 +1339,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
       ],
     },
     exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.SECRET_ULTIMATE,
+    selectionMeta: {
+      gongfa: { role: 'secret', archetype: 'inferno', element: '火' },
+    },
     weight: 5,
     energyCost: 50,
     applicableTo: ['gongfa'],
@@ -1103,6 +1387,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
       ],
     },
     exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.SECRET_ULTIMATE,
+    selectionMeta: {
+      gongfa: { role: 'secret', archetype: 'frost-soul', element: '冰' },
+    },
     weight: 5,
     energyCost: 50,
     applicableTo: ['gongfa'],
@@ -1147,6 +1434,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
       ],
     },
     exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.SECRET_ULTIMATE,
+    selectionMeta: {
+      gongfa: { role: 'secret', archetype: 'cycle' },
+    },
     weight: 6,
     energyCost: 45,
     applicableTo: ['gongfa'],
@@ -1188,6 +1478,9 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
       ],
     },
     exclusiveGroup: EXCLUSIVE_GROUP.GONGFA.SECRET_ULTIMATE,
+    selectionMeta: {
+      gongfa: { role: 'secret', archetype: 'adaptive' },
+    },
     weight: 4,
     energyCost: 55,
     applicableTo: ['gongfa'],

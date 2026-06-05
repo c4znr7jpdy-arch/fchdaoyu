@@ -5,6 +5,7 @@ import { BudgetExhaustionRules } from './BudgetExhaustionRules';
 import { CategoryQuotaRules } from './CategoryQuotaRules';
 import { ExclusiveGroupRules } from './ExclusiveGroupRules';
 import { FallbackAffixRules } from './FallbackAffixRules';
+import { GongfaSchoolPlanRules } from './GongfaSchoolPlanRules';
 import { HighTierBucketRules } from './HighTierBucketRules';
 
 /*
@@ -18,6 +19,7 @@ export class AffixSelectionRuleSet {
       new CategoryQuotaRules(),
       new HighTierBucketRules(),
       new BudgetExhaustionRules(),
+      new GongfaSchoolPlanRules(),
       new FallbackAffixRules(),
     ],
     (facts) => ({

@@ -12,6 +12,7 @@ import {
   CreationSessionInput,
   MaterialFingerprint,
 } from '../types';
+import { ELEMENT_TO_MATERIAL_TAG } from '../config/CreationMappings';
 
 export class DefaultIntentResolver {
   resolve(
@@ -23,6 +24,7 @@ export class DefaultIntentResolver {
     const dominantTags = Array.from(
       new Set([
         ...MaterialFactsBuilder.pickDominantTags(fingerprints),
+        ...this.collectElementTags(fingerprints),
         ...positiveTagBiases.map((bias) => bias.tag),
       ]),
     );
@@ -43,20 +45,41 @@ export class DefaultIntentResolver {
 
   private pickElementBias(
     fingerprints: MaterialFingerprint[],
-  ) {
-    const counts = new Map<string, number>();
+  ): ElementType | undefined {
+    const scores = new Map<ElementType, number>();
 
     fingerprints.forEach((fingerprint) => {
       if (!fingerprint.element) {
         return;
       }
 
-      counts.set(fingerprint.element, (counts.get(fingerprint.element) ?? 0) + 1);
+      const quantityWeight = Math.max(1, Math.sqrt(fingerprint.quantity));
+      const materialScore =
+        fingerprint.energyValue * quantityWeight +
+        fingerprint.rarityWeight * 2;
+      scores.set(
+        fingerprint.element,
+        (scores.get(fingerprint.element) ?? 0) + materialScore,
+      );
     });
 
-    return Array.from(counts.entries()).sort((left, right) => right[1] - left[1])[0]?.[0] as
-      | ElementType
-      | undefined;
+    return Array.from(scores.entries()).sort(
+      (left, right) => right[1] - left[1],
+    )[0]?.[0];
+  }
+
+  private collectElementTags(fingerprints: MaterialFingerprint[]): string[] {
+    return Array.from(
+      new Set(
+        fingerprints
+          .map((fingerprint) =>
+            fingerprint.element
+              ? ELEMENT_TO_MATERIAL_TAG[fingerprint.element]
+              : undefined,
+          )
+          .filter((tag): tag is string => Boolean(tag)),
+      ),
+    );
   }
 
   /**

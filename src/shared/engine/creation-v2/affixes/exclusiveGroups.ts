@@ -10,6 +10,7 @@ export const EXCLUSIVE_GROUP = {
   GONGFA: {
     FOUNDATION_STAT: 'gongfa-foundation-stat',
     FOUNDATION_DAMAGE_MOD: 'gongfa-foundation-damage-mod',
+    PRIMARY_SCHOOL: 'gongfa-primary-school',
     SCHOOL_CRIT_DMG: 'gongfa-school-crit-dmg',
     SCHOOL_HEAL: 'gongfa-school-heal',
     SCHOOL_ROUND_HEAL: 'gongfa-school-round-heal',

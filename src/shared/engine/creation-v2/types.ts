@@ -33,6 +33,19 @@ export type AffixCategory =
   | 'artifact_defense'
   | 'artifact_treasure';
 
+export type GongfaAffixRole = 'primary' | 'support' | 'resonance' | 'secret';
+
+export interface GongfaAffixSelectionMeta {
+  role: GongfaAffixRole;
+  archetype: string;
+  element?: ElementType;
+  resonanceElements?: ElementType[];
+}
+
+export interface AffixSelectionMeta {
+  gongfa?: GongfaAffixSelectionMeta;
+}
+
 
 export const CREATION_PRODUCT_TYPES = ['skill', 'artifact', 'gongfa'] as const;
 
@@ -285,6 +298,7 @@ export interface AffixCandidate {
   exclusiveGroup?: ExclusiveGroup;
   applicableArtifactSlots?: EquipmentSlot[];
   targetPolicyConstraint?: Partial<TargetPolicyConfig>;
+  selectionMeta?: AffixSelectionMeta;
   effectTemplate: AffixEffectTemplate;
 }
 

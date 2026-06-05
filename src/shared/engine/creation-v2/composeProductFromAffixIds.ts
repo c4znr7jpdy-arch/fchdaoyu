@@ -71,6 +71,7 @@ function toRolledAffix(def: AffixDefinition): RolledAffix {
     exclusiveGroup: def.exclusiveGroup,
     applicableArtifactSlots: def.applicableArtifactSlots,
     targetPolicyConstraint: def.targetPolicyConstraint,
+    selectionMeta: def.selectionMeta,
     effectTemplate: def.effectTemplate,
     rollScore: 1,
     rollEfficiency: 1,

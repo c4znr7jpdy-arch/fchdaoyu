@@ -13,6 +13,7 @@ import { AffixPicker } from './AffixPicker';
 import { AffixRollEngine } from './AffixRollEngine';
 import { CREATION_PROJECTION_BALANCE } from '../config/CreationBalance';
 import { resolveAffixSelectionConstraints } from '../config/AffixSelectionConstraints';
+import type { ElementType } from '@shared/types/constants';
 
 export interface AffixSelectionResult {
   audit: AffixSelectionAudit;
@@ -85,6 +86,8 @@ export class AffixSelector {
         selectedExclusiveGroups: Array.from(pickedGroups),
         selectedCategoryCounts,
         selectionConstraints,
+        elementBias: intent.elementBias,
+        selectedGongfaSchoolPlan: this.buildSelectedGongfaSchoolPlan(result),
       };
       const decision = this.ruleSet.evaluate(facts);
       finalDecision = decision;
@@ -283,6 +286,38 @@ export class AffixSelector {
     }
 
     return coreSlots.some((slot) => candidateSlots.includes(slot));
+  }
+
+  private buildSelectedGongfaSchoolPlan(
+    selected: RolledAffix[],
+  ): AffixSelectionFacts['selectedGongfaSchoolPlan'] {
+    let primaryElement: ElementType | undefined;
+    let primarySelected = false;
+    let resonanceCount = 0;
+    let supportCount = 0;
+
+    for (const affix of selected) {
+      const meta = affix.selectionMeta?.gongfa;
+      if (!meta) {
+        continue;
+      }
+
+      if (meta.role === 'primary') {
+        primarySelected = true;
+        primaryElement = meta.element;
+      } else if (meta.role === 'resonance') {
+        resonanceCount += 1;
+      } else if (meta.role === 'support') {
+        supportCount += 1;
+      }
+    }
+
+    return {
+      primarySelected,
+      ...(primaryElement ? { primaryElement } : {}),
+      resonanceCount,
+      supportCount,
+    };
   }
 
 }

@@ -17,6 +17,7 @@ import {
 } from '../contracts/battle';
 import type { CreationTagSignalSource } from '../types';
 import { AffixCategory, CreationProductType } from '../types';
+import type { AffixSelectionMeta } from '../types';
 import type { ExclusiveGroup } from './exclusiveGroups';
 import { TargetPolicyConfig } from '@shared/engine/battle-v5/abilities/TargetPolicy';
 
@@ -260,6 +261,8 @@ export interface AffixDefinition {
   applicableArtifactSlots?: EquipmentSlot[];
   /** 神通专用：限定可进入候选池的目标策略偏好 */
   targetPolicyConstraint?: Partial<TargetPolicyConfig>;
+  /** 抽取阶段使用的产品专属规划元数据，不进入运行时 ability tags。 */
+  selectionMeta?: AffixSelectionMeta;
   /** 词缀效果模板（含品质缩放参数） */
   effectTemplate: AffixEffectTemplate;
   /** 被动能力词缀的监听器规格（artifact/gongfa 词缀必填） */

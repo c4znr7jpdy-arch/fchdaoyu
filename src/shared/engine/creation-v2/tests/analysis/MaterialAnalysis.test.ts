@@ -2,6 +2,8 @@ import {
   buildMaterialEnergyProfile,
 } from '@shared/engine/creation-v2/analysis/MaterialBalanceProfile';
 import { MaterialFactsBuilder } from '@shared/engine/creation-v2/analysis/MaterialFactsBuilder';
+import { ELEMENT_TO_MATERIAL_TAG } from '@shared/engine/creation-v2/config/CreationMappings';
+import { DefaultIntentResolver } from '@shared/engine/creation-v2/resolvers/DefaultIntentResolver';
 import { MaterialFingerprint } from '@shared/engine/creation-v2/types';
 
 // ── MaterialBalanceProfile ──────────────────────────────────────────
@@ -156,5 +158,64 @@ describe('MaterialFactsBuilder', () => {
     expect(facts.energyProfile.effectiveEnergy).toBe(31);
     expect(facts.unlockScore).toBe(27);
     expect(facts.unlockScore).toBeLessThan(facts.energyProfile.effectiveEnergy);
+  });
+});
+
+describe('DefaultIntentResolver', () => {
+  it('应按材料能量与稀有度加权决定 elementBias，并保留元素 dominantTags', () => {
+    const fingerprints: MaterialFingerprint[] = [
+      {
+        materialName: '赤炎主材',
+        materialType: 'gongfa_manual',
+        rank: '天品',
+        quantity: 1,
+        explicitTags: [ELEMENT_TO_MATERIAL_TAG['火']],
+        semanticTags: ['Material.Semantic.Flame'],
+        recipeTags: ['Recipe.ProductBias.GongFa'],
+        energyValue: 40,
+        rarityWeight: 6,
+        element: '火',
+      },
+      {
+        materialName: '冰魄辅材一',
+        materialType: 'herb',
+        rank: '凡品',
+        quantity: 1,
+        explicitTags: [ELEMENT_TO_MATERIAL_TAG['冰']],
+        semanticTags: ['Material.Semantic.Freeze'],
+        recipeTags: ['Recipe.ProductBias.GongFa'],
+        energyValue: 4,
+        rarityWeight: 1,
+        element: '冰',
+      },
+      {
+        materialName: '冰魄辅材二',
+        materialType: 'herb',
+        rank: '凡品',
+        quantity: 1,
+        explicitTags: [ELEMENT_TO_MATERIAL_TAG['冰']],
+        semanticTags: ['Material.Semantic.Freeze'],
+        recipeTags: ['Recipe.ProductBias.GongFa'],
+        energyValue: 4,
+        rarityWeight: 1,
+        element: '冰',
+      },
+    ];
+
+    const intent = new DefaultIntentResolver().resolve(
+      {
+        productType: 'gongfa',
+        materials: [],
+      },
+      fingerprints,
+    );
+
+    expect(intent.elementBias).toBe('火');
+    expect(intent.dominantTags).toEqual(
+      expect.arrayContaining([
+        ELEMENT_TO_MATERIAL_TAG['火'],
+        ELEMENT_TO_MATERIAL_TAG['冰'],
+      ]),
+    );
   });
 });
