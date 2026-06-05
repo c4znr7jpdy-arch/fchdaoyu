@@ -77,6 +77,51 @@ const MULTIPLIER_ATTRS = new Set<AttributeType>([
   AttributeType.CRIT_DAMAGE_MULT,
 ]);
 
+const PRIMARY_ATTRIBUTE_HELP = [
+  {
+    label: '灵力',
+    description: '滋养术法根基，主要增加法术攻击、法术防御，并补益一些法力。',
+  },
+  {
+    label: '体魄',
+    description: '稳固血肉筋骨，主要增加气血、物理攻击与物理防御。',
+  },
+  {
+    label: '身法',
+    description: '决定出手快慢，增加一些闪避，并少量补益物理攻击、物理防御与暴击。',
+  },
+  {
+    label: '神识',
+    description: '凝练感知与抗衡之力，增加一些控制命中、控制抗性、法术攻防与法力，并少量增加命中。',
+  },
+  {
+    label: '悟性',
+    description: '提升临战洞察，增加一些暴击伤害，并少量增加暴击与命中。',
+  },
+];
+
+const PRIMARY_ATTRIBUTE_HELP_DIALOG = {
+  title: '根基属性说明',
+  content: (
+    <div className="space-y-3 text-sm leading-7">
+      <p className="text-ink-secondary">
+        五维根基会在战斗中化为攻防、命中、闪避、暴击等次级属性；法宝、功法与状态仍会在此基础上继续增减。
+      </p>
+      <div className="border-ink/15 overflow-hidden border border-dashed">
+        {PRIMARY_ATTRIBUTE_HELP.map((item) => (
+          <div
+            key={item.label}
+            className="border-ink/10 grid gap-1 border-b border-dashed px-3 py-2 last:border-b-0 sm:grid-cols-[4rem_1fr]"
+          >
+            <span className="text-crimson font-semibold">{item.label}</span>
+            <span className="text-ink-secondary">{item.description}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  ),
+};
+
 function formatAttributeValue(attrType: AttributeType, value: number): string {
   if (PERCENT_ATTRS.has(attrType)) {
     return `${(value * 100).toFixed(1)}%`;
@@ -363,7 +408,7 @@ export function CultivatorOverviewPanel() {
         </GameSceneSection>
       ) : null}
 
-      <GameSceneSection title="根基属性">
+      <GameSceneSection title="根基属性" help={PRIMARY_ATTRIBUTE_HELP_DIALOG}>
         <div className="border-ink/15 overflow-x-auto border border-dashed">
           <table className="border-ink/10 w-full border-collapse text-sm">
             <tbody>
