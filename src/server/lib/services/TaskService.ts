@@ -792,7 +792,7 @@ async function grantDailyTaskRewardIfNeeded(
   }
 
   const pendingMetadata = pendingRecord.metadata as TaskInstanceMetadata;
-  let grantMetadata = pendingMetadata;
+  const grantMetadata = pendingMetadata;
 
   try {
     const rewardAttachments = resolveTaskRewardMailAttachments(
@@ -1536,6 +1536,7 @@ export const TaskService = {
     );
     const claimedAt = new Date().toISOString();
     const currentMetadata = task.metadata;
+    const claimedTask = task;
 
     await getExecutor().transaction(async (tx) => {
       const pendingRecord = await markTaskRewardGrantPendingForKey(
@@ -1557,8 +1558,8 @@ export const TaskService = {
       if (mailAttachments.length > 0) {
         await MailService.sendMail(
           cultivatorId,
-          `【任务奖励】${task.snapshot.title}`,
-          `道友已完成"${task.snapshot.title}"，任务奖励已封入附件，请前往传音符诏领取。`,
+          `【任务奖励】${claimedTask.snapshot.title}`,
+          `道友已完成"${claimedTask.snapshot.title}"，任务奖励已封入附件，请前往传音符诏领取。`,
           mailAttachments,
           'reward',
           tx,
