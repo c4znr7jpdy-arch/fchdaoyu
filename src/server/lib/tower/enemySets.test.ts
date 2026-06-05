@@ -10,25 +10,28 @@ import {
 import type { Cultivator } from '@shared/types/cultivator';
 
 const {
-  findTowerEnemySetMock,
-  findLatestReadyTowerEnemySetMock,
-  listTowerEnemySetsBySeasonMock,
-  upsertReadyTowerEnemySetMock,
-  upsertFailedTowerEnemySetMock,
+  findTowerEnemyFloorMock,
+  findLatestReadyTowerEnemyFloorMock,
+  listTowerEnemyFloorSummariesBySeasonMock,
+  listTowerEnemyFloorsBySeasonRealmMock,
+  upsertReadyTowerEnemyFloorMock,
+  upsertFailedTowerEnemyFloorMock,
 } = vi.hoisted(() => ({
-  findTowerEnemySetMock: vi.fn(),
-  findLatestReadyTowerEnemySetMock: vi.fn(),
-  listTowerEnemySetsBySeasonMock: vi.fn(),
-  upsertReadyTowerEnemySetMock: vi.fn(),
-  upsertFailedTowerEnemySetMock: vi.fn(),
+  findTowerEnemyFloorMock: vi.fn(),
+  findLatestReadyTowerEnemyFloorMock: vi.fn(),
+  listTowerEnemyFloorSummariesBySeasonMock: vi.fn(),
+  listTowerEnemyFloorsBySeasonRealmMock: vi.fn(),
+  upsertReadyTowerEnemyFloorMock: vi.fn(),
+  upsertFailedTowerEnemyFloorMock: vi.fn(),
 }));
 
 vi.mock('@server/lib/repositories/towerEnemySetRepository', () => ({
-  findTowerEnemySet: findTowerEnemySetMock,
-  findLatestReadyTowerEnemySet: findLatestReadyTowerEnemySetMock,
-  listTowerEnemySetsBySeason: listTowerEnemySetsBySeasonMock,
-  upsertReadyTowerEnemySet: upsertReadyTowerEnemySetMock,
-  upsertFailedTowerEnemySet: upsertFailedTowerEnemySetMock,
+  findTowerEnemyFloor: findTowerEnemyFloorMock,
+  findLatestReadyTowerEnemyFloor: findLatestReadyTowerEnemyFloorMock,
+  listTowerEnemyFloorSummariesBySeason: listTowerEnemyFloorSummariesBySeasonMock,
+  listTowerEnemyFloorsBySeasonRealm: listTowerEnemyFloorsBySeasonRealmMock,
+  upsertReadyTowerEnemyFloor: upsertReadyTowerEnemyFloorMock,
+  upsertFailedTowerEnemyFloor: upsertFailedTowerEnemyFloorMock,
 }));
 
 import { TowerEnemySetService } from './enemySets';
@@ -106,9 +109,17 @@ function makeDraft(input: Record<string, unknown>): EnemyGenerationDraft {
   };
 }
 
-function makeGenerator(): EnemyGenerator {
+function makeGenerator(options: { failFloor?: number } = {}): EnemyGenerator {
   return {
-    buildDraft: vi.fn((input) => makeDraft(input)),
+    buildDraft: vi.fn((input) => {
+      if (
+        options.failFloor &&
+        String(input.variantSeed).endsWith(`:${options.failFloor}`)
+      ) {
+        throw new Error(`floor ${options.failFloor} failed`);
+      }
+      return makeDraft(input);
+    }),
     enrichNarrative: vi.fn(async (draft: EnemyGenerationDraft) => ({
       ...draft,
       missingNarrative: {
@@ -121,67 +132,72 @@ function makeGenerator(): EnemyGenerator {
   } as unknown as EnemyGenerator;
 }
 
-function makePreparedEnemies(seasonKey = '2026-W22@Asia/Shanghai') {
-  return Array.from({ length: TOWER_MAX_FLOOR }, (_, index) => {
-    const floor = index + 1;
-    return {
+function makePreparedEnemy(floor: number, seasonKey = '2026-W22@Asia/Shanghai') {
+  return {
+    floor,
+    encounter: {
       floor,
-      encounter: {
-        floor,
-        kind: floor % 10 === 0 ? 'boss' : floor % 5 === 0 ? 'elite' : 'normal',
-        difficulty: floor * 5,
-        race: '人族',
-        realm: '金丹',
-        realmStage: '初期',
-        isBoss: floor % 10 === 0,
-      },
-      enemy: makeCultivator(`enemy-${floor}`),
-      generationMeta: {
-        variantSeed: `tower:${seasonKey}:金丹:${floor}`,
-        source: 'llm',
-        generatedAt: '2026-06-01T00:00:00.000Z',
-      },
-    } satisfies TowerPreparedEnemy;
-  });
+      kind: floor % 10 === 0 ? 'boss' : floor % 5 === 0 ? 'elite' : 'normal',
+      difficulty: floor * 5,
+      race: '人族',
+      realm: '金丹',
+      realmStage: '初期',
+      isBoss: floor % 10 === 0,
+    },
+    enemy: makeCultivator(`enemy-${floor}`),
+    generationMeta: {
+      variantSeed: `tower:${seasonKey}:金丹:${floor}`,
+      source: 'llm',
+      generatedAt: '2026-06-01T00:00:00.000Z',
+    },
+  } satisfies TowerPreparedEnemy;
+}
+
+function makeFloorRecord(floor: number, status: 'ready' | 'failed' = 'ready') {
+  return {
+    seasonKey: '2026-W22@Asia/Shanghai',
+    realm: '金丹',
+    floor,
+    status,
+    schemaVersion: 1,
+    generatedAt: new Date('2026-06-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-06-01T00:10:00.000Z'),
+    errorMessage: status === 'failed' ? '生成失败' : null,
+    enemy: status === 'ready' ? makePreparedEnemy(floor) : null,
+  };
 }
 
 describe('tower enemy sets', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    findTowerEnemySetMock.mockResolvedValue(undefined);
-    findLatestReadyTowerEnemySetMock.mockResolvedValue(undefined);
-    listTowerEnemySetsBySeasonMock.mockResolvedValue([]);
+    findTowerEnemyFloorMock.mockResolvedValue(undefined);
+    findLatestReadyTowerEnemyFloorMock.mockResolvedValue(undefined);
+    listTowerEnemyFloorSummariesBySeasonMock.mockResolvedValue([]);
+    listTowerEnemyFloorsBySeasonRealmMock.mockResolvedValue([]);
   });
 
-  it('generates twenty prepared enemies for each eligible realm', async () => {
+  it('generates one row per floor for each eligible realm', async () => {
     const generator = makeGenerator();
     const service = new TowerEnemySetService({ generator });
     const result = await service.ensureTowerEnemySetsForSeason(
       getTowerSeasonMeta(new Date('2026-06-01T00:00:00.000Z')),
     );
 
-    expect(result.processed).toBe(TOWER_ELIGIBLE_REALMS.length);
-    expect(result.generated).toBe(TOWER_ELIGIBLE_REALMS.length);
-    expect(upsertReadyTowerEnemySetMock).toHaveBeenCalledTimes(
-      TOWER_ELIGIBLE_REALMS.length,
+    expect(result.processed).toBe(TOWER_ELIGIBLE_REALMS.length * TOWER_MAX_FLOOR);
+    expect(result.generated).toBe(TOWER_ELIGIBLE_REALMS.length * TOWER_MAX_FLOOR);
+    expect(upsertReadyTowerEnemyFloorMock).toHaveBeenCalledTimes(
+      TOWER_ELIGIBLE_REALMS.length * TOWER_MAX_FLOOR,
     );
     expect(generator.buildDraft).toHaveBeenCalledTimes(
       TOWER_ELIGIBLE_REALMS.length * TOWER_MAX_FLOOR,
     );
-    expect(generator.enrichNarrative).toHaveBeenCalledTimes(
-      TOWER_ELIGIBLE_REALMS.length * TOWER_MAX_FLOOR,
-    );
   });
 
-  it('does not regenerate an existing complete ready set', async () => {
+  it('skips existing ready floors and does not regenerate them', async () => {
     const generator = makeGenerator();
-    findTowerEnemySetMock.mockResolvedValueOnce({
-      seasonKey: '2026-W22@Asia/Shanghai',
-      realm: '金丹',
-      status: 'ready',
-      generatedAt: new Date('2026-06-01T00:00:00.000Z'),
-      enemies: makePreparedEnemies(),
-    });
+    findTowerEnemyFloorMock.mockImplementation(async ({ floor }) =>
+      floor <= 3 ? makeFloorRecord(floor) : undefined,
+    );
 
     const service = new TowerEnemySetService({ generator });
     const result = await service.ensureTowerEnemySet(
@@ -189,20 +205,46 @@ describe('tower enemy sets', () => {
       '金丹',
     );
 
-    expect(result.skipped).toBe(true);
-    expect(generator.buildDraft).not.toHaveBeenCalled();
-    expect(upsertReadyTowerEnemySetMock).not.toHaveBeenCalled();
+    expect(result.skipped).toBe(3);
+    expect(result.generated).toBe(17);
+    expect(upsertReadyTowerEnemyFloorMock).toHaveBeenCalledTimes(17);
+    expect(generator.buildDraft).toHaveBeenCalledTimes(17);
   });
 
-  it('loads the latest ready set when the current season is missing', async () => {
-    const latest = makePreparedEnemies();
-    findLatestReadyTowerEnemySetMock.mockResolvedValueOnce({
-      seasonKey: '2026-W21@Asia/Shanghai',
-      realm: '金丹',
-      status: 'ready',
-      generatedAt: new Date('2026-05-25T00:00:00.000Z'),
-      enemies: latest,
-    });
+  it('records failed floors and can retry only missing or failed floors later', async () => {
+    const failingGenerator = makeGenerator({ failFloor: 4 });
+    const service = new TowerEnemySetService({ generator: failingGenerator });
+    const first = await service.ensureTowerEnemySet(
+      getTowerSeasonMeta(new Date('2026-06-01T00:00:00.000Z')),
+      '金丹',
+    );
+
+    expect(first.failed).toBe(1);
+    expect(upsertFailedTowerEnemyFloorMock).toHaveBeenCalledWith(
+      expect.objectContaining({ realm: '金丹', floor: 4 }),
+    );
+
+    vi.clearAllMocks();
+    findTowerEnemyFloorMock.mockImplementation(async ({ floor }) =>
+      floor === 4 ? undefined : makeFloorRecord(floor),
+    );
+    const retryGenerator = makeGenerator();
+    const retryService = new TowerEnemySetService({ generator: retryGenerator });
+    const retry = await retryService.ensureTowerEnemySet(
+      getTowerSeasonMeta(new Date('2026-06-01T00:00:00.000Z')),
+      '金丹',
+    );
+
+    expect(retry.skipped).toBe(19);
+    expect(retry.generated).toBe(1);
+    expect(upsertReadyTowerEnemyFloorMock).toHaveBeenCalledTimes(1);
+    expect(upsertReadyTowerEnemyFloorMock).toHaveBeenCalledWith(
+      expect.objectContaining({ realm: '金丹', floor: 4 }),
+    );
+  });
+
+  it('loads the latest ready floor when the current season floor is missing', async () => {
+    findLatestReadyTowerEnemyFloorMock.mockResolvedValueOnce(makeFloorRecord(3));
 
     const service = new TowerEnemySetService({ generator: makeGenerator() });
     const enemy = await service.loadTowerEnemyForBattle({
@@ -212,10 +254,14 @@ describe('tower enemy sets', () => {
     });
 
     expect(enemy.enemy.id).toBe('enemy-3');
-    expect(enemy).not.toBe(latest[2]);
+    expect(findLatestReadyTowerEnemyFloorMock).toHaveBeenCalledWith({
+      realm: '金丹',
+      floor: 3,
+      beforeSeasonKey: '2026-W22@Asia/Shanghai',
+    });
   });
 
-  it('falls back without LLM generation when no ready set exists', async () => {
+  it('falls back without LLM generation when no ready floor exists', async () => {
     const generator = makeGenerator();
     const fallbackGenerator = makeGenerator();
     const service = new TowerEnemySetService({ generator, fallbackGenerator });
@@ -229,22 +275,14 @@ describe('tower enemy sets', () => {
     expect(enemy.generationMeta.source).toBe('fallback');
     expect(generator.buildDraft).not.toHaveBeenCalled();
     expect(fallbackGenerator.buildDraft).toHaveBeenCalledTimes(1);
-    expect(fallbackGenerator.enrichNarrative).not.toHaveBeenCalled();
   });
 
-  it('builds admin snapshots with missing and ready realm summaries', async () => {
-    listTowerEnemySetsBySeasonMock.mockResolvedValueOnce([
-      {
-        seasonKey: '2026-W22@Asia/Shanghai',
-        realm: '金丹',
-        status: 'ready',
-        schemaVersion: 1,
-        generatedAt: new Date('2026-06-01T00:00:00.000Z'),
-        updatedAt: new Date('2026-06-01T00:10:00.000Z'),
-        errorMessage: null,
-        enemies: makePreparedEnemies(),
-      },
-    ]);
+  it('builds admin snapshots from floor summaries without enemy details', async () => {
+    listTowerEnemyFloorSummariesBySeasonMock.mockResolvedValueOnce(
+      Array.from({ length: TOWER_MAX_FLOOR }, (_, index) =>
+        ({ ...makeFloorRecord(index + 1), enemy: undefined }),
+      ),
+    );
 
     const service = new TowerEnemySetService({ generator: makeGenerator() });
     const snapshot = await service.getAdminSnapshot(
@@ -255,8 +293,9 @@ describe('tower enemy sets', () => {
       realm: '金丹',
       status: 'ready',
       enemyCount: 20,
-      sourceCounts: { llm: 20, fallback: 0 },
     });
+    expect(snapshot.realms[0]).not.toHaveProperty('enemies');
+    expect(snapshot.realms[0]).not.toHaveProperty('sourceCounts');
     expect(snapshot.realms[1]).toMatchObject({
       realm: '元婴',
       status: 'missing',
@@ -264,18 +303,11 @@ describe('tower enemy sets', () => {
     });
   });
 
-  it('marks ready rows without twenty floors as incomplete in admin snapshots', async () => {
-    listTowerEnemySetsBySeasonMock.mockResolvedValueOnce([
-      {
-        seasonKey: '2026-W22@Asia/Shanghai',
-        realm: '金丹',
-        status: 'ready',
-        schemaVersion: 1,
-        generatedAt: new Date('2026-06-01T00:00:00.000Z'),
-        updatedAt: new Date('2026-06-01T00:10:00.000Z'),
-        errorMessage: null,
-        enemies: makePreparedEnemies().slice(0, 3),
-      },
+  it('marks realm summaries as failed when any floor failed', async () => {
+    listTowerEnemyFloorSummariesBySeasonMock.mockResolvedValueOnce([
+      makeFloorRecord(1),
+      makeFloorRecord(2),
+      makeFloorRecord(3, 'failed'),
     ]);
 
     const service = new TowerEnemySetService({ generator: makeGenerator() });
@@ -285,8 +317,35 @@ describe('tower enemy sets', () => {
 
     expect(snapshot.realms[0]).toMatchObject({
       realm: '金丹',
-      status: 'incomplete',
-      enemyCount: 3,
+      status: 'failed',
+      enemyCount: 2,
     });
+    expect(snapshot.realms[0].errorMessage).toContain('3层');
+  });
+
+  it('loads admin enemy details for one realm only', async () => {
+    listTowerEnemyFloorsBySeasonRealmMock.mockResolvedValueOnce(
+      Array.from({ length: TOWER_MAX_FLOOR }, (_, index) =>
+        makeFloorRecord(index + 1),
+      ),
+    );
+
+    const service = new TowerEnemySetService({ generator: makeGenerator() });
+    const detail = await service.getAdminRealmDetail({
+      seasonKey: '2026-W22@Asia/Shanghai',
+      realm: '金丹',
+    });
+
+    expect(listTowerEnemyFloorsBySeasonRealmMock).toHaveBeenCalledWith({
+      seasonKey: '2026-W22@Asia/Shanghai',
+      realm: '金丹',
+    });
+    expect(detail).toMatchObject({
+      realm: '金丹',
+      status: 'ready',
+      enemyCount: 20,
+      sourceCounts: { llm: 20, fallback: 0 },
+    });
+    expect(detail.enemies).toHaveLength(20);
   });
 });

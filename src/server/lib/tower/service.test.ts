@@ -181,6 +181,35 @@ describe('tower service prepared enemies', () => {
     expect(result.state.challengeRealm).toBe('金丹');
   });
 
+  it('backfills challenge realm when reading legacy state', async () => {
+    const season = getTowerSeasonMeta();
+    redisStore.set(
+      'tower:run:cultivator-1',
+      JSON.stringify({
+        runId: 'run-legacy',
+        seasonKey: season.seasonKey,
+        status: 'READY',
+        currentFloor: 1,
+        highestFloorCleared: 0,
+        condition,
+        blessings: {},
+        pendingBlessingChoices: [],
+        claimedMilestones: [],
+        milestoneRewardLog: [],
+      }),
+    );
+
+    const result = await towerService.getState(
+      'cultivator-1',
+      new Date(),
+      '金丹',
+    );
+    const savedState = JSON.parse(redisStore.get('tower:run:cultivator-1')!);
+
+    expect(result.state?.challengeRealm).toBe('金丹');
+    expect(savedState.challengeRealm).toBe('金丹');
+  });
+
   it('rejects execution when the cultivator has crossed into a new realm', async () => {
     const season = getTowerSeasonMeta();
     redisStore.set(
@@ -221,5 +250,46 @@ describe('tower service prepared enemies', () => {
       towerService.executeBattle('cultivator-1', 'battle-1'),
     ).rejects.toThrow('当前境界已变化，请重开幻境以进入新的境界榜');
     expect(simulateBattleV5Mock).not.toHaveBeenCalled();
+  });
+
+  it('backfills challenge realm for legacy waiting battles', async () => {
+    const season = getTowerSeasonMeta();
+    redisStore.set(
+      'tower:run:cultivator-1',
+      JSON.stringify({
+        runId: 'run-legacy',
+        seasonKey: season.seasonKey,
+        status: 'WAITING_BATTLE',
+        currentFloor: 1,
+        highestFloorCleared: 0,
+        condition,
+        blessings: {},
+        pendingBlessingChoices: [],
+        claimedMilestones: [],
+        milestoneRewardLog: [],
+        activeBattleId: 'battle-legacy',
+      }),
+    );
+    redisStore.set(
+      'tower:battle:battle-legacy',
+      JSON.stringify({
+        session: {
+          battleId: 'battle-legacy',
+          cultivatorId: 'cultivator-1',
+          runId: 'run-legacy',
+          seasonKey: season.seasonKey,
+          encounter: makePreparedEnemy().encounter,
+        },
+        enemyObject: makePreparedEnemy().enemy,
+      }),
+    );
+    simulateBattleV5Mock.mockImplementationOnce(() => {
+      throw new Error('simulated battle reached');
+    });
+
+    await expect(
+      towerService.executeBattle('cultivator-1', 'battle-legacy'),
+    ).rejects.toThrow('simulated battle reached');
+    expect(simulateBattleV5Mock).toHaveBeenCalledTimes(1);
   });
 });

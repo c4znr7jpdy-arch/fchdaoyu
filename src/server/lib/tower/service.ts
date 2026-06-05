@@ -310,6 +310,11 @@ export class TowerService {
     currentRealm?: RealmType,
   ) {
     const { season, state } = await this.loadState(cultivatorId, now);
+    if (state && !state.challengeRealm && currentRealm && isTowerRealmEligible(currentRealm)) {
+      state.challengeRealm = currentRealm;
+      await this.saveState(cultivatorId, state);
+    }
+
     return {
       season,
       state,
@@ -535,13 +540,11 @@ export class TowerService {
     if (!cultivatorBundle?.cultivator) {
       throw new Error('未找到修真者数据');
     }
-    if (
-      !state.challengeRealm ||
-      !isTowerRealmEligible(state.challengeRealm)
-    ) {
-      throw new Error('本轮幻境缺少挑战境界，请重置后重新开始');
-    }
-    if (cultivatorBundle.cultivator.realm !== state.challengeRealm) {
+    const challengeRealm = this.resolveChallengeRealm(
+      state,
+      cultivatorBundle.cultivator,
+    );
+    if (cultivatorBundle.cultivator.realm !== challengeRealm) {
       throw new Error('当前境界已变化，请重开幻境以进入新的境界榜');
     }
 
@@ -594,7 +597,7 @@ export class TowerService {
         seasonKey: state.seasonKey,
         seasonEndAt: getTowerSeasonMeta(now).seasonEndsAt,
         cultivatorId,
-        recordedRealm: state.challengeRealm,
+        recordedRealm: challengeRealm,
         highestFloor: state.highestFloorCleared,
         firstReachedAt: now.toISOString(),
       });
@@ -604,7 +607,7 @@ export class TowerService {
         cultivator: cultivatorBundle.cultivator,
         state,
         floor: clearedFloor,
-        challengeRealm: state.challengeRealm,
+        challengeRealm,
         now,
       });
 

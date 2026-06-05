@@ -20,6 +20,11 @@ const GenerateBodySchema = z.object({
   force: z.boolean().optional().default(false),
 });
 
+const RealmQuerySchema = z.object({
+  seasonKey: SeasonKeySchema,
+  realm: z.enum(TOWER_ELIGIBLE_REALMS),
+});
+
 function buildSeasonFromKey(seasonKey: string): TowerSeasonMeta {
   return {
     seasonKey,
@@ -49,6 +54,26 @@ router.get('/', requireAdmin(), async (c) => {
       currentSeason,
       nextSeason,
       snapshot,
+    },
+  });
+});
+
+router.get('/realm', requireAdmin(), async (c) => {
+  const parsed = RealmQuerySchema.safeParse({
+    seasonKey: c.req.query('seasonKey')?.trim(),
+    realm: c.req.query('realm')?.trim(),
+  });
+
+  if (!parsed.success) {
+    return c.json({ error: '参数错误', details: parsed.error.flatten() }, 400);
+  }
+
+  const detail = await towerEnemySetService.getAdminRealmDetail(parsed.data);
+
+  return c.json({
+    success: true,
+    data: {
+      detail,
     },
   });
 });

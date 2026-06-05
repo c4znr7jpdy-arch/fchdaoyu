@@ -37,6 +37,9 @@ type TowerEnemySetRealmSummary = {
   generatedAt: string | null;
   updatedAt: string | null;
   errorMessage: string | null;
+};
+
+type TowerEnemySetRealmDetail = TowerEnemySetRealmSummary & {
   sourceCounts: Record<'llm' | 'fallback', number>;
   enemies: TowerEnemySummary[];
 };
@@ -65,8 +68,17 @@ type GenerateResponse = {
   };
 };
 
+type RealmDetailResponse = {
+  success?: boolean;
+  error?: string;
+  data?: {
+    detail: TowerEnemySetRealmDetail;
+  };
+};
+
 type TowerEnemySetsData = NonNullable<TowerEnemySetsResponse['data']>;
 type GenerateData = NonNullable<GenerateResponse['data']>;
+type RealmDetailData = NonNullable<RealmDetailResponse['data']>;
 
 function formatDateTime(value: string | null): string {
   if (!value) return '暂无';
@@ -114,6 +126,25 @@ async function fetchTowerEnemySets(
   return payload.data;
 }
 
+async function fetchTowerEnemySetRealmDetail(args: {
+  seasonKey: string;
+  realm: RealmType;
+}): Promise<RealmDetailData> {
+  const query = new URLSearchParams({
+    seasonKey: args.seasonKey,
+    realm: args.realm,
+  });
+  const response = await fetch(
+    `/api/admin/tower-enemy-sets/realm?${query.toString()}`,
+    { cache: 'no-store' },
+  );
+  const payload = (await response.json()) as RealmDetailResponse;
+  if (!response.ok || !payload.success || !payload.data) {
+    throw new Error(payload.error ?? '加载境界敌人明细失败');
+  }
+  return payload.data;
+}
+
 async function generateTowerEnemySets(args: {
   seasonKey: string;
   realm: RealmType | 'all';
@@ -139,6 +170,12 @@ export default function AdminTowerEnemySetsPage() {
   const { pushToast } = useInkUI();
   const [seasonKey, setSeasonKey] = useState('');
   const [snapshot, setSnapshot] = useState<TowerEnemySetSnapshot | null>(null);
+  const [realmDetails, setRealmDetails] = useState<
+    Partial<Record<RealmType, TowerEnemySetRealmDetail>>
+  >({});
+  const [detailLoadingRealm, setDetailLoadingRealm] = useState<RealmType | null>(
+    null,
+  );
   const [currentSeason, setCurrentSeason] = useState<TowerSeasonMeta | null>(null);
   const [nextSeason, setNextSeason] = useState<TowerSeasonMeta | null>(null);
   const [targetRealm, setTargetRealm] = useState<RealmType | 'all'>('all');
@@ -156,6 +193,7 @@ export default function AdminTowerEnemySetsPage() {
         setCurrentSeason(data.currentSeason);
         setNextSeason(data.nextSeason);
         setSnapshot(data.snapshot);
+        setRealmDetails({});
         setSeasonKey(data.snapshot.seasonKey);
       } catch (error) {
         pushToast({
@@ -178,6 +216,7 @@ export default function AdminTowerEnemySetsPage() {
         setCurrentSeason(data.currentSeason);
         setNextSeason(data.nextSeason);
         setSnapshot(data.snapshot);
+        setRealmDetails({});
         setSeasonKey(data.snapshot.seasonKey);
       })
       .catch((error) => {
@@ -206,10 +245,38 @@ export default function AdminTowerEnemySetsPage() {
       failed: realms.filter((realm) => realm.status === 'failed').length,
       incomplete: realms.filter((realm) => realm.status === 'incomplete').length,
       enemies: realms.reduce((sum, realm) => sum + realm.enemyCount, 0),
-      llm: realms.reduce((sum, realm) => sum + realm.sourceCounts.llm, 0),
-      fallback: realms.reduce((sum, realm) => sum + realm.sourceCounts.fallback, 0),
     };
   }, [snapshot]);
+
+  const loadRealmDetail = useCallback(
+    async (realm: RealmType) => {
+      if (!effectiveSeasonKey) {
+        pushToast({ message: '请先选择周版本', tone: 'danger' });
+        return;
+      }
+
+      try {
+        setDetailLoadingRealm(realm);
+        const data = await fetchTowerEnemySetRealmDetail({
+          seasonKey: effectiveSeasonKey,
+          realm,
+        });
+        setRealmDetails((current) => ({
+          ...current,
+          [realm]: data.detail,
+        }));
+      } catch (error) {
+        pushToast({
+          message:
+            error instanceof Error ? error.message : '加载境界敌人明细失败',
+          tone: 'danger',
+        });
+      } finally {
+        setDetailLoadingRealm(null);
+      }
+    },
+    [effectiveSeasonKey, pushToast],
+  );
 
   const submitGenerate = async () => {
     if (!effectiveSeasonKey) {
@@ -226,6 +293,14 @@ export default function AdminTowerEnemySetsPage() {
       });
       setSnapshot(data.snapshot);
       setSeasonKey(data.snapshot.seasonKey);
+      setRealmDetails((current) => {
+        if (targetRealm === 'all') {
+          return {};
+        }
+        const next = { ...current };
+        delete next[targetRealm];
+        return next;
+      });
       pushToast({
         message:
           targetRealm === 'all'
@@ -305,10 +380,6 @@ export default function AdminTowerEnemySetsPage() {
           <SummaryTile label="失败" value={String(totals.failed)} />
           <SummaryTile label="不完整" value={String(totals.incomplete)} />
           <SummaryTile label="敌人数" value={String(totals.enemies)} />
-          <SummaryTile
-            label="来源"
-            value={`${totals.llm} LLM / ${totals.fallback} fallback`}
-          />
         </div>
 
         <div className="border-ink/15 bg-paper/80 grid gap-3 border border-dashed p-4 md:grid-cols-[minmax(0,220px)_auto_auto] md:items-end">
@@ -349,7 +420,13 @@ export default function AdminTowerEnemySetsPage() {
           <p className="text-ink-secondary text-sm">正在加载蜃楼敌人周表...</p>
         ) : null}
         {(snapshot?.realms ?? []).map((realm) => (
-          <RealmPanel key={realm.realm} realm={realm} />
+          <RealmPanel
+            key={realm.realm}
+            realm={realm}
+            detail={realmDetails[realm.realm]}
+            loadingDetail={detailLoadingRealm === realm.realm}
+            onLoadDetail={() => void loadRealmDetail(realm.realm)}
+          />
         ))}
       </section>
     </div>
@@ -365,7 +442,17 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function RealmPanel({ realm }: { realm: TowerEnemySetRealmSummary }) {
+function RealmPanel({
+  realm,
+  detail,
+  loadingDetail,
+  onLoadDetail,
+}: {
+  realm: TowerEnemySetRealmSummary;
+  detail?: TowerEnemySetRealmDetail;
+  loadingDetail: boolean;
+  onLoadDetail: () => void;
+}) {
   return (
     <div className="border-ink/15 bg-bgpaper/90 border border-dashed p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -382,11 +469,27 @@ function RealmPanel({ realm }: { realm: TowerEnemySetRealmSummary }) {
         </div>
       </div>
 
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <InkButton
+          variant="secondary"
+          disabled={loadingDetail}
+          onClick={onLoadDetail}
+        >
+          {loadingDetail ? '加载中...' : detail ? '刷新明细' : '加载明细'}
+        </InkButton>
+        {detail ? (
+          <span className="text-ink-secondary text-sm">
+            {detail.sourceCounts.llm} LLM / {detail.sourceCounts.fallback}{' '}
+            fallback
+          </span>
+        ) : null}
+      </div>
+
       {realm.errorMessage ? (
         <p className="text-crimson mt-3 text-sm">{realm.errorMessage}</p>
       ) : null}
 
-      {realm.enemies.length > 0 ? (
+      {detail?.enemies.length ? (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="text-ink-secondary border-ink/15 border-b">
@@ -400,7 +503,7 @@ function RealmPanel({ realm }: { realm: TowerEnemySetRealmSummary }) {
               </tr>
             </thead>
             <tbody>
-              {realm.enemies.map((enemy) => (
+              {detail.enemies.map((enemy) => (
                 <tr
                   key={`${realm.realm}:${enemy.floor}`}
                   className="border-ink/10 border-b last:border-b-0"
@@ -423,8 +526,12 @@ function RealmPanel({ realm }: { realm: TowerEnemySetRealmSummary }) {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : detail ? (
         <p className="text-ink-secondary mt-4 text-sm">暂无敌人数据。</p>
+      ) : (
+        <p className="text-ink-secondary mt-4 text-sm">
+          明细按境界按需加载，不会随周汇总一次性返回。
+        </p>
       )}
     </div>
   );

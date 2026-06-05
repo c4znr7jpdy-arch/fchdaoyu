@@ -644,16 +644,17 @@ export const dungeonRuns = pgTable(
   ],
 );
 
-// 蜃楼幻境每周预生成敌人集
-export const towerEnemySets = pgTable(
-  'wanjiedaoyou_tower_enemy_sets',
+// 蜃楼幻境每周预生成敌人，按层拆分以避免整包 JSON 读写
+export const towerEnemyFloors = pgTable(
+  'wanjiedaoyou_tower_enemy_floors',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     seasonKey: varchar('season_key', { length: 40 }).notNull(),
     realm: varchar('realm', { length: 20 }).notNull(),
+    floor: integer('floor').notNull(),
     status: varchar('status', { length: 20 }).notNull().default('ready'),
     schemaVersion: integer('schema_version').notNull().default(1),
-    enemies: jsonb('enemies').$type<TowerPreparedEnemy[]>().notNull().default([]),
+    enemy: jsonb('enemy').$type<TowerPreparedEnemy>(),
     generatedAt: timestamp('generated_at').defaultNow().notNull(),
     errorMessage: text('error_message'),
     updatedAt: timestamp('updated_at')
@@ -662,13 +663,20 @@ export const towerEnemySets = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex('tower_enemy_sets_season_realm_uidx').on(
+    uniqueIndex('tower_enemy_floors_season_realm_floor_uidx').on(
       table.seasonKey,
       table.realm,
+      table.floor,
     ),
-    index('tower_enemy_sets_realm_generated_idx').on(
+    index('tower_enemy_floors_realm_floor_generated_idx').on(
       table.realm,
+      table.floor,
       table.generatedAt,
+    ),
+    index('tower_enemy_floors_season_realm_status_idx').on(
+      table.seasonKey,
+      table.realm,
+      table.status,
     ),
   ],
 );

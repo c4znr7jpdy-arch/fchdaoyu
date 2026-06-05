@@ -59,13 +59,6 @@ export interface TowerPreparedEnemy {
   };
 }
 
-export interface TowerPreparedEnemySet {
-  seasonKey: string;
-  realm: RealmType;
-  generatedAt: string;
-  enemies: TowerPreparedEnemy[];
-}
-
 export interface TowerMilestoneReward {
   floor: number;
   tier: TowerMilestoneTier;
