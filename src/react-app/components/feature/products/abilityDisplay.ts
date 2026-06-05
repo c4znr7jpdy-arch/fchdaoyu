@@ -22,9 +22,10 @@ import type {
 import { rehydrateStoredProductModel } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import type { RolledAffix } from '@shared/engine/creation-v2/types';
 import {
-  renderAffixLine,
+  renderAffixMechanic,
   rarityToTone,
   type AffixRarity,
+  type AffixBuffDetailView,
 } from '@shared/engine/battle-v5/effects/affixText';
 import { ATTR_LABELS } from '@shared/engine/battle-v5/effects/affixText/attributes';
 import { type ElementType, type Quality } from '@shared/types/constants';
@@ -38,6 +39,24 @@ export interface AffixView {
   name: string;
   /** 一句话渲染：[监听前缀] [条件] [效果+数值] */
   bodyText: string;
+  /** 策划意图/风味解释，来自 AffixDefinition.displayDescription */
+  intentText?: string;
+  /** 触发时机，如“造成伤害时”“每回合” */
+  triggerText?: string;
+  /** 生效条件，已中文化并按玩家视角归并 */
+  conditionTexts: string[];
+  /** 机制效果主文本 */
+  effectText: string;
+  /** 数值公式/概率/上限等补充 */
+  formulaText?: string;
+  /** apply_buff 的完整状态解释 */
+  buffDetails: AffixBuffDetailView[];
+  /** 伤害类型中文，如“火系法术伤害”“持续伤害（DOT）” */
+  damageTypeLabels: string[];
+  /** 相关运行时标签中文，永不直接暴露英文 tag */
+  tagLabels: string[];
+  /** 特殊机制说明，如 DOT 叠层、无法行动等 */
+  mechanicNotes: string[];
   /** 按稀有度上色 */
   rarityTone: AffixRarityTone;
   /** 原始稀有度（common/uncommon/rare/legendary） */
@@ -138,17 +157,28 @@ export function toAffixView(
   affix: RolledAffix,
   quality: Quality,
   resolvedModifiers?: AttributeModifierConfig[],
+  abilityTags?: string[],
 ): AffixView {
-  const rendered = renderAffixLine(affix, quality, {
+  const mechanic = renderAffixMechanic(affix, quality, {
     resolvedModifiers,
+    abilityTags,
   });
   return {
-    id: rendered.id,
-    name: rendered.name,
-    bodyText: rendered.bodyText,
-    rarity: rendered.rarity,
-    rarityTone: rarityToTone(rendered.rarity),
-    isPerfect: rendered.isPerfect,
+    id: mechanic.id,
+    name: mechanic.name,
+    bodyText: mechanic.bodyText,
+    intentText: mechanic.intentText,
+    triggerText: mechanic.triggerText,
+    conditionTexts: mechanic.conditionTexts,
+    effectText: mechanic.effectText,
+    formulaText: mechanic.formulaText,
+    buffDetails: mechanic.buffDetails,
+    damageTypeLabels: mechanic.damageTypeLabels,
+    tagLabels: mechanic.tagLabels,
+    mechanicNotes: mechanic.mechanicNotes,
+    rarity: mechanic.rarity,
+    rarityTone: rarityToTone(mechanic.rarity),
+    isPerfect: mechanic.isPerfect,
     tags: (affix.tags as string[] | undefined) ?? [],
   };
 }
@@ -199,6 +229,10 @@ function collectModifiers(
     return projection.modifiers ?? [];
   }
   return [];
+}
+
+function collectAbilityTags(model: CreationProductModel): string[] {
+  return model.battleProjection?.abilityTags ?? [];
 }
 
 /**
@@ -277,8 +311,9 @@ export function toProductDisplayModel(
     (rawModel?.projectionQuality as Quality | undefined) ??
     ((record.quality as Quality | null) ?? DEFAULT_QUALITY);
   const projectionModifiers = rawModel ? collectModifiers(rawModel) : [];
+  const abilityTags = rawModel ? collectAbilityTags(rawModel) : [];
   const affixes = (rawModel?.affixes ?? []).map((affix) =>
-    toAffixView(affix, quality, affix.resolvedModifiers),
+    toAffixView(affix, quality, affix.resolvedModifiers, abilityTags),
   );
   const modifiers = projectionModifiers.map(toAttributeModifierView);
 

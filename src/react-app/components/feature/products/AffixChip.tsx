@@ -43,9 +43,7 @@ export function AffixChip({ affix }: AffixChipProps) {
           )}
         </span>
         <span className="text-ink-secondary">：</span>
-        <span className="text-ink-secondary">
-          {affix.bodyText}
-        </span>
+        <span className="text-ink-secondary">{affix.bodyText}</span>
       </div>
     </li>
   );

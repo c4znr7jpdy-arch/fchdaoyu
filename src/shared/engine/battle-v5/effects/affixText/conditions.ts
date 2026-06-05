@@ -8,30 +8,7 @@ import { getResourceLabel } from '@shared/lib/resourceText';
 import type { ConditionConfig } from '../../core/configs';
 import { formatAffixPercent } from './format';
 import type { AffixTextRenderContext } from './context';
-
-const ELEMENT_TAG_TO_LABEL: Record<string, string> = {
-  'Ability.Element.Fire': '火',
-  'Ability.Element.Water': '水',
-  'Ability.Element.Wood': '木',
-  'Ability.Element.Earth': '土',
-  'Ability.Element.Metal': '金',
-  'Ability.Element.Wind': '风',
-  'Ability.Element.Ice': '冰',
-  'Ability.Element.Thunder': '雷',
-};
-
-const CHANNEL_TAG_TO_LABEL: Record<string, string> = {
-  'Ability.Channel.Magic': '法术',
-  'Ability.Channel.Physical': '物理',
-  'Ability.Channel.True': '真实',
-};
-
-function tagLabel(tag: string): string {
-  if (ELEMENT_TAG_TO_LABEL[tag]) return `${ELEMENT_TAG_TO_LABEL[tag]}系`;
-  if (CHANNEL_TAG_TO_LABEL[tag]) return CHANNEL_TAG_TO_LABEL[tag];
-  const leaf = tag.split('.').pop() ?? tag;
-  return leaf;
-}
+import { labelDamageType, labelGameplayTag } from './gameplayTagText';
 
 type RenderSubject = 'self' | 'target';
 
@@ -66,7 +43,7 @@ function describeDamageTagCondition(
   negative = false,
 ): string {
   const prefix = usesCasterPerspective(context) ? '造成' : '受到';
-  return `${prefix}${negative ? '非' : ''}「${tagLabel(tag)}」伤害时`;
+  return `${prefix}${negative ? '非' : ''}${labelGameplayTag(tag)}伤害时`;
 }
 
 function describeOne(
@@ -109,14 +86,8 @@ function describeOne(
         ? prefixSubject(subject, `至少${params.value}层减益`)
         : null;
     case 'damage_type_is': {
-      const labels: Record<string, string> = {
-        physical: '物理',
-        magical: '法术',
-        true: '真实',
-        dot: '持续',
-      };
       return params.damageType
-        ? `${usesCasterPerspective(context) ? '造成' : '受到'}${labels[params.damageType] ?? params.damageType}伤害时`
+        ? `${usesCasterPerspective(context) ? '造成' : '受到'}${labelDamageType(params.damageType)}时`
         : null;
     }
     case 'shield_absorbed_at_least':
@@ -126,11 +97,11 @@ function describeOne(
     case 'has_tag':
     case 'has_tag_on':
       return params.tag
-        ? prefixSubject(subject, `持有「${tagLabel(params.tag)}」`)
+        ? prefixSubject(subject, `处于「${labelGameplayTag(params.tag)}」`)
         : null;
     case 'has_not_tag':
       return params.tag
-        ? prefixSubject(subject, `未持有「${tagLabel(params.tag)}」`)
+        ? prefixSubject(subject, `未处于「${labelGameplayTag(params.tag)}」`)
         : null;
     case 'ability_has_tag':
       return params.tag ? describeDamageTagCondition(params.tag, context) : null;

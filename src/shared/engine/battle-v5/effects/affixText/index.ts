@@ -15,12 +15,15 @@ import {
   type AffixListenerSpec,
   type AffixRegistry,
 } from '@shared/engine/creation-v2/affixes';
+import { GameplayTags } from '@shared/engine/shared/tag-domain';
 import type { RolledAffix } from '@shared/engine/creation-v2/types';
 import type { Quality } from '@shared/types/constants';
 import type {
   AbilityConfig,
   AttributeModifierConfig,
+  BuffConfig,
   EffectConfig,
+  ListenerConfig,
 } from '../../core/configs';
 import { isPercentageAttributeType } from '../../core/attributeMeta';
 import { AttributeType, ModifierType } from '../../core/types';
@@ -29,12 +32,18 @@ import { describeConditions } from './conditions';
 import type { AffixTextRenderContext } from './context';
 import { describeEffectCore } from './effectCore';
 import { formatAffixNumber, formatAffixPercent } from './format';
+import {
+  inferDamageTypeLabels,
+  labelGameplayTags,
+} from './gameplayTagText';
 import { describeListener } from './listeners';
+import { formatScalableValue } from './values';
 
 export interface RenderAffixOptions {
   registry?: AffixRegistry;
   abilityConfig?: AbilityConfig;
   resolvedModifiers?: AttributeModifierConfig[];
+  abilityTags?: string[];
 }
 
 export type AffixRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
@@ -45,6 +54,29 @@ export interface RenderedAffixLine {
   rarity: AffixRarity;
   isPerfect: boolean;
   bodyText: string;
+}
+
+export interface AffixBuffDetailView {
+  name: string;
+  typeText: string;
+  durationText: string;
+  stackText: string;
+  chanceText?: string;
+  modifierTexts: string[];
+  listenerTexts: string[];
+  tagLabels: string[];
+}
+
+export interface AffixMechanicView extends RenderedAffixLine {
+  intentText?: string;
+  triggerText?: string;
+  conditionTexts: string[];
+  effectText: string;
+  formulaText?: string;
+  buffDetails: AffixBuffDetailView[];
+  damageTypeLabels: string[];
+  tagLabels: string[];
+  mechanicNotes: string[];
 }
 
 const DEFAULT_RARITY: AffixRarity = 'common';
@@ -61,6 +93,25 @@ export function renderAffixLine(
   quality: Quality,
   options: RenderAffixOptions = {},
 ): RenderedAffixLine {
+  const mechanic = renderAffixMechanic(affix, quality, options);
+  return {
+    id: mechanic.id,
+    name: mechanic.name,
+    rarity: mechanic.rarity,
+    isPerfect: mechanic.isPerfect,
+    bodyText: mechanic.bodyText,
+  };
+}
+
+/**
+ * 生成玩家可读的结构化机制说明。详情弹窗使用该对象展示完整解释；
+ * 列表与紧凑视图继续读取 bodyText，保持原有信息密度。
+ */
+export function renderAffixMechanic(
+  affix: RolledAffix,
+  quality: Quality,
+  options: RenderAffixOptions = {},
+): AffixMechanicView {
   const registry = options.registry ?? DEFAULT_AFFIX_REGISTRY;
   const definition = registry.queryById(affix.id);
 
@@ -79,6 +130,17 @@ export function renderAffixLine(
     listenerSpec,
     abilityConfig: options.abilityConfig,
     resolvedModifiers: options.resolvedModifiers,
+    abilityTags: options.abilityTags,
+  });
+
+  const detail = buildMechanicDetail({
+    affix,
+    quality,
+    template,
+    listenerSpec,
+    abilityConfig: options.abilityConfig,
+    resolvedModifiers: options.resolvedModifiers,
+    abilityTags: options.abilityTags,
   });
 
   return {
@@ -87,6 +149,8 @@ export function renderAffixLine(
     rarity,
     isPerfect: affix.isPerfect,
     bodyText,
+    intentText: definition?.displayDescription ?? affix.description,
+    ...detail,
   };
 }
 
@@ -99,10 +163,19 @@ interface BuildBodyArgs {
   listenerSpec?: AffixListenerSpec;
   abilityConfig?: AbilityConfig;
   resolvedModifiers?: AttributeModifierConfig[];
+  abilityTags?: string[];
 }
 
 function buildBodyText(args: BuildBodyArgs): string {
-  const { affix, quality, template, listenerSpec, abilityConfig, resolvedModifiers } = args;
+  const {
+    affix,
+    quality,
+    template,
+    listenerSpec,
+    abilityConfig,
+    resolvedModifiers,
+    abilityTags,
+  } = args;
   if (!template) return '';
 
   // 静态属性类词条走 modifier 分支：listener/condition 对它们无意义。
@@ -126,9 +199,114 @@ function buildBodyText(args: BuildBodyArgs): string {
   const listenerText = shouldOmitListenerText(listenerSpec, conditionText)
     ? ''
     : describeListener(listenerSpec, renderContext);
-  const coreText = describeEffectCore(effect);
+  const coreText =
+    effect.type === 'apply_buff'
+      ? describeApplyBuffInline(effect.params.buffConfig, effect.params.chance)
+      : describeEffectCore(effect, {
+          abilityTags,
+          listenerScope: listenerSpec?.scope,
+        });
 
   return joinSegments(listenerText, conditionText, coreText);
+}
+
+interface MechanicDetail {
+  triggerText?: string;
+  conditionTexts: string[];
+  effectText: string;
+  formulaText?: string;
+  buffDetails: AffixBuffDetailView[];
+  damageTypeLabels: string[];
+  tagLabels: string[];
+  mechanicNotes: string[];
+}
+
+function buildMechanicDetail(args: BuildBodyArgs): MechanicDetail {
+  const {
+    affix,
+    quality,
+    template,
+    listenerSpec,
+    abilityConfig,
+    resolvedModifiers,
+    abilityTags,
+  } = args;
+
+  if (!template) {
+    return emptyMechanicDetail();
+  }
+
+  if (
+    template.type === 'attribute_modifier' ||
+    template.type === 'random_attribute_modifier'
+  ) {
+    const effectText = describeAttributeModifiers(
+      template,
+      abilityConfig,
+      quality,
+      affix,
+      resolvedModifiers,
+    );
+    return {
+      ...emptyMechanicDetail(),
+      effectText,
+      formulaText: effectText,
+    };
+  }
+
+  const effect = resolveEffectConfig(affix, template, quality);
+  if (!effect) {
+    return emptyMechanicDetail();
+  }
+
+  const renderContext: AffixTextRenderContext | undefined = listenerSpec
+    ? {
+        eventType: listenerSpec.eventType,
+        listenerScope: listenerSpec.scope,
+      }
+    : undefined;
+  const conditionText = describeConditions(effect.conditions, renderContext);
+  const triggerText = shouldOmitListenerText(listenerSpec, conditionText)
+    ? undefined
+    : describeListener(listenerSpec, renderContext) || undefined;
+  const effectText = describeEffectCore(effect, {
+    abilityTags,
+    listenerScope: listenerSpec?.scope,
+    ...(effect.type === 'apply_buff'
+      ? { buffTags: effect.params.buffConfig.tags }
+      : {}),
+  });
+
+  return {
+    triggerText,
+    conditionTexts: conditionText ? [conditionText] : [],
+    effectText,
+    formulaText: describeFormula(effect),
+    buffDetails:
+      effect.type === 'apply_buff'
+        ? [describeBuffDetail(effect.params.buffConfig, effect.params.chance)]
+        : [],
+    damageTypeLabels:
+      effect.type === 'damage'
+        ? inferDamageTypeLabels({
+            abilityTags,
+            ...(effect.type === 'damage' ? {} : {}),
+          })
+        : [],
+    tagLabels: collectRuntimeTagLabels(affix, effect, abilityTags),
+    mechanicNotes: buildMechanicNotes(effect),
+  };
+}
+
+function emptyMechanicDetail(): MechanicDetail {
+  return {
+    conditionTexts: [],
+    effectText: '',
+    buffDetails: [],
+    damageTypeLabels: [],
+    tagLabels: [],
+    mechanicNotes: [],
+  };
 }
 
 function shouldOmitListenerText(
@@ -161,6 +339,283 @@ function resolveEffectConfig(
   } catch {
     return null;
   }
+}
+
+function describeFormula(effect: EffectConfig): string | undefined {
+  switch (effect.type) {
+    case 'damage':
+    case 'shield':
+    case 'mana_burn':
+      return formatScalableValue(effect.params.value);
+    case 'heal':
+      return formatScalableValue(effect.params.value);
+    case 'percent_damage_modifier': {
+      const capText =
+        effect.params.cap !== undefined
+          ? `，上限 ${formatAffixPercent(effect.params.cap)}`
+          : '';
+      return `${formatAffixPercent(effect.params.value)}${capText}`;
+    }
+    case 'resource_drain':
+      return formatAffixPercent(effect.params.ratio);
+    case 'reflect':
+      return formatAffixPercent(effect.params.ratio);
+    case 'magic_shield':
+      return `吸收 ${formatAffixPercent(effect.params.absorbRatio ?? 0.98)}`;
+    case 'cooldown_modify':
+      return `${formatAffixNumber(Math.abs(effect.params.cdModifyValue))} 回合`;
+    case 'tag_trigger':
+      return effect.params.damageRatio !== undefined
+        ? `额外伤害系数 ${formatAffixPercent(effect.params.damageRatio)}`
+        : undefined;
+    case 'apply_buff':
+      return effect.params.chance !== undefined
+        ? `附加概率 ${formatAffixPercent(effect.params.chance)}`
+        : undefined;
+    case 'death_prevent':
+      return effect.params.hpFloorPercent !== undefined
+        ? `保留 ${formatAffixPercent(effect.params.hpFloorPercent)} 气血`
+        : '保留 1 点气血';
+    case 'buff_immunity':
+    case 'damage_immunity':
+    case 'dispel':
+    case 'buff_duration_modify':
+      return undefined;
+  }
+}
+
+function describeBuffDetail(
+  buff: BuffConfig,
+  chance: number | undefined,
+): AffixBuffDetailView {
+  const tagLabels = labelGameplayTags([
+    ...(buff.tags ?? []),
+    ...(buff.statusTags ?? []),
+  ]);
+  return {
+    name: buff.name,
+    typeText: describeBuffType(buff.type),
+    durationText: buff.duration === -1 ? '常驻' : `${buff.duration} 回合`,
+    stackText: describeStackRule(buff.stackRule),
+    ...(chance !== undefined
+      ? { chanceText: formatAffixPercent(chance) }
+      : {}),
+    modifierTexts: (buff.modifiers ?? []).map(formatModifier),
+    listenerTexts: (buff.listeners ?? []).map((listener) =>
+      describeBuffListener(listener, buff.tags),
+    ),
+    tagLabels,
+  };
+}
+
+function describeApplyBuffInline(
+  buff: BuffConfig,
+  chance: number | undefined,
+): string {
+  const chanceText =
+    chance !== undefined ? `${formatAffixPercent(chance)}概率` : '';
+  const stateParts = [
+    describeBuffType(buff.type),
+    buff.duration === -1 ? '常驻' : `${buff.duration}回合`,
+    describeStackRuleShort(buff.stackRule),
+  ].filter(Boolean);
+  const effectParts = [
+    ...describeBuffStatusEffects(buff),
+    ...(buff.modifiers ?? []).map(formatModifier),
+    ...(buff.listeners ?? []).map((listener) =>
+      describeBuffListenerInline(listener, buff.tags, buff.stackRule),
+    ),
+  ].filter(Boolean);
+  const detail = [...stateParts, ...effectParts].join('；');
+
+  return `${chanceText}附加「${buff.name}」${detail ? `（${detail}）` : ''}`;
+}
+
+function describeStackRuleShort(rule: BuffConfig['stackRule']): string {
+  switch (rule) {
+    case 'stack_layer':
+      return '可叠层';
+    case 'refresh_duration':
+      return '重复命中刷新持续';
+    case 'override':
+      return '新效果覆盖旧效果';
+    case 'ignore':
+      return '已有时不重复附加';
+    default:
+      return '';
+  }
+}
+
+function describeBuffStatusEffects(buff: BuffConfig): string[] {
+  const statusTags = buff.statusTags ?? [];
+  return [
+    statusTags.includes(GameplayTags.STATUS.CONTROL.NO_ACTION)
+      ? '无法行动'
+      : '',
+    statusTags.includes(GameplayTags.STATUS.CONTROL.NO_SKILL)
+      ? '无法施放神通'
+      : '',
+    statusTags.includes(GameplayTags.STATUS.CONTROL.NO_BASIC)
+      ? '无法普通攻击'
+      : '',
+  ].filter(Boolean);
+}
+
+function describeBuffListenerInline(
+  listener: ListenerConfig,
+  buffTags: string[] | undefined,
+  stackRule: BuffConfig['stackRule'],
+): string {
+  const trigger = describeListener({
+    eventType: listener.eventType,
+    scope: listener.scope,
+    priority: listener.priority,
+    ...(listener.mapping ? { mapping: listener.mapping } : {}),
+    ...(listener.guard ? { guard: listener.guard } : {}),
+  });
+  const effectTexts = listener.effects.map((effect) =>
+    describeEffectCore(effect, { buffTags }),
+  );
+  const stackText =
+    stackRule === 'stack_layer' && buffTags?.includes(GameplayTags.BUFF.DOT.ROOT)
+      ? '，按层数放大'
+      : '';
+
+  return `${trigger || listener.eventType}${effectTexts.join('、')}${stackText}`;
+}
+
+function describeBuffType(type: BuffConfig['type']): string {
+  switch (type) {
+    case 'buff':
+      return '正面状态';
+    case 'debuff':
+      return '负面状态';
+    case 'control':
+      return '控制状态';
+    default:
+      return type;
+  }
+}
+
+function describeStackRule(rule: BuffConfig['stackRule']): string {
+  switch (rule) {
+    case 'stack_layer':
+      return '可叠层，同名状态会增加层数';
+    case 'refresh_duration':
+      return '重复命中时刷新持续时间';
+    case 'override':
+      return '新效果会覆盖旧效果';
+    case 'ignore':
+      return '已有同名状态时忽略新效果';
+    default:
+      return rule;
+  }
+}
+
+function describeBuffListener(
+  listener: ListenerConfig,
+  buffTags: string[] | undefined,
+): string {
+  const trigger = describeListener({
+    eventType: listener.eventType,
+    scope: listener.scope,
+    priority: listener.priority,
+    ...(listener.mapping ? { mapping: listener.mapping } : {}),
+    ...(listener.guard ? { guard: listener.guard } : {}),
+  });
+  const effectTexts = listener.effects.map((effect) =>
+    describeEffectCore(effect, { buffTags }),
+  );
+  return `${trigger || listener.eventType}：${effectTexts.join('、')}`;
+}
+
+function collectRuntimeTagLabels(
+  affix: RolledAffix,
+  effect: EffectConfig,
+  abilityTags: string[] | undefined,
+): string[] {
+  const tags = new Set<string>();
+  const collect = (tag?: string) => {
+    if (!tag) return;
+    if (
+      tag.startsWith('Ability.') ||
+      tag.startsWith('Status.') ||
+      tag.startsWith('Buff.') ||
+      tag.startsWith('Trait.')
+    ) {
+      tags.add(tag);
+    }
+  };
+
+  abilityTags?.forEach(collect);
+  affix.grantedAbilityTags?.forEach(collect);
+  effect.conditions?.forEach((condition) => collect(condition.params.tag));
+
+  switch (effect.type) {
+    case 'apply_buff':
+      effect.params.buffConfig.tags?.forEach(collect);
+      effect.params.buffConfig.statusTags?.forEach(collect);
+      effect.params.buffConfig.listeners?.forEach((listener) =>
+        listener.effects.forEach((listenerEffect) => {
+          collectEffectTags(listenerEffect).forEach(collect);
+        }),
+      );
+      break;
+    case 'cooldown_modify':
+      effect.params.tags?.forEach(collect);
+      break;
+    case 'tag_trigger':
+      collect(effect.params.triggerTag);
+      break;
+    case 'buff_immunity':
+    case 'damage_immunity':
+      effect.params.tags.forEach(collect);
+      break;
+    case 'dispel':
+      collect(effect.params.targetTag);
+      break;
+    default:
+      break;
+  }
+
+  return labelGameplayTags(Array.from(tags));
+}
+
+function collectEffectTags(effect: EffectConfig): string[] {
+  switch (effect.type) {
+    case 'apply_buff':
+      return [
+        ...(effect.params.buffConfig.tags ?? []),
+        ...(effect.params.buffConfig.statusTags ?? []),
+      ];
+    case 'cooldown_modify':
+      return effect.params.tags ?? [];
+    case 'tag_trigger':
+      return [effect.params.triggerTag];
+    case 'buff_immunity':
+    case 'damage_immunity':
+      return effect.params.tags;
+    case 'dispel':
+      return effect.params.targetTag ? [effect.params.targetTag] : [];
+    default:
+      return [];
+  }
+}
+
+function buildMechanicNotes(effect: EffectConfig): string[] {
+  if (effect.type !== 'apply_buff') return [];
+  const buff = effect.params.buffConfig;
+  const notes: string[] = [];
+  if (buff.tags?.includes(GameplayTags.BUFF.DOT.ROOT)) {
+    notes.push('DOT 会在行动前结算，并按当前层数放大。');
+  }
+  if (buff.statusTags?.includes(GameplayTags.STATUS.CONTROL.NO_ACTION)) {
+    notes.push('无法行动会跳过该单位的出手机会。');
+  }
+  if (buff.statusTags?.includes(GameplayTags.STATUS.CONTROL.NO_SKILL)) {
+    notes.push('无法施放神通会限制主动技能。');
+  }
+  return notes;
 }
 
 /**

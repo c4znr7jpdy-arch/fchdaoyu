@@ -28,7 +28,6 @@ const DOT_TICK_LISTENER = {
   priority: CREATION_LISTENER_PRIORITIES.dotTick,
 } as const;
 
-
 export const SKILL_AFFIXES: AffixDefinition[] = [
   // ================================================================
   // ===== SKILL_CORE 池 (20 种) — 保证技能不废，专注本次施法
@@ -1024,7 +1023,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
             GameplayTags.STATUS.CONTROL.NO_ACTION,
           ],
         },
-        chance: 0.75,
+        chance: 0.5,
       },
     },
   },
@@ -1173,9 +1172,9 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
                   type: 'damage',
                   params: {
                     value: {
-                      base: 5,
+                      base: 18,
                       attribute: AttributeType.MAGIC_ATK,
-                      coefficient: 0.08,
+                      coefficient: 0.06,
                     },
                   },
                 },
@@ -1233,9 +1232,9 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
                   type: 'damage',
                   params: {
                     value: {
-                      base: 7,
+                      base: 12,
                       attribute: AttributeType.ATK,
-                      coefficient: 0.1,
+                      coefficient: 0.05,
                     },
                   },
                 },
@@ -1282,8 +1281,13 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
           ],
           modifiers: [
             {
-              attrType: AttributeType.CONTROL_RESISTANCE,
-              type: ModifierType.FIXED,
+              attrType: AttributeType.MAX_MP,
+              type: ModifierType.ADD,
+              value: -0.15,
+            },
+            {
+              attrType: AttributeType.MAGIC_DEF,
+              type: ModifierType.ADD,
               value: -0.15,
             },
           ],
@@ -1533,7 +1537,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
             GameplayTags.STATUS.CONTROL.NO_ACTION,
           ],
         },
-        chance: { base: 0.78, scale: 'quality', coefficient: 0.03 },
+        chance: { base: 0.38, scale: 'quality', coefficient: 0.04 },
       },
     },
   },
@@ -1595,7 +1599,7 @@ export const SKILL_AFFIXES: AffixDefinition[] = [
       type: 'cooldown_modify',
       conditions: [{ type: 'chance', params: { value: 0.6 } }],
       params: {
-        cdModifyValue: { base: 2, scale: 'quality', coefficient: 0.5 },
+        cdModifyValue: { base: 1, scale: 'quality', coefficient: 0.25 },
       },
     },
   },

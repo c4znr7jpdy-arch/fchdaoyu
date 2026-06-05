@@ -13,39 +13,30 @@ import { getResourceLabel } from '@shared/lib/resourceText';
 import type { EffectConfig } from '../../core/configs';
 import { formatAffixNumber, formatAffixPercent } from './format';
 import { formatScalableValue } from './values';
+import {
+  inferDamageTypeLabels,
+  labelGameplayTag,
+  labelTagList,
+} from './gameplayTagText';
 
-const ELEMENT_TAG_TO_LABEL: Record<string, string> = {
-  'Ability.Element.Fire': '火',
-  'Ability.Element.Water': '水',
-  'Ability.Element.Wood': '木',
-  'Ability.Element.Earth': '土',
-  'Ability.Element.Metal': '金',
-  'Ability.Element.Wind': '风',
-  'Ability.Element.Ice': '冰',
-  'Ability.Element.Thunder': '雷',
-};
-const CHANNEL_TAG_TO_LABEL: Record<string, string> = {
-  'Ability.Channel.Magic': '法术',
-  'Ability.Channel.Physical': '物理',
-  'Ability.Channel.True': '真实',
-};
-
-function prettyTagList(tags: string[]): string {
-  return tags
-    .map(
-      (t) =>
-        ELEMENT_TAG_TO_LABEL[t] ??
-        CHANNEL_TAG_TO_LABEL[t] ??
-        t.split('.').pop() ??
-        t,
-    )
-    .join('、');
+export interface EffectCoreTextContext {
+  abilityTags?: string[];
+  buffTags?: string[];
+  listenerScope?: string;
 }
 
-export function describeEffectCore(effect: EffectConfig): string {
+export function describeEffectCore(
+  effect: EffectConfig,
+  context: EffectCoreTextContext = {},
+): string {
   switch (effect.type) {
-    case 'damage':
-      return `造成 ${formatScalableValue(effect.params.value)} 点伤害`;
+    case 'damage': {
+      const damageLabel = inferDamageTypeLabels({
+        abilityTags: context.abilityTags,
+        buffTags: context.buffTags,
+      })[0] ?? '伤害';
+      return `造成 ${formatScalableValue(effect.params.value)} 点${damageLabel}`;
+    }
 
     case 'heal': {
       const resource = getResourceLabel(effect.params.target ?? 'hp');
@@ -69,8 +60,10 @@ export function describeEffectCore(effect: EffectConfig): string {
     }
 
     case 'percent_damage_modifier': {
-      const action = effect.params.mode === 'increase' ? '增伤' : '减伤';
-      return `${action} ${formatAffixPercent(effect.params.value)}`;
+      if (effect.params.mode === 'increase') {
+        return `提升造成的伤害 ${formatAffixPercent(effect.params.value)}`;
+      }
+      return `降低受到的伤害 ${formatAffixPercent(effect.params.value)}`;
     }
 
     case 'death_prevent':
@@ -80,13 +73,15 @@ export function describeEffectCore(effect: EffectConfig): string {
       return `免疫死亡保留 ${formatAffixPercent(effect.params.hpFloorPercent)} 气血`;
 
     case 'damage_immunity':
-      return `免疫${prettyTagList(effect.params.tags)}伤害`;
+      return `免疫${labelTagList(effect.params.tags)}伤害`;
 
     case 'buff_immunity':
-      return `免疫状态：${prettyTagList(effect.params.tags)}`;
+      return `免疫状态：${labelTagList(effect.params.tags)}`;
 
     case 'dispel':
-      return `驱散 ${effect.params.maxCount ?? 1} 个状态`;
+      return effect.params.targetTag
+        ? `驱散 ${effect.params.maxCount ?? 1} 个${labelGameplayTag(effect.params.targetTag)}`
+        : `驱散 ${effect.params.maxCount ?? 1} 个状态`;
 
     case 'magic_shield':
       return `优先使用法力吸收受到的伤害，吸收比例 ${formatAffixPercent(effect.params.absorbRatio ?? 0.98)}`;
@@ -106,9 +101,9 @@ export function describeEffectCore(effect: EffectConfig): string {
 
     case 'tag_trigger':
       if (effect.params.damageRatio !== undefined) {
-        return `命中「${effect.params.triggerTag}」触发额外伤害（系数 ${formatAffixPercent(effect.params.damageRatio)}）`;
+        return `命中「${labelGameplayTag(effect.params.triggerTag)}」触发额外伤害（系数 ${formatAffixPercent(effect.params.damageRatio)}）`;
       }
-      return `命中「${effect.params.triggerTag}」触发额外效果`;
+      return `命中「${labelGameplayTag(effect.params.triggerTag)}」触发额外效果`;
 
     case 'buff_duration_modify': {
       const action = effect.params.rounds >= 0 ? '延长' : '缩短';

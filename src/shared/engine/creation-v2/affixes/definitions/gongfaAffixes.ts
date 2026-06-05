@@ -1263,11 +1263,7 @@ export const GONGFA_AFFIXES: AffixDefinition[] = [
       type: 'percent_damage_modifier',
       conditions: [
         {
-          type: 'has_tag',
-          params: { tag: GameplayTags.STATUS.CATEGORY.DOT },
-        },
-        {
-          type: 'ability_has_tag',
+          type: 'damage_type_is',
           params: { damageType: DamageType.DOT },
         },
       ],
