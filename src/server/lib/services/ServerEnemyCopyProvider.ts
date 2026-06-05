@@ -26,6 +26,58 @@ const enemyCopySchema = z.object({
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+function requestedFieldsFromDraft(draft: EnemyGenerationDraft): string[] {
+  return Object.entries(draft.missingNarrative)
+    .filter(([, missing]) => missing)
+    .map(([field]) => field);
+}
+
+function existingCharacterCopyFromDraft(
+  draft: EnemyGenerationDraft,
+): Partial<Record<'name' | 'title' | 'background' | 'description', string | null>> {
+  return {
+    ...(draft.missingNarrative.name ? {} : { name: draft.cultivator.name }),
+    ...(draft.missingNarrative.title ? {} : { title: draft.cultivator.title ?? null }),
+    ...(draft.missingNarrative.background
+      ? {}
+      : { background: draft.cultivator.background ?? null }),
+    ...(draft.missingNarrative.description
+      ? {}
+      : { description: draft.cultivator.description ?? null }),
+  };
+}
+
+export function buildEnemyNarrativeFacts(draft: EnemyGenerationDraft) {
+  return {
+    race: draft.copyFacts.race,
+    realm: draft.copyFacts.realm,
+    realmStage: draft.copyFacts.realmStage,
+    difficulty: draft.copyFacts.difficulty,
+    difficultyFactor: draft.copyFacts.difficultyFactor,
+    isBoss: draft.input.isBoss,
+    primaryElement: draft.copyFacts.primaryElement,
+    secondaryElement: draft.copyFacts.secondaryElement,
+    profileTags: draft.copyFacts.profileTags,
+    personaTags: draft.copyFacts.personaTags,
+    characterRequest: {
+      requestedFields: requestedFieldsFromDraft(draft),
+      existingCopy: existingCharacterCopyFromDraft(draft),
+    },
+    products: draft.copyFacts.products.map((product) => ({
+      id: product.id,
+      productType: product.productType,
+      role: product.role,
+      quality: product.quality,
+      element: product.element,
+      slot: product.slot,
+      narrativeTags: product.narrativeTags,
+      abilityTags: product.abilityTags.slice(0, 6),
+      affixNames: product.affixNames.slice(0, 4),
+      designHint: truncateText(product.fallbackDescription, 56),
+    })),
+  };
+}
+
 export class ServerEnemyCopyProvider implements EnemyCopyProvider {
   private readonly enabled: boolean;
   private readonly timeoutMs: number;
@@ -50,33 +102,7 @@ export class ServerEnemyCopyProvider implements EnemyCopyProvider {
     }
 
     try {
-      const factsJson = stableCompactStringify({
-        race: draft.copyFacts.race,
-        realm: draft.copyFacts.realm,
-        realmStage: draft.copyFacts.realmStage,
-        difficulty: draft.copyFacts.difficulty,
-        difficultyFactor: draft.copyFacts.difficultyFactor,
-        primaryElement: draft.copyFacts.primaryElement,
-        secondaryElement: draft.copyFacts.secondaryElement,
-        profileTags: draft.copyFacts.profileTags,
-        personaTags: draft.copyFacts.personaTags,
-        character: draft.copyFacts.character,
-        products: draft.copyFacts.products.map((product) => ({
-          id: product.id,
-          productType: product.productType,
-          role: product.role,
-          quality: product.quality,
-          element: product.element,
-          slot: product.slot,
-          narrativeTags: product.narrativeTags,
-          affixNames: product.affixNames.slice(0, 4),
-          fallbackName: product.fallbackName,
-          fallbackDescriptionSummary: truncateText(
-            product.fallbackDescription,
-            56,
-          ),
-        })),
-      });
+      const factsJson = stableCompactStringify(buildEnemyNarrativeFacts(draft));
       const { system, user } = renderPrompt('enemy-narrative', {
         factsJson,
       });
