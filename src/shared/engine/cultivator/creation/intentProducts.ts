@@ -37,6 +37,7 @@ export function buildTechniqueFromProductModel(
     description: options.description ?? productModel.description,
     attributeModifiers: abilityConfig.modifiers ?? [],
     abilityConfig,
+    productModel,
   };
 }
 
@@ -69,6 +70,7 @@ export function buildSkillFromProductModel(
           ? false
           : undefined,
     abilityConfig,
+    productModel,
   };
 }
 
@@ -99,6 +101,7 @@ export function buildArtifactFromProductModel(
     description: options.description ?? productModel.description,
     attributeModifiers: abilityConfig.modifiers ?? [],
     abilityConfig,
+    productModel,
     ...(options.score !== undefined ? { score: options.score } : {}),
     ...(options.isEquipped !== undefined ? { isEquipped: options.isEquipped } : {}),
     battleRuntimeMeta: {

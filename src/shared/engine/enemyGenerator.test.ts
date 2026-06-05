@@ -107,13 +107,13 @@ function assertV5Compatible(draft: ReturnType<typeof enemyGenerator.buildDraft>)
   for (const technique of draft.cultivator.cultivations) {
     expect(technique.abilityConfig).toBeDefined();
     expect(() => AbilityFactory.create(technique.abilityConfig!)).not.toThrow();
-    expect(technique.productModel).toBeUndefined();
+    expectProductModelAffixes(technique.productModel, 'gongfa');
   }
 
   for (const skill of draft.cultivator.skills) {
     expect(skill.abilityConfig).toBeDefined();
     expect(() => AbilityFactory.create(skill.abilityConfig!)).not.toThrow();
-    expect(skill.productModel).toBeUndefined();
+    expectProductModelAffixes(skill.productModel, 'skill');
   }
 
   const artifactIds = new Set(
@@ -122,7 +122,7 @@ function assertV5Compatible(draft: ReturnType<typeof enemyGenerator.buildDraft>)
   for (const artifact of draft.cultivator.inventory.artifacts) {
     expect(artifact.abilityConfig).toBeDefined();
     expect(() => AbilityFactory.create(artifact.abilityConfig!)).not.toThrow();
-    expect(artifact.productModel).toBeUndefined();
+    expectProductModelAffixes(artifact.productModel, 'artifact');
     expect(artifact.battleRuntimeMeta?.anchorRealm).toBe(draft.cultivator.realm);
   }
 
@@ -136,6 +136,17 @@ function assertV5Compatible(draft: ReturnType<typeof enemyGenerator.buildDraft>)
       )?.slot,
     ).toBe(slot);
   }
+}
+
+function expectProductModelAffixes(
+  productModel: unknown,
+  productType: 'gongfa' | 'skill' | 'artifact',
+) {
+  expect(productModel).toBeDefined();
+  expect(productModel).toMatchObject({ productType });
+  expect(
+    (productModel as { affixes?: unknown[] }).affixes?.length ?? 0,
+  ).toBeGreaterThan(0);
 }
 
 function stripEnemyLoadout(cultivator: Cultivator): Cultivator {
