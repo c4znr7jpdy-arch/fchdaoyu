@@ -48,9 +48,6 @@ export function useQiActionConfirm() {
         content: (
           <div className="space-y-2 text-sm leading-7">
             <p>{getQiActionConfirmText(actionName, qiCost)}</p>
-            <p className="text-ink-secondary">
-              确认后会先预扣灵气；若遇到系统异常，会按规则自动退回。
-            </p>
           </div>
         ),
         confirmLabel,
