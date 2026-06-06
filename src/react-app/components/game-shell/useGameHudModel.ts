@@ -1,7 +1,11 @@
-import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
-import { getPillToxicityStage, isConditionStatusActive } from '@shared/lib/condition';
-import { getResourceLabel, getResourceText } from '@shared/lib/resourceText';
 import { useCultivator } from '@app/lib/contexts/CultivatorContext';
+import {
+  getPillToxicityStage,
+  isConditionStatusActive,
+} from '@shared/lib/condition';
+import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
+import { getResourceLabel, getResourceText } from '@shared/lib/resourceText';
+import { RealmType } from '@shared/types/constants';
 
 export interface GameHudMetric {
   key: 'hp' | 'mp' | 'cultivation' | 'insight';
@@ -20,7 +24,7 @@ export interface GameHudStatusTag {
 export interface GameHudSnapshot {
   cultivatorId: string;
   name: string;
-  realm: string;
+  realm: RealmType;
   realmStage: string;
   title: string | null;
   spiritStones: number;
@@ -34,14 +38,25 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function formatHudResourceValue(value: number): string {
+  if (value > 9999) {
+    return `${(value / 10000).toFixed(2).replace(/\.?0+$/, '')}万`;
+  }
+
+  return String(value);
+}
+
+function formatHudResourcePair(current: number, max: number): string {
+  return `${formatHudResourceValue(current)}/${formatHudResourceValue(max)}`;
+}
+
 export function buildGameHudSnapshot(input: {
   cultivator: ReturnType<typeof useCultivator>['cultivator'];
   display: ReturnType<typeof useCultivator>['display'];
   unreadMailCount: number;
   now?: Date;
 }): GameHudSnapshot | null {
-  const { cultivator, display, unreadMailCount, now = new Date() } =
-    input;
+  const { cultivator, display, unreadMailCount, now = new Date() } = input;
   if (!cultivator) return null;
 
   const hp = display?.resources.hp;
@@ -60,11 +75,7 @@ export function buildGameHudSnapshot(input: {
     clamp((cultivationExp / cultivationCap) * 100, 0, 100),
   );
   const insight = Math.round(
-    clamp(
-      cultivator.cultivation_progress?.comprehension_insight ?? 0,
-      0,
-      100,
-    ),
+    clamp(cultivator.cultivation_progress?.comprehension_insight ?? 0, 0, 100),
   );
 
   const activeStatuses = (cultivator.condition?.statuses ?? [])
@@ -98,14 +109,14 @@ export function buildGameHudSnapshot(input: {
       {
         key: 'hp',
         label: getResourceLabel('hp'),
-        display: `${currentHp}/${maxHp}`,
+        display: formatHudResourcePair(currentHp, maxHp),
         percent: Math.round(clamp(hp?.percent ?? 100, 0, 100)),
         tone: 'hp',
       },
       {
         key: 'mp',
         label: getResourceLabel('mp'),
-        display: `${currentMp}/${maxMp}`,
+        display: formatHudResourcePair(currentMp, maxMp),
         percent: Math.round(clamp(mp?.percent ?? 100, 0, 100)),
         tone: 'mp',
       },

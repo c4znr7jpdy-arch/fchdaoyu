@@ -36,4 +36,42 @@ describe('buildGameHudSnapshot', () => {
     expect(snapshot?.realm).toBe('筑基');
     expect(snapshot?.realmStage).toBe('初期');
   });
+
+  it('formats large hp and mp values with wan units', () => {
+    const snapshot = buildGameHudSnapshot({
+      cultivator: {
+        id: 'cultivator-1',
+        name: '韩立',
+        title: null,
+        realm: '筑基',
+        realm_stage: '初期',
+        spirit_stones: 12345,
+        cultivation_progress: {
+          cultivation_exp: 80,
+          exp_cap: 100,
+          comprehension_insight: 30,
+        },
+        condition: {
+          gauges: {
+            pillToxicity: 0,
+          },
+          statuses: [],
+        },
+      } as any,
+      display: {
+        resources: {
+          hp: { current: 12345, max: 20000, percent: 62 },
+          mp: { current: 9999, max: 10000, percent: 99 },
+        },
+      } as any,
+      unreadMailCount: 0,
+    });
+
+    expect(
+      snapshot?.metrics.find((metric) => metric.key === 'hp')?.display,
+    ).toBe('1.23万/2万');
+    expect(
+      snapshot?.metrics.find((metric) => metric.key === 'mp')?.display,
+    ).toBe('9999/1万');
+  });
 });

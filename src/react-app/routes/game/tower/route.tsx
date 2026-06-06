@@ -573,21 +573,6 @@ function TowerSettlementCard({
             : `此行止于${formatDepthLabel(settlement.finalFloor)}。`}
         </div>
       </div>
-
-      {settlement.milestoneRewards.length > 0 ? (
-        <div className="border-ink/15 space-y-1.5 border-t border-dashed pt-3">
-          <div className="text-sm font-semibold">此行已得机缘</div>
-          <div className="space-y-1.5 text-sm leading-6">
-            {settlement.milestoneRewards.map((reward) => (
-              <div key={`${reward.floor}-${reward.grantedAt}`}>
-                {formatDepthLabel(reward.floor)} · {reward.tier} 级奖励 ·
-                {reward.rewards.map((item) => `${item.type} +${item.value}`).join('，')}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       <div className="flex justify-end">
         <InkButton variant="primary" onClick={() => void onRestart()}>
           重开本周幻境
