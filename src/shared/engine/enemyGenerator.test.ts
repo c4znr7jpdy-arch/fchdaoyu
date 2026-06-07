@@ -5,6 +5,11 @@ import { getCultivatorDisplayAttributes } from '@shared/engine/battle-v5/adapter
 import { BASIC_SKILLS, BASIC_TECHNIQUES } from '@shared/engine/cultivator/creation/config';
 import { CreationSession } from '@shared/engine/creation-v2/CreationSession';
 import { CreationPhase } from '@shared/engine/creation-v2/core/types';
+import type { SkillProductModel } from '@shared/engine/creation-v2/models/types';
+import {
+  deserializeAndRehydrate,
+  serializeProductModel,
+} from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import { GameplayTags } from '@shared/engine/shared/tag-domain';
 import { simulateBattleV5 } from '@shared/lib/battle/simulateBattleV5';
 import { ENEMY_RACE_VALUES, REALM_STAGE_CAPS, type EnemyRace } from '@shared/types/constants';
@@ -221,6 +226,10 @@ function assertThreateningLoadout(
   if (skills.length >= 3) {
     expect(pressureCount).toBeGreaterThanOrEqual(2);
   }
+}
+
+function getEnemyMaxMp(draft: ReturnType<typeof enemyGenerator.buildDraft>): number {
+  return createCombatUnitFromCultivator(draft.cultivator).getMaxMp();
 }
 
 describe('EnemyGenerator', () => {
@@ -465,6 +474,41 @@ describe('EnemyGenerator', () => {
     }
   });
 
+  it('normalizes enemy skill mp cost to generated max MP across difficulty bands', () => {
+    for (const difficulty of [0, 25, 50, 70, 85, 95, 100] as const) {
+      for (const isBoss of [false, true]) {
+        for (const race of ENEMY_RACE_VALUES) {
+          const draft = enemyGenerator.buildDraft({
+            realm: '筑基',
+            realmStage: '中期',
+            race,
+            difficulty,
+            isBoss,
+            variantSeed: 'mp-normalization',
+          });
+          const maxMp = getEnemyMaxMp(draft);
+          const pressureSkills = draft.cultivator.skills.filter(isPressureSkill);
+          const affordablePressureSkills = pressureSkills.filter(
+            (skill) => (skill.abilityConfig?.mpCost ?? skill.cost ?? 0) <= maxMp / 2,
+          );
+
+          expect(pressureSkills.length).toBeGreaterThanOrEqual(1);
+          if (draft.cultivator.skills.length >= 2) {
+            expect(affordablePressureSkills.length).toBeGreaterThanOrEqual(2);
+          }
+
+          for (const skill of draft.cultivator.skills) {
+            const mpCost = skill.abilityConfig?.mpCost ?? skill.cost ?? 0;
+            expect(Math.floor(maxMp / mpCost)).toBeGreaterThanOrEqual(2);
+            if (difficulty <= 25) {
+              expect(mpCost).toBeLessThanOrEqual(Math.ceil(maxMp * 0.24));
+            }
+          }
+        }
+      }
+    }
+  });
+
   it('can be materialized into combat units and run V5 battle smoke tests', () => {
     const player = createPlayerFixture();
     const normalEnemy = enemyGenerator.buildDraft({
@@ -663,6 +707,7 @@ describe('EnemyGenerator', () => {
         background: undefined,
         description: undefined,
       }),
+      estimatedMaxMp: 1400,
     });
 
     expect(loadout.recoveryTierUsed).toBe(3);
@@ -690,6 +735,25 @@ describe('EnemyGenerator', () => {
     expect(selfTargetCount).toBeLessThanOrEqual(
       policy.maxSelfTargetBySkillCount[skillCount],
     );
+    expect(
+      fallbackSkills
+        .filter(isPressureSkill)
+        .every((skill) => (skill.abilityConfig?.mpCost ?? skill.cost ?? 0) === 80),
+    ).toBe(false);
+
+    for (const skill of fallbackSkills) {
+      const model = skill.productModel as SkillProductModel | undefined;
+      expect(model?.productType).toBe('skill');
+      const rehydrated = deserializeAndRehydrate(
+        serializeProductModel(model!),
+      ) as SkillProductModel;
+      expect(rehydrated.battleProjection.mpCost).toBe(
+        model!.battleProjection.mpCost,
+      );
+      expect(rehydrated.battleProjection.cooldown).toBe(
+        model!.battleProjection.cooldown,
+      );
+    }
   });
 
   it('keeps low-floor ghost drafts threatening even when safety fallback is needed', () => {

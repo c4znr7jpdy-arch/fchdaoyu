@@ -47,6 +47,9 @@ export class SkillBlueprintComposer implements ProductBlueprintComposer {
       description: decision.description,
       projectionQuality,
       projectionBasisEnergy: facts.projectionQualityProfile.basisEnergy,
+      ...(facts.projectionContext
+        ? { projectionPacingContext: facts.projectionContext }
+        : {}),
       outcomeTags: decision.outcomeTags,
       affixes: rolledAffixes,
       balanceMetrics: estimateBalanceMetrics(

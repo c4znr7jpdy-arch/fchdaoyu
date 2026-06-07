@@ -37,11 +37,12 @@ export class EnemyGenerationOrchestrator {
     const normalized = this.normalizeInput(input);
     const profile = ENEMY_RACE_PROFILES[normalized.race];
     const plan = this.loadoutPlanner.plan(normalized);
+    const stats = this.buildStatBudget(normalized, profile.attributeWeights);
     const craftedLoadout = this.craftExecutor.execute({
       input: normalized,
       plan,
+      estimatedMaxMp: this.estimateMaxMp(stats.attributes),
     });
-    const stats = this.buildStatBudget(normalized, profile.attributeWeights);
 
     const missingNarrative = {
       name: !normalized.name,
@@ -314,6 +315,10 @@ export class EnemyGenerationOrchestrator {
       difficultyFactor,
       totalAttributeBudget,
     };
+  }
+
+  private estimateMaxMp(attributes: Attributes): number {
+    return 200 + attributes.spirit * 10 + attributes.willpower * 6;
   }
 
   private buildPersonaTags(plan: EnemyLoadoutPlan): string[] {

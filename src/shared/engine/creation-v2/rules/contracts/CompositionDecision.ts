@@ -36,7 +36,6 @@ export interface CompositionDecision extends RuleDecisionMeta {
   defaultsApplied: string[];
   /** Populated by EnergyConversionRules before ProjectionRules runs */
   energyConversion?: {
-    mpCost: number;
     priority: number;
   };
   projectionPolicy?: ProjectionPolicy;

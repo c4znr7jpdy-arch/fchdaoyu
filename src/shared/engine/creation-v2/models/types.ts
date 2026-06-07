@@ -1,6 +1,10 @@
 import type { AbilityConfig, AttributeModifierConfig, EffectConfig, ListenerConfig } from '../contracts/battle';
 import type { EquipmentSlot, Quality, RealmStage, RealmType } from '@shared/types/constants';
-import type { CreationProductType, RolledAffix } from '../types';
+import type {
+  CreationProductType,
+  CreationSkillProjectionContext,
+  RolledAffix,
+} from '../types';
 import type { BalanceMetrics } from '../balancing/PBU';
 
 export interface ArtifactDomainConfig {
@@ -68,6 +72,8 @@ export interface GongFaBattleProjection {
 
 export interface SkillProductModel
   extends BaseProductModel<'skill'> {
+  /** 用于重建技能冷却/蓝耗的最小节奏上下文；battleProjection 本身不持久化。 */
+  projectionPacingContext?: CreationSkillProjectionContext;
   /** Battle projection is the single source of truth for all battle-facing fields. */
   battleProjection: ActiveSkillBattleProjection;
 }

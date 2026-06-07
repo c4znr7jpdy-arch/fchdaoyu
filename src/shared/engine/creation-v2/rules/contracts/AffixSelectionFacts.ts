@@ -33,6 +33,7 @@ export interface AffixSelectionFacts {
   selectionCount: number;
   selectedAffixIds: string[];
   selectedExclusiveGroups: string[];
+  selectedAbilityTags?: string[];
   selectedCategoryCounts: Partial<Record<AffixCategory, number>>;
   selectionConstraints: AffixSelectionConstraints;
   elementBias?: ElementType;

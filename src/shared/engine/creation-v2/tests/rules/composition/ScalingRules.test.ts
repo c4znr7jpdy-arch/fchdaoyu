@@ -122,45 +122,35 @@ describe('ScalingRules (mpCost and cooldown)', () => {
     ruleSet = new CompositionRuleSet(DEFAULT_AFFIX_REGISTRY);
   });
 
-  it('mpCost 应随品质指数级增长', () => {
-    // 凡品 (Order 0): 80 * 2^0 = 80
+  it('mpCost 应随品质线性增长，不再指数级放大', () => {
     const decision0 = ruleSet.evaluate(buildFacts(0));
-    expect((decision0.projectionPolicy as any).mpCost).toBe(80);
+    expect((decision0.projectionPolicy as any).mpCost).toBe(100);
 
-    // 灵品 (Order 1): 80 * 2^1 = 160
     const decision1 = ruleSet.evaluate(buildFacts(1));
-    expect((decision1.projectionPolicy as any).mpCost).toBe(160);
+    expect((decision1.projectionPolicy as any).mpCost).toBe(120);
 
-    // 神品 (Order 7): 80 * 2^7 = 10240
     const decision7 = ruleSet.evaluate(buildFacts(7));
-    expect((decision7.projectionPolicy as any).mpCost).toBe(10240);
+    expect((decision7.projectionPolicy as any).mpCost).toBe(270);
   });
 
-  it('cooldown 应随品质在 2~8 之间波动', () => {
-    // 凡品 (Order 0): 伤害基础 2 + 补偿 0 = 2
+  it('cooldown 应随品质压力温和增长并限制在职责区间内', () => {
     const decision0 = ruleSet.evaluate(buildFacts(0));
     expect((decision0.projectionPolicy as any).cooldown).toBe(2);
 
-    // 真品 (Order 3): 伤害基础 2 + 补偿 3 = 5
     const decision3 = ruleSet.evaluate(buildFacts(3));
-    expect((decision3.projectionPolicy as any).cooldown).toBe(5);
+    expect((decision3.projectionPolicy as any).cooldown).toBe(3);
 
-    // 神品 (Order 7): 伤害基础 2 + 补偿 7 = 9
     const decision7 = ruleSet.evaluate(buildFacts(7));
-    expect((decision7.projectionPolicy as any).cooldown).toBe(9);
-
-    // 检查封顶逻辑 (假设基础 CD 很大)
-    // 实际上我们可以通过修改 Facts 来模拟其他 coreType
+    expect((decision7.projectionPolicy as any).cooldown).toBe(4);
   });
 
-  it('治疗技能的冷却封顶逻辑', () => {
+  it('治疗技能使用 sustain 职责区间', () => {
     const healCore = DEFAULT_AFFIX_REGISTRY.queryById('skill-core-heal');
     const facts = buildFacts(7);
     if (healCore) facts.affixes = [toRolledAffix(healCore)];
 
-    // 神品 (Order 7) 治疗: 基础 3 + 补偿 7 = 10 -> 封顶 10
     const decision = ruleSet.evaluate(facts);
-    expect((decision.projectionPolicy as any).cooldown).toBe(10);
+    expect((decision.projectionPolicy as any).cooldown).toBe(5);
   });
 
   it('self buff core 应投影为 self target 的主动技能', () => {
@@ -175,6 +165,52 @@ describe('ScalingRules (mpCost and cooldown)', () => {
       team: 'self',
       scope: 'single',
     });
+    expect((decision.projectionPolicy as any).cooldown).toBe(3);
+  });
+
+  it('复合词缀会提高冷却和蓝耗，但仍保持封顶', () => {
+    const burn = DEFAULT_AFFIX_REGISTRY.queryById('skill-variant-burn-dot');
+    const stun = DEFAULT_AFFIX_REGISTRY.queryById('skill-variant-control-stun');
+    const facts = buildFacts(7);
+    facts.affixes = [
+      ...facts.affixes,
+      ...(burn ? [toRolledAffix(burn)] : []),
+      ...(stun ? [toRolledAffix(stun)] : []),
+    ];
+
+    const decision = ruleSet.evaluate(facts);
+    expect((decision.projectionPolicy as any).cooldown).toBe(5);
+    expect((decision.projectionPolicy as any).mpCost).toBe(300);
+  });
+
+  it('显式 control 职责的伤害+控制复合技能仍会增加冷却', () => {
+    const stun = DEFAULT_AFFIX_REGISTRY.queryById('skill-variant-control-stun');
+    const facts = buildFacts(0);
+    facts.affixes = [
+      ...facts.affixes,
+      ...(stun ? [toRolledAffix(stun)] : []),
+    ];
+    facts.projectionContext = {
+      ownerKind: 'player',
+      role: 'control',
+    };
+
+    const decision = ruleSet.evaluate(facts);
+    expect((decision.projectionPolicy as any).cooldown).toBe(3);
+  });
+
+  it('敌人技能蓝耗应按 estimatedMaxMp 归一化', () => {
+    const facts = buildFacts(3);
+    facts.projectionContext = {
+      ownerKind: 'enemy',
+      difficulty: 85,
+      role: 'offense',
+      estimatedMaxMp: 1200,
+      paceProfile: 'aggressive',
+    };
+
+    const decision = ruleSet.evaluate(facts);
+    expect((decision.projectionPolicy as any).mpCost).toBe(140);
     expect((decision.projectionPolicy as any).cooldown).toBe(3);
   });
 

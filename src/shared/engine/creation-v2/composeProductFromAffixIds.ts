@@ -11,6 +11,7 @@ import type {
   SkillProductModel,
 } from './models';
 import type {
+  CreationSkillProjectionContext,
   CreationProductType,
   RolledAffix,
 } from './types';
@@ -43,6 +44,7 @@ export interface ComposeProductFromAffixIdsArgs {
   creatorCultivatorId?: string;
   sessionId?: string;
   slugSeed?: string;
+  projectionContext?: CreationSkillProjectionContext;
 }
 
 export type ComposedProductModel =
@@ -183,6 +185,12 @@ export function composeProductFromAffixIds(
     sources: [{ source: 'preset', amount: PRESET_EFFECTIVE_ENERGY }],
   };
   session.state.rolledAffixes = rolledAffixes;
+  if (args.projectionContext) {
+    session.state.intentCraftMeta = {
+      ...session.state.intentCraftMeta,
+      projectionContext: args.projectionContext,
+    };
+  }
 
   const blueprint = composerRegistry.compose(session);
   const productModel = {

@@ -5,11 +5,7 @@ import {
   buildCreationListenerGuard,
   buildGroupedListeners,
 } from '../../composers/shared';
-import {
-  CREATION_LISTENER_PRIORITIES,
-  CREATION_PROJECTION_BALANCE,
-  CREATION_SKILL_DEFAULTS,
-} from '../../config/CreationBalance';
+import { CREATION_LISTENER_PRIORITIES } from '../../config/CreationBalance';
 import type {
   AttributeModifierConfig,
   EffectConfig,
@@ -29,6 +25,7 @@ import { Rule } from '../core/Rule';
 import { RuleContext } from '../core/RuleContext';
 import { assembleAbilityTags } from './AbilityTagAssembler';
 import { CreationError } from '../../errors';
+import { resolveSkillResourceAndCooldown } from './SkillPacingRules';
 
 /**
  * ProjectionRules
@@ -124,33 +121,14 @@ export class ProjectionRules implements Rule<
     }
 
     const coreType = coreDef.effectTemplate.type;
-    const baseCooldown =
-      coreType === 'heal'
-        ? CREATION_SKILL_DEFAULTS.healCooldown
-        : coreType === 'apply_buff'
-          ? CREATION_SKILL_DEFAULTS.buffCooldown
-          : CREATION_SKILL_DEFAULTS.damageCooldown;
 
-    // 增加随品质带来的冷却延长，封顶 10 回合
-    const qualityOrder = projectionQualityProfile.qualityOrder;
-    const cooldownBonus = CREATION_PROJECTION_BALANCE.qualityCooldownBonus[qualityOrder] ?? 0;
-    const cooldown = Math.min(10, baseCooldown + cooldownBonus);
-
-    decision.trace.push({
-      ruleId: this.id,
-      outcome: 'applied',
-      message: `cooldown=${cooldown} (coreType=${coreType}, base=${baseCooldown}, bonus=${cooldownBonus})`,
-    });
-
-    // EnergyConversionRules must have already populated decision.energyConversion
+    // EnergyConversionRules must have already populated priority metadata
     // (it runs before ProjectionRules in CompositionRuleSet).
-    const conv = decision.energyConversion;
-    if (!conv) {
+    if (!decision.energyConversion) {
       throw new Error(
         '[ProjectionRules] energyConversion not populated — EnergyConversionRules must run first',
       );
     }
-    const { mpCost, priority } = conv;
 
     const coreTargetPolicy = coreDef.targetPolicyConstraint;
     const targetPolicy = {
@@ -169,12 +147,32 @@ export class ProjectionRules implements Rule<
       rolledAffixes: affixes,
       elementBias: intent.elementBias,
     });
+    const pacing = resolveSkillResourceAndCooldown({
+      coreType,
+      abilityTags,
+      effects: directEffects,
+      ...(extraListeners.length > 0 ? { listeners: extraListeners } : {}),
+      affixes,
+      energySummary: facts.energySummary,
+      projectionQualityProfile,
+      ...(facts.anchorRealm ? { anchorRealm: facts.anchorRealm } : {}),
+      ...(facts.anchorRealmStage ? { anchorRealmStage: facts.anchorRealmStage } : {}),
+      ...(facts.projectionContext
+        ? { projectionContext: facts.projectionContext }
+        : {}),
+    });
+
+    decision.trace.push({
+      ruleId: this.id,
+      outcome: 'applied',
+      message: pacing.traceMessage,
+    });
 
     return {
       kind: 'active_skill',
-      cooldown,
-      mpCost,
-      priority,
+      cooldown: pacing.cooldown,
+      mpCost: pacing.mpCost,
+      priority: pacing.priority,
       abilityTags,
       targetPolicy,
       effects: directEffects,

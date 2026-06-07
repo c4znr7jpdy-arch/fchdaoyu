@@ -1,6 +1,7 @@
 import {
   CreationIntent,
   CreationProductType,
+  CreationSkillProjectionContext,
   MaterialFingerprint,
   RecipeMatch,
   RolledAffix,
@@ -35,4 +36,5 @@ export interface CompositionFacts {
   coreEffectType?: string;
   anchorRealm?: RealmType;
   anchorRealmStage?: RealmStage;
+  projectionContext?: CreationSkillProjectionContext;
 }

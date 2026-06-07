@@ -306,6 +306,7 @@ export class CreationOrchestrator {
       rng: options.rng,
       stableOutputKey: input.stableOutputKey,
       suppressLogs: options.suppressLogs,
+      projectionContext: input.projectionContext,
     };
 
     try {

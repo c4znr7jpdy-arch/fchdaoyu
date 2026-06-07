@@ -56,8 +56,6 @@ export const CREATION_INPUT_CONSTRAINTS = {
  * 用于兜底生成可运行的技能蓝图，避免出现空能力。
  */
 export const CREATION_SKILL_DEFAULTS = {
-  // 兜底技能的最低蓝耗。
-  minMpCost: 80,
   // 治疗型技能默认冷却。
   healCooldown: 3,
   // 伤害型技能默认冷却。
@@ -275,7 +273,8 @@ export const CREATION_LISTENER_PRIORITIES = {
 
 /**
  * 蓝图投影阶段的平衡参数。
- * 这些配置决定 energyBudget 如何被翻译成技能蓝耗、优先级、护盾兜底值等战斗参数。
+ * 这些配置决定技能优先级、被动兜底值和投影结构约束等战斗参数。
+ * 主动技能蓝耗/冷却由 SkillPacingRules 根据职责、复杂度和节奏上下文计算。
  */
 export const CREATION_PROJECTION_BALANCE = {
   /**
@@ -284,13 +283,6 @@ export const CREATION_PROJECTION_BALANCE = {
    * 这里取 10，是为了对齐 battle-v5 中主动技能的常规优先级层级。
    */
   skillPriorityBase: 10,
-
-  /**
-   * 主动技能蓝耗换算除数。
-   * 计算方式通常为：round(effectiveTotal / mpCostDivisor)，并受 minMpCost 下限约束。
-   * 除数越小，最终技能蓝耗越高。
-   */
-  mpCostDivisor: 3,
 
   /**
    * 法宝护盾型兜底效果的换算除数。
@@ -310,12 +302,6 @@ export const CREATION_PROJECTION_BALANCE = {
 
   /** 功法 Spirit 增益型兜底效果的基础值。 */
   gongfaSpiritBuffBase: 3,
-
-  /**
-   * 主动技能冷却时间品质加成（基于品质 order 0-7）。
-   * 将在基础冷却上增加该值，且总冷却限制在 2~10 回合。
-   */
-  qualityCooldownBonus: [0, 1, 2, 3, 4, 5, 6, 7] as const,
 } as const;
 
 /**

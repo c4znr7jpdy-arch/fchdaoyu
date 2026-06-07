@@ -1,10 +1,6 @@
 import type { ElementType, Quality } from '@shared/types/constants';
 import { QUALITY_ORDER } from '@shared/types/constants';
-import {
-  CREATION_PROJECTION_BALANCE,
-  CREATION_PROJECTION_QUALITY_TIERS,
-  CREATION_SKILL_DEFAULTS,
-} from '../config/CreationBalance';
+import { CREATION_PROJECTION_QUALITY_TIERS } from '../config/CreationBalance';
 import { AffixEffectTranslator } from '../affixes/AffixEffectTranslator';
 import {
   DEFAULT_AFFIX_REGISTRY,
@@ -21,14 +17,20 @@ import type {
 import { GameplayTags } from '../contracts/battle';
 import { AttributeType, ModifierType } from '../contracts/battle';
 import { assembleAbilityTags } from '../rules/composition/AbilityTagAssembler';
+import { resolveSkillResourceAndCooldown } from '../rules/composition/SkillPacingRules';
 import type {
   ActiveSkillBattleProjection,
   ArtifactBattleProjection,
   ArtifactProductModel,
   CreationProductModel,
   GongFaBattleProjection,
+  SkillProductModel,
 } from '../models/types';
-import type { CreationProductType, RolledAffix } from '../types';
+import type {
+  CreationProductType,
+  CreationSkillProjectionContext,
+  RolledAffix,
+} from '../types';
 import { REALM_STAGE_CAPS, type RealmStage, type RealmType } from '@shared/types/constants';
 
 const translator = new AffixEffectTranslator();
@@ -216,6 +218,7 @@ function reProjectSkill(
   projectionQuality: Quality,
   elementBias: ElementType | undefined,
   projectionBasisEnergy: number | undefined,
+  projectionPacingContext: CreationSkillProjectionContext | undefined,
   registry: AffixRegistry = DEFAULT_AFFIX_REGISTRY,
 ): ActiveSkillBattleProjection {
   const directEffects: import('../contracts/battle').EffectConfig[] = [];
@@ -262,13 +265,7 @@ function reProjectSkill(
   const qualityOrder = QUALITY_ORDER[projectionQuality] ?? 0;
   const coreAffix = affixes.find((affix) => affix.category === 'skill_core');
   const coreDef = coreAffix ? registry.queryById(coreAffix.id) : undefined;
-  const coreType = coreDef?.effectTemplate.type;
-  const fallbackCooldownBase =
-    coreType === 'heal'
-      ? CREATION_SKILL_DEFAULTS.healCooldown
-      : coreType === 'apply_buff'
-        ? CREATION_SKILL_DEFAULTS.buffCooldown
-        : CREATION_SKILL_DEFAULTS.damageCooldown;
+  const coreType = coreDef?.effectTemplate.type ?? 'damage';
   const fallbackTargetPolicy = {
     team:
       coreDef?.targetPolicyConstraint?.team ??
@@ -277,25 +274,35 @@ function reProjectSkill(
   };
   const basisEnergy =
     projectionBasisEnergy ?? inferBasisEnergyFromQuality(projectionQuality);
-  const qualityMultiplier = Math.pow(2, qualityOrder);
-  const baseMpCost = Math.round(
-    basisEnergy / CREATION_PROJECTION_BALANCE.mpCostDivisor,
-  );
+  const pacing = resolveSkillResourceAndCooldown({
+    coreType,
+    abilityTags,
+    effects: directEffects,
+    ...(extraListeners.length > 0 ? { listeners: extraListeners } : {}),
+    affixes,
+    energySummary: {
+      effectiveTotal: basisEnergy,
+      reserved: 0,
+      startingAffixEnergy: basisEnergy,
+      spentAffixEnergy: affixes.reduce((sum, affix) => sum + affix.energyCost, 0),
+      remainingAffixEnergy: 0,
+    },
+    projectionQualityProfile: {
+      quality: projectionQuality,
+      qualityOrder,
+      basisEnergy,
+    },
+    ...(projectionPacingContext
+      ? { projectionContext: projectionPacingContext }
+      : {}),
+  });
 
   return {
     projectionKind: 'active_skill',
     abilityTags,
-    mpCost: Math.max(
-      CREATION_SKILL_DEFAULTS.minMpCost * qualityMultiplier,
-      baseMpCost * qualityMultiplier,
-    ),
-    cooldown:
-      Math.min(
-        10,
-        fallbackCooldownBase +
-          (CREATION_PROJECTION_BALANCE.qualityCooldownBonus[qualityOrder] ?? 0),
-      ),
-    priority: CREATION_PROJECTION_BALANCE.skillPriorityBase + affixes.length,
+    mpCost: pacing.mpCost,
+    cooldown: pacing.cooldown,
+    priority: pacing.priority,
     targetPolicy: fallbackTargetPolicy,
     effects: directEffects,
     ...(extraListeners.length > 0 ? { listeners: extraListeners } : {}),
@@ -376,11 +383,13 @@ export function rehydrateProductModel(
     }
 
     case 'skill': {
+      const skillModel = stored as SkillProductModel;
       const battleProjection = reProjectSkill(
         hydratedAffixes,
         stored.projectionQuality,
         elementBias,
-        stored.projectionBasisEnergy,
+        skillModel.projectionBasisEnergy,
+        skillModel.projectionPacingContext,
         registry,
       );
 

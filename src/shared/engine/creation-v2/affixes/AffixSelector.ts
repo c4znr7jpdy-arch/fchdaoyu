@@ -84,6 +84,7 @@ export class AffixSelector {
         selectionCount: result.length,
         selectedAffixIds,
         selectedExclusiveGroups: Array.from(pickedGroups),
+        selectedAbilityTags: this.buildSelectedAbilityTags(result),
         selectedCategoryCounts,
         selectionConstraints,
         elementBias: intent.elementBias,
@@ -286,6 +287,14 @@ export class AffixSelector {
     }
 
     return coreSlots.some((slot) => candidateSlots.includes(slot));
+  }
+
+  private buildSelectedAbilityTags(selected: RolledAffix[]): string[] {
+    return Array.from(
+      new Set(
+        selected.flatMap((affix) => affix.grantedAbilityTags ?? []),
+      ),
+    );
   }
 
   private buildSelectedGongfaSchoolPlan(

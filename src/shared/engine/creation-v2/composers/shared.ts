@@ -127,5 +127,8 @@ export function buildCompositionFacts(
     ...(input.realm ? { anchorRealm: input.realm } : {}),
     ...(input.realmStage ? { anchorRealmStage: input.realmStage } : {}),
     ...(coreEffectType !== undefined ? { coreEffectType } : {}),
+    ...(session.state.intentCraftMeta?.projectionContext
+      ? { projectionContext: session.state.intentCraftMeta.projectionContext }
+      : {}),
   };
 }

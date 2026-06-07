@@ -1,0 +1,100 @@
+import { describe, expect, it } from 'vitest';
+import { GameplayTags } from '@shared/engine/shared/tag-domain';
+import { matchAll } from '@shared/engine/creation-v2/affixes';
+import { AffixPicker } from '@shared/engine/creation-v2/affixes/AffixPicker';
+import { AffixRollEngine } from '@shared/engine/creation-v2/affixes/AffixRollEngine';
+import { AffixSelector } from '@shared/engine/creation-v2/affixes/AffixSelector';
+import type {
+  AffixCandidate,
+  AffixCategory,
+  CreationIntent,
+  EnergyBudget,
+} from '@shared/engine/creation-v2/types';
+
+function candidate(
+  id: string,
+  category: AffixCategory,
+  grantedAbilityTags: string[],
+): AffixCandidate {
+  return {
+    id,
+    name: id,
+    category,
+    match: matchAll([]),
+    tags: [],
+    weight: 10,
+    energyCost: 5,
+    grantedAbilityTags,
+    effectTemplate: {
+      type: 'damage',
+      params: { value: { base: 10 } },
+    },
+  } as AffixCandidate;
+}
+
+function budget(): EnergyBudget {
+  return {
+    baseTotal: 60,
+    effectiveTotal: 60,
+    reserved: 0,
+    spent: 0,
+    remaining: 60,
+    allocations: [],
+    sources: [],
+  };
+}
+
+const skillIntent: CreationIntent = {
+  productType: 'skill',
+  dominantTags: [],
+};
+
+describe('AffixSelector', () => {
+  it('应过滤与已选技能伤害频道冲突的后续词缀', () => {
+    const selector = new AffixSelector(
+      undefined,
+      new AffixPicker(() => 0),
+      new AffixRollEngine(() => 0.5),
+    );
+
+    const audit = selector.select(
+      [
+        candidate('core-physical', 'skill_core', [
+          GameplayTags.ABILITY.FUNCTION.DAMAGE,
+          GameplayTags.ABILITY.CHANNEL.PHYSICAL,
+        ]),
+        candidate('rare-true', 'skill_rare', [
+          GameplayTags.ABILITY.FUNCTION.DAMAGE,
+          GameplayTags.ABILITY.CHANNEL.TRUE,
+        ]),
+        candidate('rare-physical', 'skill_rare', [
+          GameplayTags.ABILITY.FUNCTION.DAMAGE,
+          GameplayTags.ABILITY.CHANNEL.PHYSICAL,
+        ]),
+      ],
+      budget(),
+      skillIntent,
+      2,
+    );
+
+    expect(audit.affixes.map((affix) => affix.id)).toEqual([
+      'core-physical',
+      'rare-physical',
+    ]);
+    expect(audit.rounds[1].inputCandidates.map((affix) => affix.id)).toEqual([
+      'rare-true',
+      'rare-physical',
+    ]);
+    expect(audit.rounds[1].decision.candidatePool.map((affix) => affix.id)).toEqual([
+      'rare-physical',
+    ]);
+    expect(audit.rounds[1].decision.rejections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          affixId: 'rare-true',
+          reason: 'ability_tag_conflict',
+        }),
+      ]),
+    );
+  });
+});

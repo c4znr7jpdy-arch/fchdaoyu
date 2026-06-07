@@ -1,7 +1,4 @@
-import {
-  CREATION_PROJECTION_BALANCE,
-  CREATION_SKILL_DEFAULTS,
-} from '../../config/CreationBalance';
+import { CREATION_PROJECTION_BALANCE } from '../../config/CreationBalance';
 import { Rule } from '../core/Rule';
 import { RuleContext } from '../core/RuleContext';
 import { CompositionDecision } from '../contracts/CompositionDecision';
@@ -9,9 +6,9 @@ import { CompositionFacts } from '../contracts/CompositionFacts';
 
 /**
  * EnergyConversionRules
- * 把能量预算换算为技能属性（mpCost、priority）并写入 decision.energyConversion。
+ * 把能量预算换算为技能排序权重并写入 decision.energyConversion。
  * 只与 active_skill 产物相关；passive 产物无需换算，此规则成为 no-op。
- * ProjectionRules 优先读取 decision.energyConversion，若不存在则使用自身默认值。
+ * mpCost/cooldown 依赖完整 projection effects，由 ProjectionRules 统一计算。
  */
 export class EnergyConversionRules
   implements Rule<CompositionFacts, CompositionDecision>
@@ -21,29 +18,16 @@ export class EnergyConversionRules
   apply({ facts, decision }: RuleContext<CompositionFacts, CompositionDecision>): void {
     if (facts.productType !== 'skill') return;
 
-    const { energySummary, affixes, projectionQualityProfile } = facts;
-
-    // 指数级增长：每提升一阶品质，蓝耗加倍，以对齐角色属性的指数级增长
-    const qualityOrder = projectionQualityProfile.qualityOrder;
-    const qualityMultiplier = Math.pow(2, qualityOrder);
-
-    const baseMpCost = Math.round(
-      energySummary.effectiveTotal / CREATION_PROJECTION_BALANCE.mpCostDivisor,
-    );
-
-    const mpCost = Math.max(
-      CREATION_SKILL_DEFAULTS.minMpCost * qualityMultiplier,
-      baseMpCost * qualityMultiplier,
-    );
+    const { affixes } = facts;
     const priority =
       CREATION_PROJECTION_BALANCE.skillPriorityBase + affixes.length;
 
-    decision.energyConversion = { mpCost, priority };
+    decision.energyConversion = { priority };
 
     decision.trace.push({
       ruleId: this.id,
       outcome: 'applied',
-      message: `能量换算：mpCost=${mpCost} (multiplier=${qualityMultiplier}), priority=${priority}`,
+      message: `技能排序权重：priority=${priority}`,
     });
   }
 }

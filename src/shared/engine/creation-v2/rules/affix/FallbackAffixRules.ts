@@ -34,6 +34,12 @@ export class FallbackAffixRules
       decision.exhaustionReason = AFFIX_STOP_REASONS.EXCLUSIVE_GROUP_CONFLICT;
     } else if (
       decision.rejections.some(
+        (rejection) => rejection.reason === AFFIX_STOP_REASONS.ABILITY_TAG_CONFLICT,
+      )
+    ) {
+      decision.exhaustionReason = AFFIX_STOP_REASONS.ABILITY_TAG_CONFLICT;
+    } else if (
+      decision.rejections.some(
         (rejection) => rejection.reason === AFFIX_STOP_REASONS.CATEGORY_QUOTA_REACHED,
       )
     ) {

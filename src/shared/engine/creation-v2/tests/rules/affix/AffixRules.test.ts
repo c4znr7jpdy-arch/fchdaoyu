@@ -1,4 +1,5 @@
 import { matchAll, matchAny } from '@shared/engine/creation-v2/affixes';
+import { GameplayTags } from '@shared/engine/shared/tag-domain';
 import type { ExclusiveGroup } from '@shared/engine/creation-v2/affixes/exclusiveGroups';
 import { RuleSet } from '@shared/engine/creation-v2';
 import {
@@ -8,6 +9,7 @@ import {
 } from '@shared/engine/creation-v2/rules/contracts';
 import { BudgetExhaustionRules } from '@shared/engine/creation-v2/rules/affix/BudgetExhaustionRules';
 import { ExclusiveGroupRules } from '@shared/engine/creation-v2/rules/affix/ExclusiveGroupRules';
+import { AbilityTagCompatibilityRules } from '@shared/engine/creation-v2/rules/affix/AbilityTagCompatibilityRules';
 import { AffixPoolRuleSet } from '@shared/engine/creation-v2/rules/affix/AffixPoolRuleSet';
 import { AffixSelectionRuleSet } from '@shared/engine/creation-v2/rules/affix/AffixSelectionRuleSet';
 import { AffixCandidate } from '@shared/engine/creation-v2/types';
@@ -83,6 +85,83 @@ describe('BudgetExhaustionRules', () => {
     ]);
     expect(decision.rejections).toEqual([
       expect.objectContaining({ affixId: 'expensive', reason: 'budget_exhausted' }),
+    ]);
+  });
+});
+
+// ── AbilityTagCompatibilityRules ───────────────────────────────────
+
+describe('AbilityTagCompatibilityRules', () => {
+  it('应过滤与已选技能伤害频道冲突的候选', () => {
+    const ruleSet = new RuleSet(
+      [new AbilityTagCompatibilityRules()],
+      createSelectionDecision,
+    );
+    const decision = ruleSet.evaluate({
+      productType: 'skill',
+      candidates: [
+        buildCandidate({
+          id: 'true-conflict',
+          name: 'true-conflict',
+          category: 'skill_rare',
+          tags: [],
+          weight: 10,
+          energyCost: 8,
+          grantedAbilityTags: [
+            GameplayTags.ABILITY.FUNCTION.DAMAGE,
+            GameplayTags.ABILITY.CHANNEL.TRUE,
+          ],
+          effectTemplate: { type: 'damage', params: { value: 10 } } as any,
+        }),
+        buildCandidate({
+          id: 'physical-ok',
+          name: 'physical-ok',
+          category: 'skill_rare',
+          tags: [],
+          weight: 10,
+          energyCost: 8,
+          grantedAbilityTags: [
+            GameplayTags.ABILITY.FUNCTION.DAMAGE,
+            GameplayTags.ABILITY.CHANNEL.PHYSICAL,
+          ],
+          effectTemplate: { type: 'damage', params: { value: 10 } } as any,
+        }),
+        buildCandidate({
+          id: 'control-ok',
+          name: 'control-ok',
+          category: 'skill_rare',
+          tags: [],
+          weight: 10,
+          energyCost: 8,
+          grantedAbilityTags: [GameplayTags.ABILITY.FUNCTION.CONTROL],
+          effectTemplate: { type: 'damage', params: { value: 10 } } as any,
+        }),
+      ],
+      remainingEnergy: 20,
+      inputTags: [],
+      maxSelections: 4,
+      selectionCount: 1,
+      selectedAffixIds: ['core-physical'],
+      selectedExclusiveGroups: [],
+      selectedAbilityTags: [
+        GameplayTags.ABILITY.FUNCTION.DAMAGE,
+        GameplayTags.ABILITY.CHANNEL.PHYSICAL,
+      ],
+      selectedCategoryCounts: { skill_core: 1 },
+      selectionConstraints: {
+        categoryCaps: { skill_core: 1, skill_variant: 4, skill_rare: 1 },
+      },
+    });
+
+    expect(decision.candidatePool).toEqual([
+      expect.objectContaining({ id: 'physical-ok' }),
+      expect.objectContaining({ id: 'control-ok' }),
+    ]);
+    expect(decision.rejections).toEqual([
+      expect.objectContaining({
+        affixId: 'true-conflict',
+        reason: 'ability_tag_conflict',
+      }),
     ]);
   });
 });

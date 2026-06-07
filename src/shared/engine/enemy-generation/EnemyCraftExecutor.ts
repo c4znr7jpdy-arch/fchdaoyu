@@ -225,6 +225,7 @@ export class EnemyCraftExecutor {
   execute(args: {
     input: NormalizedEnemyGenerationInput;
     plan: EnemyLoadoutPlan;
+    estimatedMaxMp?: number;
   }): EnemyCraftedLoadout {
     let recoveryTierUsed = 0;
 
@@ -240,6 +241,7 @@ export class EnemyCraftExecutor {
         args.input,
         args.plan.difficultyProfile.band,
         intent,
+        args.estimatedMaxMp,
       );
       recoveryTierUsed = Math.max(recoveryTierUsed, crafted.recoveryTierUsed);
       return crafted.product;
@@ -259,6 +261,7 @@ export class EnemyCraftExecutor {
         args.input,
         args.plan.difficultyProfile.band,
         intent,
+        args.estimatedMaxMp,
       );
       recoveryTierUsed = Math.max(recoveryTierUsed, crafted.recoveryTierUsed);
       return crafted.product;
@@ -306,6 +309,7 @@ export class EnemyCraftExecutor {
     input: NormalizedEnemyGenerationInput,
     band: EnemyLoadoutPlan['difficultyProfile']['band'],
     intent: EnemyPlannedProductIntent,
+    estimatedMaxMp?: number,
   ): {
     product: EnemyCraftedProduct;
     recoveryTierUsed: number;
@@ -316,21 +320,42 @@ export class EnemyCraftExecutor {
     );
 
     for (const archetype of candidateArchetypes.slice(0, 1)) {
-      const crafted = this.tryCraftFromIntent(input, band, intent, archetype, 0);
+      const crafted = this.tryCraftFromIntent(
+        input,
+        band,
+        intent,
+        archetype,
+        0,
+        estimatedMaxMp,
+      );
       if (crafted) {
         return { product: crafted, recoveryTierUsed: 0 };
       }
     }
 
     for (const archetype of candidateArchetypes.slice(1)) {
-      const crafted = this.tryCraftFromIntent(input, band, intent, archetype, 1);
+      const crafted = this.tryCraftFromIntent(
+        input,
+        band,
+        intent,
+        archetype,
+        1,
+        estimatedMaxMp,
+      );
       if (crafted) {
         return { product: crafted, recoveryTierUsed: 1 };
       }
     }
 
     for (const archetype of candidateArchetypes) {
-      const crafted = this.tryCraftFromIntent(input, band, intent, archetype, 2);
+      const crafted = this.tryCraftFromIntent(
+        input,
+        band,
+        intent,
+        archetype,
+        2,
+        estimatedMaxMp,
+      );
       if (crafted) {
         return { product: crafted, recoveryTierUsed: 2 };
       }
@@ -338,7 +363,12 @@ export class EnemyCraftExecutor {
 
     const fallbackArchetype = candidateArchetypes[0];
     return {
-      product: this.composeSafeFallback(input, intent, fallbackArchetype),
+      product: this.composeSafeFallback(
+        input,
+        intent,
+        fallbackArchetype,
+        estimatedMaxMp,
+      ),
       recoveryTierUsed: 3,
     };
   }
@@ -349,6 +379,7 @@ export class EnemyCraftExecutor {
     intent: EnemyPlannedProductIntent,
     archetype: EnemyArchetypeDefinition,
     recoveryTier: 0 | 1 | 2,
+    estimatedMaxMp?: number,
   ): EnemyCraftedProduct | null {
     const elements = this.resolveTierElements(intent, archetype, recoveryTier);
     for (const element of elements) {
@@ -360,6 +391,7 @@ export class EnemyCraftExecutor {
           archetype,
           element,
           recoveryTier,
+          estimatedMaxMp,
         );
         const session = this.creationOrchestrator.craftFromIntent(normalized, {
           autoMaterialize: false,
@@ -415,6 +447,7 @@ export class EnemyCraftExecutor {
     archetype: EnemyArchetypeDefinition,
     element: ElementType,
     recoveryTier: 0 | 1 | 2,
+    estimatedMaxMp?: number,
   ): IntentCraftInput {
     const loosened = recoveryTier >= 2;
     const semanticElementTag = elementSemanticTag(element);
@@ -468,6 +501,22 @@ export class EnemyCraftExecutor {
         archetype.maxAffixCount?.[band] ?? intent.maxAffixCount,
       excludedAffixIds: [...this.safetyProfile.excludedAffixIds],
       userPrompt: archetype.label,
+      ...(intent.productType === 'skill'
+        ? {
+            projectionContext: {
+              ownerKind: 'enemy',
+              difficulty: input.difficulty,
+              role: intent.role as 'offense' | 'control' | 'guard' | 'sustain',
+              ...(estimatedMaxMp ? { estimatedMaxMp } : {}),
+              paceProfile:
+                intent.role === 'offense' || intent.role === 'control'
+                  ? 'aggressive'
+                  : intent.role === 'sustain'
+                    ? 'sustain'
+                    : 'standard',
+            },
+          }
+        : {}),
     };
   }
 
@@ -530,6 +579,7 @@ export class EnemyCraftExecutor {
     input: NormalizedEnemyGenerationInput,
     intent: EnemyPlannedProductIntent,
     archetype: EnemyArchetypeDefinition,
+    estimatedMaxMp?: number,
   ): EnemyCraftedProduct {
     const element = this.resolveArchetypeElement(
       archetype,
@@ -553,6 +603,22 @@ export class EnemyCraftExecutor {
       ...(intent.slot ? { requestedSlot: intent.slot } : {}),
       ...(archetype.targetPolicy
         ? { requestedTargetPolicy: archetype.targetPolicy }
+        : {}),
+      ...(intent.productType === 'skill'
+        ? {
+            projectionContext: {
+              ownerKind: 'enemy',
+              difficulty: input.difficulty,
+              role: intent.role as 'offense' | 'control' | 'guard' | 'sustain',
+              ...(estimatedMaxMp ? { estimatedMaxMp } : {}),
+              paceProfile:
+                intent.role === 'offense' || intent.role === 'control'
+                  ? 'aggressive'
+                  : intent.role === 'sustain'
+                    ? 'sustain'
+                    : 'standard',
+            },
+          }
         : {}),
       realm: input.realm,
       realmStage: input.realmStage,

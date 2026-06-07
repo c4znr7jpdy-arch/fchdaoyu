@@ -263,7 +263,6 @@ describe('WorkflowDecisionBoundary — CompositionRuleSet 契约验证', () => {
       const decision = ruleSet.evaluate(buildMinimalFacts('skill'));
 
       expect(decision.energyConversion).toBeDefined();
-      expect(typeof decision.energyConversion?.mpCost).toBe('number');
       expect(typeof decision.energyConversion?.priority).toBe('number');
     });
 

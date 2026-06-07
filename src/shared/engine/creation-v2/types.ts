@@ -76,6 +76,22 @@ export interface CreationContextTagBias {
   weight: number;
 }
 
+export type CreationProjectionOwnerKind = 'player' | 'enemy';
+export type CreationSkillPaceProfile = 'standard' | 'aggressive' | 'sustain';
+export type CreationSkillProjectionRole =
+  | 'offense'
+  | 'control'
+  | 'guard'
+  | 'sustain';
+
+export interface CreationSkillProjectionContext {
+  ownerKind: CreationProjectionOwnerKind;
+  difficulty?: number;
+  role?: CreationSkillProjectionRole;
+  estimatedMaxMp?: number;
+  paceProfile?: CreationSkillPaceProfile;
+}
+
 export interface IntentCraftInput {
   sessionId?: string;
   cultivatorId?: string;
@@ -97,6 +113,7 @@ export interface IntentCraftInput {
   stableOutputKey: string;
   maxAffixCount?: number;
   excludedAffixIds?: string[];
+  projectionContext?: CreationSkillProjectionContext;
 }
 
 export interface MaterialFingerprint {
@@ -189,6 +206,7 @@ export interface RecipeMatch {
 export type AffixSelectionStopReason =
   | 'budget_exhausted'
   | 'exclusive_group_conflict'
+  | 'ability_tag_conflict'
   | 'category_quota_reached'
   | 'pool_exhausted'
   | 'max_count_reached';
@@ -196,6 +214,7 @@ export type AffixSelectionStopReason =
 export const AFFIX_STOP_REASONS = {
   BUDGET_EXHAUSTED: 'budget_exhausted',
   EXCLUSIVE_GROUP_CONFLICT: 'exclusive_group_conflict',
+  ABILITY_TAG_CONFLICT: 'ability_tag_conflict',
   CATEGORY_QUOTA_REACHED: 'category_quota_reached',
   POOL_EXHAUSTED: 'pool_exhausted',
   MAX_COUNT_REACHED: 'max_count_reached',
@@ -339,6 +358,7 @@ export interface CreationSessionState {
     rng?: () => number;
     stableOutputKey?: string;
     suppressLogs?: boolean;
+    projectionContext?: CreationSkillProjectionContext;
   };
 
   // ── 阶段 1：材料分析 ────────────────────────────────────────────────────────

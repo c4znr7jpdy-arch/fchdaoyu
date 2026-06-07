@@ -4,7 +4,12 @@ export {
   CreationTagContainer,
   CreationTags,
 } from './creationTags';
-export { ELEMENT_TO_RUNTIME_ABILITY_TAG, GameplayTags } from './gameplayTags';
+export {
+  DAMAGE_CHANNEL_ABILITY_TAGS,
+  ELEMENT_TO_RUNTIME_ABILITY_TAG,
+  GameplayTags,
+} from './gameplayTags';
+export type { DamageChannel } from './gameplayTags';
 export {
   assertCreationTag,
   assertRuntimeTag,

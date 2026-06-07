@@ -1,6 +1,7 @@
 import { CREATION_RULE_PHASES } from '../../types';
 import { AffixSelectionDecision, AffixSelectionFacts } from '../contracts';
 import { RuleSet } from '../core';
+import { AbilityTagCompatibilityRules } from './AbilityTagCompatibilityRules';
 import { BudgetExhaustionRules } from './BudgetExhaustionRules';
 import { CategoryQuotaRules } from './CategoryQuotaRules';
 import { ExclusiveGroupRules } from './ExclusiveGroupRules';
@@ -16,6 +17,7 @@ export class AffixSelectionRuleSet {
   private readonly ruleSet = new RuleSet<AffixSelectionFacts, AffixSelectionDecision>(
     [
       new ExclusiveGroupRules(),
+      new AbilityTagCompatibilityRules(),
       new CategoryQuotaRules(),
       new HighTierBucketRules(),
       new BudgetExhaustionRules(),
