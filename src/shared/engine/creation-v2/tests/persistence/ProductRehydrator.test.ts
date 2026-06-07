@@ -17,6 +17,7 @@ describe('ProductRehydrator', () => {
     const serialized = serializeProductModel(model);
 
     expect(serialized).not.toHaveProperty('battleProjection');
+    expect(serialized).not.toHaveProperty('projectionAnchor');
     expect(serialized).toHaveProperty('projectionBasisEnergy');
 
     const rehydrated = deserializeAndRehydrate(serialized);
@@ -46,7 +47,6 @@ describe('ProductRehydrator', () => {
         ownerKind: 'enemy',
         difficulty: 95,
         role: 'offense',
-        estimatedMaxMp: 1400,
         paceProfile: 'aggressive',
       },
     });
@@ -78,5 +78,29 @@ describe('ProductRehydrator', () => {
     const rehydrated = deserializeAndRehydrate(serialized);
     expect(rehydrated.productType).toBe('skill');
     expect(rehydrated.battleProjection.mpCost).toBeGreaterThan(0);
+  });
+
+  it('ignores legacy skill projectionAnchor when rebuilding mpCost', () => {
+    const model = composeProductFromAffixIds({
+      productType: 'skill',
+      element: '火',
+      name: '旧版锚点赤炎术',
+      affixIds: ['skill-core-damage-fire'],
+      realm: '炼气',
+      realmStage: '初期',
+    });
+    const serialized = serializeProductModel(model) as Record<string, unknown>;
+    serialized.projectionAnchor = {
+      realm: '渡劫',
+      realmStage: '圆满',
+    };
+
+    const rehydrated = deserializeAndRehydrate(serialized);
+
+    expect(rehydrated.productType).toBe('skill');
+    expect(rehydrated).not.toHaveProperty('projectionAnchor');
+    expect(rehydrated.battleProjection.mpCost).toBe(
+      model.battleProjection.mpCost,
+    );
   });
 });

@@ -543,6 +543,14 @@ export async function processCreation(
       ...(effectiveRequestedTargetPolicy
         ? { requestedTargetPolicy: effectiveRequestedTargetPolicy }
         : {}),
+      ...(productType === 'skill'
+        ? {
+            projectionContext: {
+              ownerKind: 'player',
+              paceProfile: 'standard',
+            },
+          }
+        : {}),
     });
 
     const outcome = session.state.outcome;

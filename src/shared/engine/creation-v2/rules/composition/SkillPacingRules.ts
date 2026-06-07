@@ -1,5 +1,4 @@
 import { GameplayTags } from '@shared/engine/shared/tag-domain';
-import { REALM_STAGE_CAPS, type RealmStage, type RealmType } from '@shared/types/constants';
 import {
   CREATION_PROJECTION_BALANCE,
   CREATION_SKILL_DEFAULTS,
@@ -10,7 +9,6 @@ import type {
   CreationSkillProjectionContext,
   RolledAffix,
 } from '../../types';
-import type { CompositionEnergySummary } from '../contracts/CompositionFacts';
 import type { ProjectionQualityProfile } from '../../analysis/ProjectionQualityProfile';
 
 export interface SkillPacingInput {
@@ -19,10 +17,7 @@ export interface SkillPacingInput {
   effects: EffectConfig[];
   listeners?: ListenerConfig[];
   affixes: RolledAffix[];
-  energySummary: CompositionEnergySummary;
   projectionQualityProfile: ProjectionQualityProfile;
-  anchorRealm?: RealmType;
-  anchorRealmStage?: RealmStage;
   projectionContext?: CreationSkillProjectionContext;
 }
 
@@ -43,11 +38,22 @@ const ROLE_COOLDOWN_LIMITS: Record<SkillPacingRole, { min: number; max: number }
 };
 
 const ROLE_MP_RATIO_BASE: Record<SkillPacingRole, number> = {
-  offense: 0.1,
-  control: 0.12,
-  guard: 0.11,
-  sustain: 0.14,
+  offense: 0.12,
+  control: 0.14,
+  guard: 0.13,
+  sustain: 0.16,
 };
+
+const QUALITY_MP_ANCHOR_BY_ORDER = [
+  520,
+  680,
+  1160,
+  2120,
+  4040,
+  5320,
+  6600,
+  7880,
+] as const;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -125,34 +131,22 @@ function resolveQualityCooldownAdd(qualityOrder: number): number {
   return 0;
 }
 
-function resolveMinMpCost(
-  anchorRealm: RealmType | undefined,
-  anchorRealmStage: RealmStage | undefined,
-): number {
-  if (!anchorRealm || !anchorRealmStage) {
-    return 60;
-  }
-  const cap = REALM_STAGE_CAPS[anchorRealm][anchorRealmStage];
-  return roundTo10(45 + cap * 0.3);
+function resolveQualityMpAnchor(qualityOrder: number): number {
+  return (
+    QUALITY_MP_ANCHOR_BY_ORDER[qualityOrder] ??
+    QUALITY_MP_ANCHOR_BY_ORDER[0]
+  );
 }
 
-function resolveFallbackMpCost(args: {
-  energySummary: CompositionEnergySummary;
+function resolveMpCost(args: {
   qualityOrder: number;
-  nonCoreAffixCount: number;
-  rareAffixCount: number;
-  anchorRealm?: RealmType;
-  anchorRealmStage?: RealmStage;
+  mpRatio: number;
 }): number {
-  const minMpCost = resolveMinMpCost(args.anchorRealm, args.anchorRealmStage);
+  const qualityAnchor = resolveQualityMpAnchor(args.qualityOrder);
   return roundTo10(
     Math.max(
-      minMpCost,
-      60 +
-        args.qualityOrder * 25 +
-        args.energySummary.effectiveTotal * 1.2 +
-        args.nonCoreAffixCount * 15 +
-        args.rareAffixCount * 30,
+      60,
+      qualityAnchor * args.mpRatio,
     ),
   );
 }
@@ -202,7 +196,6 @@ export function resolveSkillResourceAndCooldown(
     limits.max,
   );
 
-  const ratioCap = role === 'guard' || role === 'sustain' ? 0.24 : 0.2;
   const paceModifier =
     input.projectionContext?.paceProfile === 'aggressive'
       ? -0.015
@@ -211,30 +204,17 @@ export function resolveSkillResourceAndCooldown(
         : 0;
   const mpRatio = clamp(
     ROLE_MP_RATIO_BASE[role] +
-      qualityOrder * 0.01 +
+      qualityOrder * 0.012 +
       nonCoreAffixCount * 0.015 +
       rareAffixCount * 0.03 +
       paceModifier,
     0.06,
-    ratioCap,
+    role === 'guard' || role === 'sustain' ? 0.28 : 0.24,
   );
-  const estimatedMaxMp = input.projectionContext?.estimatedMaxMp;
-  const mpCost =
-    estimatedMaxMp && Number.isFinite(estimatedMaxMp) && estimatedMaxMp > 0
-      ? roundTo10(
-          Math.max(
-            resolveMinMpCost(input.anchorRealm, input.anchorRealmStage),
-            estimatedMaxMp * mpRatio,
-          ),
-        )
-      : resolveFallbackMpCost({
-          energySummary: input.energySummary,
-          qualityOrder,
-          nonCoreAffixCount,
-          rareAffixCount,
-          anchorRealm: input.anchorRealm,
-          anchorRealmStage: input.anchorRealmStage,
-        });
+  const mpCost = resolveMpCost({
+    qualityOrder,
+    mpRatio,
+  });
 
   const priority =
     CREATION_PROJECTION_BALANCE.skillPriorityBase + input.affixes.length;
@@ -245,6 +225,8 @@ export function resolveSkillResourceAndCooldown(
     priority,
     traceMessage:
       `skill pacing: role=${role}, cooldown=${cooldown}, mpCost=${mpCost}, ` +
-      `mpRatio=${mpRatio.toFixed(3)}, nonCore=${nonCoreAffixCount}, rare=${rareAffixCount}`,
+      `qualityOrder=${qualityOrder}, mpRatio=${mpRatio.toFixed(3)}, ` +
+      `qualityAnchor=${resolveQualityMpAnchor(qualityOrder)}, ` +
+      `nonCore=${nonCoreAffixCount}, rare=${rareAffixCount}`,
   };
 }

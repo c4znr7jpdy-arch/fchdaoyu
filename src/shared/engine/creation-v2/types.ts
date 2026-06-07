@@ -69,6 +69,7 @@ export interface CreationSessionInput {
   contextNegativeTagBiases?: CreationContextTagBias[];
   requestedSlot?: EquipmentSlot;
   requestedTargetPolicy?: TargetPolicyConfig;
+  projectionContext?: CreationSkillProjectionContext;
 }
 
 export interface CreationContextTagBias {
@@ -88,7 +89,6 @@ export interface CreationSkillProjectionContext {
   ownerKind: CreationProjectionOwnerKind;
   difficulty?: number;
   role?: CreationSkillProjectionRole;
-  estimatedMaxMp?: number;
   paceProfile?: CreationSkillPaceProfile;
 }
 

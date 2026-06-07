@@ -105,6 +105,8 @@ export function buildCompositionFacts(
       coreEffectType = coreDef?.effectTemplate.type;
     }
   }
+  const projectionContext =
+    session.state.intentCraftMeta?.projectionContext ?? input.projectionContext;
 
   return {
     productType,
@@ -127,8 +129,6 @@ export function buildCompositionFacts(
     ...(input.realm ? { anchorRealm: input.realm } : {}),
     ...(input.realmStage ? { anchorRealmStage: input.realmStage } : {}),
     ...(coreEffectType !== undefined ? { coreEffectType } : {}),
-    ...(session.state.intentCraftMeta?.projectionContext
-      ? { projectionContext: session.state.intentCraftMeta.projectionContext }
-      : {}),
+    ...(projectionContext ? { projectionContext } : {}),
   };
 }

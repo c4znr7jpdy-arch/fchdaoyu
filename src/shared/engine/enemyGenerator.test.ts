@@ -228,10 +228,6 @@ function assertThreateningLoadout(
   }
 }
 
-function getEnemyMaxMp(draft: ReturnType<typeof enemyGenerator.buildDraft>): number {
-  return createCombatUnitFromCultivator(draft.cultivator).getMaxMp();
-}
-
 describe('EnemyGenerator', () => {
   it.each([
     { difficulty: 0, factor: 0.6 },
@@ -474,7 +470,7 @@ describe('EnemyGenerator', () => {
     }
   });
 
-  it('normalizes enemy skill mp cost to generated max MP across difficulty bands', () => {
+  it('keeps enemy skill mp cost generated from pacing rules across difficulty bands', () => {
     for (const difficulty of [0, 25, 50, 70, 85, 95, 100] as const) {
       for (const isBoss of [false, true]) {
         for (const race of ENEMY_RACE_VALUES) {
@@ -484,25 +480,15 @@ describe('EnemyGenerator', () => {
             race,
             difficulty,
             isBoss,
-            variantSeed: 'mp-normalization',
+            variantSeed: 'quality-pacing',
           });
-          const maxMp = getEnemyMaxMp(draft);
           const pressureSkills = draft.cultivator.skills.filter(isPressureSkill);
-          const affordablePressureSkills = pressureSkills.filter(
-            (skill) => (skill.abilityConfig?.mpCost ?? skill.cost ?? 0) <= maxMp / 2,
-          );
 
           expect(pressureSkills.length).toBeGreaterThanOrEqual(1);
-          if (draft.cultivator.skills.length >= 2) {
-            expect(affordablePressureSkills.length).toBeGreaterThanOrEqual(2);
-          }
 
           for (const skill of draft.cultivator.skills) {
             const mpCost = skill.abilityConfig?.mpCost ?? skill.cost ?? 0;
-            expect(Math.floor(maxMp / mpCost)).toBeGreaterThanOrEqual(2);
-            if (difficulty <= 25) {
-              expect(mpCost).toBeLessThanOrEqual(Math.ceil(maxMp * 0.24));
-            }
+            expect(mpCost).toBeGreaterThan(0);
           }
         }
       }
@@ -707,7 +693,6 @@ describe('EnemyGenerator', () => {
         background: undefined,
         description: undefined,
       }),
-      estimatedMaxMp: 1400,
     });
 
     expect(loadout.recoveryTierUsed).toBe(3);

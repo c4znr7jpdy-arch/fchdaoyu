@@ -153,10 +153,7 @@ export class ProjectionRules implements Rule<
       effects: directEffects,
       ...(extraListeners.length > 0 ? { listeners: extraListeners } : {}),
       affixes,
-      energySummary: facts.energySummary,
       projectionQualityProfile,
-      ...(facts.anchorRealm ? { anchorRealm: facts.anchorRealm } : {}),
-      ...(facts.anchorRealmStage ? { anchorRealmStage: facts.anchorRealmStage } : {}),
       ...(facts.projectionContext
         ? { projectionContext: facts.projectionContext }
         : {}),

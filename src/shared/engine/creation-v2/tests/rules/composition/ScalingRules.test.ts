@@ -122,15 +122,13 @@ describe('ScalingRules (mpCost and cooldown)', () => {
     ruleSet = new CompositionRuleSet(DEFAULT_AFFIX_REGISTRY);
   });
 
-  it('mpCost 应随品质线性增长，不再指数级放大', () => {
-    const decision0 = ruleSet.evaluate(buildFacts(0));
-    expect((decision0.projectionPolicy as any).mpCost).toBe(100);
+  it('mpCost 应按最高化神的品质锚点表增长', () => {
+    const expectedByQualityOrder = [60, 90, 170, 330, 680, 960, 1270, 1610];
 
-    const decision1 = ruleSet.evaluate(buildFacts(1));
-    expect((decision1.projectionPolicy as any).mpCost).toBe(120);
-
-    const decision7 = ruleSet.evaluate(buildFacts(7));
-    expect((decision7.projectionPolicy as any).mpCost).toBe(270);
+    for (const [qualityOrder, expected] of expectedByQualityOrder.entries()) {
+      const decision = ruleSet.evaluate(buildFacts(qualityOrder));
+      expect((decision.projectionPolicy as any).mpCost).toBe(expected);
+    }
   });
 
   it('cooldown 应随品质压力温和增长并限制在职责区间内', () => {
@@ -180,7 +178,7 @@ describe('ScalingRules (mpCost and cooldown)', () => {
 
     const decision = ruleSet.evaluate(facts);
     expect((decision.projectionPolicy as any).cooldown).toBe(5);
-    expect((decision.projectionPolicy as any).mpCost).toBe(300);
+    expect((decision.projectionPolicy as any).mpCost).toBe(1890);
   });
 
   it('显式 control 职责的伤害+控制复合技能仍会增加冷却', () => {
@@ -199,19 +197,60 @@ describe('ScalingRules (mpCost and cooldown)', () => {
     expect((decision.projectionPolicy as any).cooldown).toBe(3);
   });
 
-  it('敌人技能蓝耗应按 estimatedMaxMp 归一化', () => {
+  it('敌人技能蓝耗应按品质锚点计算并保留节奏修正', () => {
     const facts = buildFacts(3);
+    facts.anchorRealm = '筑基';
+    facts.anchorRealmStage = '中期';
     facts.projectionContext = {
       ownerKind: 'enemy',
       difficulty: 85,
       role: 'offense',
-      estimatedMaxMp: 1200,
       paceProfile: 'aggressive',
     };
 
     const decision = ruleSet.evaluate(facts);
-    expect((decision.projectionPolicy as any).mpCost).toBe(140);
+    expect((decision.projectionPolicy as any).mpCost).toBe(300);
     expect((decision.projectionPolicy as any).cooldown).toBe(3);
+  });
+
+  it('同品质技能在不同境界输入下蓝耗一致', () => {
+    const realmInputs = [
+      { anchorRealm: '炼气', anchorRealmStage: '初期' },
+      { anchorRealm: '化神', anchorRealmStage: '后期' },
+      { anchorRealm: '渡劫', anchorRealmStage: '圆满' },
+    ] as const;
+    const mpCosts = realmInputs.map((input) => {
+      const facts = buildFacts(7);
+      facts.anchorRealm = input.anchorRealm;
+      facts.anchorRealmStage = input.anchorRealmStage;
+      return (ruleSet.evaluate(facts).projectionPolicy as any).mpCost;
+    });
+
+    expect(new Set(mpCosts).size).toBe(1);
+    expect(mpCosts[0]).toBe(1610);
+  });
+
+  it('神品最高复杂度蓝耗不超过化神后期三次施展门槛', () => {
+    const healCore = DEFAULT_AFFIX_REGISTRY.queryById('skill-core-heal');
+    const burn = DEFAULT_AFFIX_REGISTRY.queryById('skill-variant-burn-dot');
+    const stun = DEFAULT_AFFIX_REGISTRY.queryById('skill-variant-control-stun');
+    const rare = DEFAULT_AFFIX_REGISTRY.queryById('skill-rare-wood-spring-return');
+    const facts = buildFacts(7);
+    facts.affixes = [
+      ...(healCore ? [toRolledAffix(healCore)] : []),
+      ...(burn ? [toRolledAffix(burn)] : []),
+      ...(stun ? [toRolledAffix(stun)] : []),
+      ...(rare ? [toRolledAffix(rare)] : []),
+    ];
+    facts.projectionContext = {
+      ownerKind: 'player',
+      role: 'sustain',
+    };
+
+    const decision = ruleSet.evaluate(facts);
+    const mpCost = (decision.projectionPolicy as any).mpCost;
+    expect(mpCost).toBe(2210);
+    expect(mpCost).toBeLessThanOrEqual(Math.floor(7880 / 3));
   });
 
   it('artifact 主面板 fixed 应按锚定境界成长', () => {

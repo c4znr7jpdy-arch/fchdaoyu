@@ -225,7 +225,6 @@ export class EnemyCraftExecutor {
   execute(args: {
     input: NormalizedEnemyGenerationInput;
     plan: EnemyLoadoutPlan;
-    estimatedMaxMp?: number;
   }): EnemyCraftedLoadout {
     let recoveryTierUsed = 0;
 
@@ -241,7 +240,6 @@ export class EnemyCraftExecutor {
         args.input,
         args.plan.difficultyProfile.band,
         intent,
-        args.estimatedMaxMp,
       );
       recoveryTierUsed = Math.max(recoveryTierUsed, crafted.recoveryTierUsed);
       return crafted.product;
@@ -261,7 +259,6 @@ export class EnemyCraftExecutor {
         args.input,
         args.plan.difficultyProfile.band,
         intent,
-        args.estimatedMaxMp,
       );
       recoveryTierUsed = Math.max(recoveryTierUsed, crafted.recoveryTierUsed);
       return crafted.product;
@@ -309,7 +306,6 @@ export class EnemyCraftExecutor {
     input: NormalizedEnemyGenerationInput,
     band: EnemyLoadoutPlan['difficultyProfile']['band'],
     intent: EnemyPlannedProductIntent,
-    estimatedMaxMp?: number,
   ): {
     product: EnemyCraftedProduct;
     recoveryTierUsed: number;
@@ -326,7 +322,6 @@ export class EnemyCraftExecutor {
         intent,
         archetype,
         0,
-        estimatedMaxMp,
       );
       if (crafted) {
         return { product: crafted, recoveryTierUsed: 0 };
@@ -340,7 +335,6 @@ export class EnemyCraftExecutor {
         intent,
         archetype,
         1,
-        estimatedMaxMp,
       );
       if (crafted) {
         return { product: crafted, recoveryTierUsed: 1 };
@@ -354,7 +348,6 @@ export class EnemyCraftExecutor {
         intent,
         archetype,
         2,
-        estimatedMaxMp,
       );
       if (crafted) {
         return { product: crafted, recoveryTierUsed: 2 };
@@ -363,12 +356,7 @@ export class EnemyCraftExecutor {
 
     const fallbackArchetype = candidateArchetypes[0];
     return {
-      product: this.composeSafeFallback(
-        input,
-        intent,
-        fallbackArchetype,
-        estimatedMaxMp,
-      ),
+      product: this.composeSafeFallback(input, intent, fallbackArchetype),
       recoveryTierUsed: 3,
     };
   }
@@ -379,7 +367,6 @@ export class EnemyCraftExecutor {
     intent: EnemyPlannedProductIntent,
     archetype: EnemyArchetypeDefinition,
     recoveryTier: 0 | 1 | 2,
-    estimatedMaxMp?: number,
   ): EnemyCraftedProduct | null {
     const elements = this.resolveTierElements(intent, archetype, recoveryTier);
     for (const element of elements) {
@@ -391,7 +378,6 @@ export class EnemyCraftExecutor {
           archetype,
           element,
           recoveryTier,
-          estimatedMaxMp,
         );
         const session = this.creationOrchestrator.craftFromIntent(normalized, {
           autoMaterialize: false,
@@ -447,7 +433,6 @@ export class EnemyCraftExecutor {
     archetype: EnemyArchetypeDefinition,
     element: ElementType,
     recoveryTier: 0 | 1 | 2,
-    estimatedMaxMp?: number,
   ): IntentCraftInput {
     const loosened = recoveryTier >= 2;
     const semanticElementTag = elementSemanticTag(element);
@@ -507,7 +492,6 @@ export class EnemyCraftExecutor {
               ownerKind: 'enemy',
               difficulty: input.difficulty,
               role: intent.role as 'offense' | 'control' | 'guard' | 'sustain',
-              ...(estimatedMaxMp ? { estimatedMaxMp } : {}),
               paceProfile:
                 intent.role === 'offense' || intent.role === 'control'
                   ? 'aggressive'
@@ -579,7 +563,6 @@ export class EnemyCraftExecutor {
     input: NormalizedEnemyGenerationInput,
     intent: EnemyPlannedProductIntent,
     archetype: EnemyArchetypeDefinition,
-    estimatedMaxMp?: number,
   ): EnemyCraftedProduct {
     const element = this.resolveArchetypeElement(
       archetype,
@@ -610,7 +593,6 @@ export class EnemyCraftExecutor {
               ownerKind: 'enemy',
               difficulty: input.difficulty,
               role: intent.role as 'offense' | 'control' | 'guard' | 'sustain',
-              ...(estimatedMaxMp ? { estimatedMaxMp } : {}),
               paceProfile:
                 intent.role === 'offense' || intent.role === 'control'
                   ? 'aggressive'

@@ -280,13 +280,6 @@ function reProjectSkill(
     effects: directEffects,
     ...(extraListeners.length > 0 ? { listeners: extraListeners } : {}),
     affixes,
-    energySummary: {
-      effectiveTotal: basisEnergy,
-      reserved: 0,
-      startingAffixEnergy: basisEnergy,
-      spentAffixEnergy: affixes.reduce((sum, affix) => sum + affix.energyCost, 0),
-      remainingAffixEnergy: 0,
-    },
     projectionQualityProfile: {
       quality: projectionQuality,
       qualityOrder,
@@ -384,6 +377,10 @@ export function rehydrateProductModel(
 
     case 'skill': {
       const skillModel = stored as SkillProductModel;
+      const skillModelWithoutLegacyAnchor = {
+        ...skillModel,
+      } as SkillProductModel & { projectionAnchor?: unknown };
+      delete skillModelWithoutLegacyAnchor.projectionAnchor;
       const battleProjection = reProjectSkill(
         hydratedAffixes,
         stored.projectionQuality,
@@ -394,7 +391,7 @@ export function rehydrateProductModel(
       );
 
       return {
-        ...stored,
+        ...skillModelWithoutLegacyAnchor,
         affixes: hydratedAffixes,
         battleProjection,
       };
