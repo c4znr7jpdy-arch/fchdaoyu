@@ -106,6 +106,14 @@ export interface HitCheckEvent extends CombatEvent {
   isResisted: boolean;
 }
 
+export interface ControlResistEvent extends CombatEvent {
+  type: 'ControlResistEvent';
+  caster: Unit;
+  target: Unit;
+  ability?: Ability;
+  buff: Buff;
+}
+
 // ===== 伤害请求事件 =====
 // 语义：请求造成伤害，进入统一伤害计算管道
 // 用途：增伤效果（如「毒术精通」）订阅此事件修正 finalDamage

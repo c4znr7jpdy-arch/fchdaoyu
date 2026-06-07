@@ -102,28 +102,7 @@ export class DamageSystem {
         hitCheckEvent.isHit = false;
       }
 
-      // ===== ② 神识抵抗判定（仅控制/减益类技能）=====
-      if (
-        ability.tags.hasTag(GameplayTags.ABILITY.FUNCTION.CONTROL) &&
-        hitCheckEvent.isHit
-      ) {
-        // 目标 CONTROL_RESISTANCE 减去施法者 CONTROL_HIT，转为百分比
-        const controlResistance = target.attributes.getValue(
-          AttributeType.CONTROL_RESISTANCE,
-        );
-        const controlHit = caster.attributes.getValue(
-          AttributeType.CONTROL_HIT,
-        );
-        const resistChance = Math.max(
-          0,
-          (controlResistance - controlHit) * 100,
-        );
-
-        if (Math.random() * 100 < resistChance) {
-          hitCheckEvent.isResisted = true;
-          hitCheckEvent.isHit = false;
-        }
-      }
+      // 神识抵抗在 ApplyBuffEffect 内按控制效果逐个结算，不能阻断伤害链。
     }
 
     // 发布命中判定事件

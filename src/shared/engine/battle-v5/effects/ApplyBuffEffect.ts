@@ -3,6 +3,8 @@ import { EffectRegistry } from '../factories/EffectRegistry';
 import { ApplyBuffParams } from '../core/configs';
 import { BuffFactory } from '../factories/BuffFactory';
 import { AttributeType, BuffType } from '../core/types';
+import { EventBus } from '../core/EventBus';
+import { ControlResistEvent } from '../core/events';
 
 /**
  * 施加 Buff 原子效果
@@ -23,8 +25,27 @@ export class ApplyBuffEffect extends GameplayEffect {
     // 创建 Buff 实例并添加到目标
     const buff = BuffFactory.create(this.params.buffConfig);
 
-    // 控制类 Buff：根据目标的矫健属性缩短持续时间
-    // 矫健 = 0 表示无礦1，矫健 = 1.0 则持续时间半分。无限持续 (permanent) 不受影响。
+    if (buff.type === BuffType.CONTROL && caster.id !== target.id) {
+      const controlResistance = target.attributes.getValue(
+        AttributeType.CONTROL_RESISTANCE,
+      );
+      const controlHit = caster.attributes.getValue(AttributeType.CONTROL_HIT);
+      const resistChance = Math.max(0, (controlResistance - controlHit) * 100);
+
+      if (Math.random() * 100 < resistChance) {
+        EventBus.instance.publish<ControlResistEvent>({
+          type: 'ControlResistEvent',
+          timestamp: Date.now(),
+          caster,
+          target,
+          ability: context.ability,
+          buff,
+        });
+        return;
+      }
+    }
+
+    // 控制类 Buff：根据目标神识抗性缩短持续时间。无限持续 (permanent) 不受影响。
     if (buff.type === BuffType.CONTROL && !buff.isPermanent()) {
       const controlResistance = target.attributes.getValue(AttributeType.CONTROL_RESISTANCE);
       if (controlResistance > 0) {

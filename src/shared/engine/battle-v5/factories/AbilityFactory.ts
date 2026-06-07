@@ -3,7 +3,12 @@ import { DataDrivenActiveSkill } from '../abilities/DataDrivenActiveSkill';
 import { DataDrivenPassiveAbility } from '../abilities/DataDrivenPassiveAbility';
 import { TargetPolicy } from '../abilities/TargetPolicy';
 import { GameplayTags } from '@shared/engine/shared/tag-domain';
-import { AbilityConfig, EffectConfig, ListenerConfig } from '../core/configs';
+import {
+  AbilityConfig,
+  AbilitySelectionProfile,
+  EffectConfig,
+  ListenerConfig,
+} from '../core/configs';
 import { buildListenerRuntimeConfig } from '../core/listenerExecution';
 import { AbilityId, AbilityType, AttributeType, BuffType } from '../core/types';
 import { GameplayEffect } from '../effects/Effect';
@@ -47,6 +52,8 @@ export class AbilityFactory {
         targetPolicy: config.targetPolicy
           ? new TargetPolicy(config.targetPolicy)
           : TargetPolicy.default(),
+        selectionProfile:
+          config.selectionProfile ?? this.inferSelectionProfile(config),
       });
 
           skill.tags.addTags(abilityTags);
@@ -249,5 +256,58 @@ export class AbilityFactory {
       hasControl,
       damageChannel: damageChannels.values().next().value,
     };
+  }
+
+  private static inferSelectionProfile(
+    config: AbilityConfig,
+  ): AbilitySelectionProfile | undefined {
+    const intents = new Set<NonNullable<AbilitySelectionProfile['intents']>[number]>();
+    const effects = [
+      ...(config.effects ?? []),
+      ...(config.listeners?.flatMap((listener) => listener.effects) ?? []),
+    ];
+
+    for (const effect of effects) {
+      switch (effect.type) {
+        case 'damage':
+        case 'tag_trigger':
+          intents.add('damage');
+          break;
+        case 'heal':
+          intents.add(effect.params.target === 'mp' ? 'restore_mp' : 'heal_hp');
+          break;
+        case 'shield':
+        case 'magic_shield':
+        case 'death_prevent':
+          intents.add('defensive');
+          break;
+        case 'apply_buff':
+          intents.add(
+            effect.params.buffConfig.type === BuffType.CONTROL
+              ? 'control'
+              : 'buff',
+          );
+          break;
+        default:
+          break;
+      }
+    }
+
+    if (intents.size === 0) {
+      if (config.tags?.includes(GameplayTags.ABILITY.FUNCTION.HEAL)) {
+        intents.add('heal_hp');
+      }
+      if (config.tags?.includes(GameplayTags.ABILITY.FUNCTION.CONTROL)) {
+        intents.add('control');
+      }
+      if (config.tags?.includes(GameplayTags.ABILITY.FUNCTION.DAMAGE)) {
+        intents.add('damage');
+      }
+      if (config.tags?.includes(GameplayTags.ABILITY.FUNCTION.BUFF)) {
+        intents.add('buff');
+      }
+    }
+
+    return intents.size > 0 ? { intents: Array.from(intents) } : undefined;
   }
 }

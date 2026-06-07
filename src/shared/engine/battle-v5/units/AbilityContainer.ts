@@ -1,4 +1,8 @@
 import { Ability, AbilityContext } from '../abilities/Ability';
+import {
+  AbilitySelectionStrategy,
+  DefaultAbilitySelectionStrategy,
+} from '../abilities/AbilitySelectionStrategy';
 import { ActiveSkill } from '../abilities/ActiveSkill';
 import { BasicAttack } from '../abilities/BasicAttack';
 import { EventBus } from '../core/EventBus';
@@ -29,6 +33,8 @@ export class AbilityContainer {
   private _owner: Unit;
   private _defaultTarget: Unit | null = null;
   private _defaultAttack: Ability | null = null;
+  private _selectionStrategy: AbilitySelectionStrategy =
+    new DefaultAbilitySelectionStrategy();
   private _handlers: Map<string, (event: unknown) => void> = new Map();
 
   constructor(owner: Unit) {
@@ -81,7 +87,12 @@ export class AbilityContainer {
     // 禁技时跳过所有主动技能，直接尝试普攻
     // 未禁技时优先匹配主动技能
     if (!isSkillBlocked) {
-      const abilitiesToCast: Array<{ ability: ActiveSkill; target: Unit }> = [];
+      const candidates: Array<{
+        ability: ActiveSkill;
+        target: Unit;
+        order: number;
+      }> = [];
+      let order = 0;
 
       for (const ability of this._abilities.values()) {
         if (ability.type !== AbilityType.ACTIVE_SKILL) {
@@ -109,17 +120,21 @@ export class AbilityContainer {
         };
 
         if (activeSkill.canTrigger(context)) {
-          abilitiesToCast.push({
+          candidates.push({
             ability: activeSkill,
             target: resolvedTarget,
+            order: order++,
           });
         }
       }
 
-      if (abilitiesToCast.length > 0) {
-        const bestChoice = abilitiesToCast.sort(
-          (a, b) => b.ability.priority - a.ability.priority,
-        )[0];
+      const bestChoice = this._selectionStrategy.select({
+        caster: this._owner,
+        opponent,
+        candidates,
+      });
+
+      if (bestChoice) {
         this._prepareCast(bestChoice.ability, bestChoice.target);
         return;
       }
@@ -186,6 +201,10 @@ export class AbilityContainer {
 
   clearDefaultTarget(): void {
     this._defaultTarget = null;
+  }
+
+  setSelectionStrategy(strategy: AbilitySelectionStrategy): void {
+    this._selectionStrategy = strategy;
   }
 
   private _getDefaultTarget(): Unit | null {
@@ -273,6 +292,7 @@ export class AbilityContainer {
 
   clone(owner: Unit): AbilityContainer {
     const clonedContainer = new AbilityContainer(owner);
+    clonedContainer._selectionStrategy = this._selectionStrategy;
 
     for (const ability of this._abilities.values()) {
       const clonedAbility = ability.clone();

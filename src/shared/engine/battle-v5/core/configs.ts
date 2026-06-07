@@ -9,6 +9,18 @@ import {
 
 import { ScalableValue } from './ValueCalculator';
 
+export type AbilitySelectionIntent =
+  | 'damage'
+  | 'heal_hp'
+  | 'restore_mp'
+  | 'control'
+  | 'buff'
+  | 'defensive';
+
+export interface AbilitySelectionProfile {
+  intents?: AbilitySelectionIntent[];
+}
+
 /**
  * 效果执行条件配置
  */
@@ -324,6 +336,8 @@ export interface AbilityConfig {
     scope: 'single' | 'aoe' | 'random';
     maxTargets?: number;
   };
+
+  selectionProfile?: AbilitySelectionProfile;
 
   /**
    * 主动效果链 (主动技能执行时触发)

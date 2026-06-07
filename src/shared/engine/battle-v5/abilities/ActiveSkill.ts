@@ -1,4 +1,5 @@
 import { AbilityId, AbilityType } from '../core/types';
+import type { AbilitySelectionProfile } from '../core/configs';
 import { Unit } from '../units/Unit';
 import { Ability, AbilityContext } from './Ability';
 import { TargetPolicy } from './TargetPolicy';
@@ -22,6 +23,7 @@ export interface ActiveSkillConfig {
   targetPolicy?: TargetPolicy;
   baseDamage?: number;
   damageCoefficient?: number;
+  selectionProfile?: AbilitySelectionProfile;
 }
 
 /**
@@ -42,6 +44,7 @@ export abstract class ActiveSkill extends Ability {
 
   // 目标策略
   readonly targetPolicy: TargetPolicy;
+  readonly selectionProfile?: AbilitySelectionProfile;
 
   constructor(id: AbilityId, name: string, config: ActiveSkillConfig = {}) {
     super(id, name, AbilityType.ACTIVE_SKILL);
@@ -64,6 +67,7 @@ export abstract class ActiveSkill extends Ability {
 
     // 初始化目标策略
     this.targetPolicy = config.targetPolicy ?? TargetPolicy.default();
+    this.selectionProfile = config.selectionProfile;
   }
 
   // ===== 冷却管理 =====

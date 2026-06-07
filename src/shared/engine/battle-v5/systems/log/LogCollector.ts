@@ -7,6 +7,7 @@ import {
   BuffAppliedEvent,
   BuffImmuneEvent,
   BuffRemovedEvent,
+  ControlResistEvent,
   ControlledSkipEvent,
   CooldownModifyEvent,
   DamageImmuneEvent,
@@ -295,6 +296,15 @@ export class LogCollector {
           timestamp: Date.now(),
         });
       }
+    });
+
+    this._addHandler(eventBus, 'ControlResistEvent', (e: ControlResistEvent) => {
+      this._aggregator.addEntry({
+        id: this._generateId(),
+        type: 'resist',
+        data: { targetName: e.target.name },
+        timestamp: Date.now(),
+      });
     });
 
     this._addHandler(

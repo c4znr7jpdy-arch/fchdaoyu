@@ -12,6 +12,7 @@ import {
 } from '../../core/types';
 import { EventBus } from '../../core/EventBus';
 import {
+  ControlResistEvent,
   DamageRequestEvent,
   HitCheckEvent,
   SkillCastEvent,
@@ -21,6 +22,8 @@ import { DamageEffect } from '../../effects/DamageEffect';
 import { AbilityFactory } from '../../factories/AbilityFactory';
 import { ActionExecutionSystem } from '../../systems/ActionExecutionSystem';
 import { DamageSystem } from '../../systems/DamageSystem';
+import { LogAggregator } from '../../systems/log/LogAggregator';
+import { LogCollector } from '../../systems/log/LogCollector';
 import { Unit } from '../../units/Unit';
 import { vi } from 'vitest';
 
@@ -182,6 +185,191 @@ describe('DamageSystem hit check', () => {
     expect(hitCheckEvent.isDodged).toBe(false);
     expect(hitCheckEvent.isHit).toBe(true);
     expect(randomSpy).not.toHaveBeenCalled();
+  });
+
+  it('control resistance should not block damage effects on mixed skills', () => {
+    const actionExecutionSystem = new ActionExecutionSystem();
+    const damageSystem = new DamageSystem();
+    const caster = new Unit('caster', '施法者', {
+      [AttributeType.WILLPOWER]: 0,
+      [AttributeType.WISDOM]: 0,
+    });
+    const target = new Unit('target', '目标', {
+      [AttributeType.WILLPOWER]: 3000,
+      [AttributeType.SPEED]: 0,
+    });
+    const initialHp = target.getCurrentHp();
+    const resistedEvents: ControlResistEvent[] = [];
+
+    const randomSpy = vi
+      .spyOn(Math, 'random')
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(0.5);
+
+    EventBus.instance.subscribe<ControlResistEvent>(
+      'ControlResistEvent',
+      (event) => resistedEvents.push(event),
+    );
+
+    const stunBuff = {
+      id: 'mixed_stun',
+      name: '定身',
+      type: BuffType.CONTROL,
+      duration: 2,
+      stackRule: StackRule.OVERRIDE,
+      tags: [GameplayTags.BUFF.TYPE.CONTROL],
+      statusTags: [GameplayTags.STATUS.CONTROL.NO_ACTION],
+    };
+    const skill = AbilityFactory.create({
+      slug: 'mixed_damage_control',
+      name: '雷锁',
+      type: AbilityType.ACTIVE_SKILL,
+      tags: [
+        GameplayTags.ABILITY.FUNCTION.DAMAGE,
+        GameplayTags.ABILITY.FUNCTION.CONTROL,
+        GameplayTags.ABILITY.CHANNEL.MAGIC,
+      ],
+      targetPolicy: { team: 'enemy', scope: 'single' },
+      effects: [
+        {
+          type: 'damage',
+          params: { value: { base: 100, attribute: AttributeType.MAGIC_ATK } },
+        },
+        { type: 'apply_buff', params: { buffConfig: stunBuff } },
+      ],
+    });
+
+    EventBus.instance.publish<SkillPreCastEvent>({
+      type: 'SkillPreCastEvent',
+      timestamp: Date.now(),
+      caster,
+      target,
+      ability: skill,
+      isInterrupted: false,
+    });
+
+    expect(target.getCurrentHp()).toBeLessThan(initialHp);
+    expect(target.buffs.getAllBuffIds()).not.toContain('mixed_stun');
+    expect(resistedEvents).toHaveLength(1);
+    expect(randomSpy).toHaveBeenCalled();
+
+    damageSystem.destroy();
+    actionExecutionSystem.destroy();
+  });
+
+  it('pure control resistance should consume resources and cooldown without applying control', () => {
+    const actionExecutionSystem = new ActionExecutionSystem();
+    const caster = new Unit('caster', '施法者', {
+      [AttributeType.WILLPOWER]: 0,
+      [AttributeType.WISDOM]: 0,
+    });
+    const target = new Unit('target', '目标', {
+      [AttributeType.WILLPOWER]: 3000,
+      [AttributeType.SPEED]: 0,
+    });
+    const initialMp = caster.getCurrentMp();
+
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+
+    const skill = AbilityFactory.create({
+      slug: 'pure_control',
+      name: '束魂',
+      type: AbilityType.ACTIVE_SKILL,
+      mpCost: 30,
+      cooldown: 2,
+      tags: [GameplayTags.ABILITY.FUNCTION.CONTROL],
+      targetPolicy: { team: 'enemy', scope: 'single' },
+      effects: [
+        {
+          type: 'apply_buff',
+          params: {
+            buffConfig: {
+              id: 'pure_control_buff',
+              name: '束魂',
+              type: BuffType.CONTROL,
+              duration: 2,
+              stackRule: StackRule.OVERRIDE,
+              tags: [GameplayTags.BUFF.TYPE.CONTROL],
+              statusTags: [GameplayTags.STATUS.CONTROL.NO_ACTION],
+            },
+          },
+        },
+      ],
+    });
+
+    EventBus.instance.publish<SkillPreCastEvent>({
+      type: 'SkillPreCastEvent',
+      timestamp: Date.now(),
+      caster,
+      target,
+      ability: skill,
+      isInterrupted: false,
+    });
+
+    expect(caster.getCurrentMp()).toBe(initialMp - 30);
+    expect((skill as ActiveSkill).currentCooldown).toBe(2);
+    expect(target.buffs.getAllBuffIds()).not.toContain('pure_control_buff');
+
+    actionExecutionSystem.destroy();
+  });
+
+  it('control resistance should be collected as a resist log entry', () => {
+    const actionExecutionSystem = new ActionExecutionSystem();
+    const aggregator = new LogAggregator();
+    const collector = new LogCollector(aggregator);
+    collector.subscribe(EventBus.instance);
+
+    const caster = new Unit('caster', '施法者', {
+      [AttributeType.WILLPOWER]: 0,
+      [AttributeType.WISDOM]: 0,
+    });
+    const target = new Unit('target', '目标', {
+      [AttributeType.WILLPOWER]: 3000,
+      [AttributeType.SPEED]: 0,
+    });
+
+    vi.spyOn(Math, 'random').mockReturnValue(0);
+
+    const skill = AbilityFactory.create({
+      slug: 'logged_control',
+      name: '摄魂',
+      type: AbilityType.ACTIVE_SKILL,
+      tags: [GameplayTags.ABILITY.FUNCTION.CONTROL],
+      targetPolicy: { team: 'enemy', scope: 'single' },
+      effects: [
+        {
+          type: 'apply_buff',
+          params: {
+            buffConfig: {
+              id: 'logged_control_buff',
+              name: '摄魂',
+              type: BuffType.CONTROL,
+              duration: 2,
+              stackRule: StackRule.OVERRIDE,
+              tags: [GameplayTags.BUFF.TYPE.CONTROL],
+              statusTags: [GameplayTags.STATUS.CONTROL.NO_ACTION],
+            },
+          },
+        },
+      ],
+    });
+
+    EventBus.instance.publish<SkillPreCastEvent>({
+      type: 'SkillPreCastEvent',
+      timestamp: Date.now(),
+      caster,
+      target,
+      ability: skill,
+      isInterrupted: false,
+    });
+
+    const entries = aggregator.getSpans().flatMap((span) => span.entries);
+    expect(entries.some((entry) => entry.type === 'resist')).toBe(true);
+
+    collector.unsubscribe(EventBus.instance);
+    actionExecutionSystem.destroy();
   });
 });
 
