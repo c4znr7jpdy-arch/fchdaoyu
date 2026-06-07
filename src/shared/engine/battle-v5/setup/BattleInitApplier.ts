@@ -1,4 +1,5 @@
 import type { Cultivator } from '@shared/types/cultivator';
+import { DefaultAbilitySelectionStrategy } from '../abilities/AbilitySelectionStrategy';
 import { createCombatUnitFromCultivator } from '../adapters/CultivatorCombatAdapter';
 import type { AttributeModifierConfig } from '../core/configs';
 import { AttributeType } from '../core/types';
@@ -157,6 +158,11 @@ function applyUnitInit(
 
   applyBaseAttributeOverrides(unit, spec);
   mountModifierConfigs(unit, spec.modifiers, `direct:${unit.id}`);
+  if (spec.selectionStrategySettings) {
+    unit.abilities.setSelectionStrategy(
+      new DefaultAbilitySelectionStrategy(spec.selectionStrategySettings),
+    );
+  }
   const deferredResourceState = applyStatusRefs(unit, counterpart, spec.statusRefs);
   applyStartingBuffs(unit, counterpart, spec);
   unit.updateDerivedStats();

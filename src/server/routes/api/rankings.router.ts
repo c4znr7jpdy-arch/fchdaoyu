@@ -32,6 +32,7 @@ import {
 import { simulateBattleV5 } from '@server/lib/services/simulateBattleV5';
 import { TaskService } from '@server/lib/services/TaskService';
 import type { BattleInitConfigV5 } from '@shared/types/battle';
+import { withPlayerAbilityStrategySettings } from '@shared/lib/battle/abilityStrategyInit';
 import {
   EquipmentSlot,
   QUALITY_VALUES,
@@ -462,7 +463,10 @@ challengeRouter.post('/challenge-battle/v5', requireActiveCultivator(), async (c
     const battleResult = simulateBattleV5(
       challengerRecord.cultivator,
       targetRecord.cultivator,
-      createFullResourcePvpBattleInit(),
+      withPlayerAbilityStrategySettings(
+        createFullResourcePvpBattleInit(),
+        challengerRecord.cultivator,
+      ),
     );
 
     const isWin = battleResult.winner.id === challenger.id;

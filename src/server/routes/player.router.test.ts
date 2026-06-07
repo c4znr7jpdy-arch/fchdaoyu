@@ -2,6 +2,16 @@ import { Hono } from 'hono';
 import type { Cultivator } from '@shared/types/cultivator';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
+const { activeCultivatorRecord, executorMock } = vi.hoisted(() => ({
+  activeCultivatorRecord: {
+    id: 'cultivator-1',
+    userId: 'user-1',
+    status: 'active',
+    gameSettings: {},
+  },
+  executorMock: {},
+}));
+
 vi.mock('@server/lib/drizzle/db', () => ({
   getExecutor: vi.fn(),
 }));
@@ -11,23 +21,44 @@ vi.mock('@server/lib/hono/middleware', () => ({
     context.set('user', { id: 'user-1' });
     await next();
   },
+  requireActiveCultivator: () => async (
+    context: any,
+    next: () => Promise<void>,
+  ) => {
+    context.set('user', { id: 'user-1' });
+    context.set('cultivator', activeCultivatorRecord);
+    context.set('executor', executorMock);
+    await next();
+  },
+  validateJson: (schema: any) => async (
+    context: any,
+    next: () => Promise<void>,
+  ) => {
+    context.set('validatedJson', schema.parse(await context.req.json()));
+    await next();
+  },
+  getValidatedJson: (context: any) => context.get('validatedJson'),
 }));
 
 vi.mock('@server/lib/services/cultivatorService', () => ({
   getCultivatorsByUserId: vi.fn(),
   hasDeadCultivator: vi.fn(),
+  updateCultivatorGameSettings: vi.fn(),
 }));
 
 import { getExecutor } from '@server/lib/drizzle/db';
 import {
   getCultivatorsByUserId,
   hasDeadCultivator,
+  updateCultivatorGameSettings,
 } from '@server/lib/services/cultivatorService';
 import playerRouter from './player.router';
 
 const getExecutorMock = getExecutor as unknown as Mock;
 const getCultivatorsByUserIdMock = getCultivatorsByUserId as unknown as Mock;
 const hasDeadCultivatorMock = hasDeadCultivator as unknown as Mock;
+const updateCultivatorGameSettingsMock =
+  updateCultivatorGameSettings as unknown as Mock;
 
 function createApp() {
   return new Hono().route('/player', playerRouter);
@@ -101,6 +132,7 @@ function createCultivator(overrides: Partial<Cultivator> = {}): Cultivator {
 describe('player router', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    activeCultivatorRecord.gameSettings = {};
 
     getExecutorMock.mockReturnValue({
       select: vi.fn(() => ({
@@ -168,5 +200,57 @@ describe('player router', () => {
     });
     expect(getCultivatorsByUserIdMock).toHaveBeenCalledWith('user-1');
     expect(hasDeadCultivatorMock).toHaveBeenCalledWith('user-1');
+  });
+
+  it('returns current cultivator game settings', async () => {
+    activeCultivatorRecord.gameSettings = {
+      battleAbilityStrategy: {
+        version: 1,
+        mode: 'aggressive',
+        healHpSkipThreshold: 0.7,
+        emergencyHealHpThreshold: 0.25,
+        restoreMpSkipThreshold: 0.5,
+        avoidRepeatControl: false,
+      },
+    };
+
+    const response = await createApp().request('/player/settings');
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: activeCultivatorRecord.gameSettings,
+    });
+  });
+
+  it('updates current cultivator game settings', async () => {
+    const nextSettings = {
+      battleAbilityStrategy: {
+        version: 1,
+        mode: 'conservative',
+        healHpSkipThreshold: 0.9,
+        emergencyHealHpThreshold: 0.45,
+        restoreMpSkipThreshold: 0.6,
+        avoidRepeatControl: true,
+      },
+    };
+    updateCultivatorGameSettingsMock.mockResolvedValueOnce(nextSettings);
+
+    const response = await createApp().request('/player/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gameSettings: nextSettings }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      data: nextSettings,
+    });
+    expect(updateCultivatorGameSettingsMock).toHaveBeenCalledWith(
+      'cultivator-1',
+      nextSettings,
+      executorMock,
+    );
   });
 });

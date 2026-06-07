@@ -51,6 +51,10 @@ import type {
   PreHeavenFate,
   RetreatRecord,
 } from '@shared/types/cultivator';
+import {
+  normalizeCultivatorGameSettings,
+  type CultivatorGameSettings,
+} from '@shared/types/gameSettings';
 import { and, desc, eq, inArray, notInArray, sql, type SQL } from 'drizzle-orm';
 import {
   getExecutor,
@@ -281,6 +285,9 @@ async function assembleCultivatorFromRelations(
     spirit_stones: cultivatorRecord.spirit_stones,
     last_yield_at: cultivatorRecord.last_yield_at || new Date(),
     balance_notes: cultivatorRecord.balance_notes || undefined,
+    gameSettings: normalizeCultivatorGameSettings(
+      cultivatorRecord.gameSettings,
+    ),
     cultivation_progress: getOrInitCultivationProgress(
       cultivatorRecord.cultivation_progress as CultivationProgress,
       cultivatorRecord.realm as Cultivator['realm'],
@@ -325,6 +332,9 @@ async function assembleCultivatorFromRelations(
         spirit_stones: cultivatorRecord.spirit_stones,
         last_yield_at: cultivatorRecord.last_yield_at || new Date(),
         balance_notes: cultivatorRecord.balance_notes || undefined,
+        gameSettings: normalizeCultivatorGameSettings(
+          cultivatorRecord.gameSettings,
+        ),
         cultivation_progress: getOrInitCultivationProgress(
           cultivatorRecord.cultivation_progress as CultivationProgress,
           cultivatorRecord.realm as Cultivator['realm'],
@@ -435,6 +445,9 @@ export function createMinimalCultivator(
     spirit_stones: cultivatorRecord.spirit_stones,
     last_yield_at: cultivatorRecord.last_yield_at || new Date(),
     balance_notes: cultivatorRecord.balance_notes || undefined,
+    gameSettings: normalizeCultivatorGameSettings(
+      cultivatorRecord.gameSettings,
+    ),
     cultivation_progress: getOrInitCultivationProgress(
       cultivatorRecord.cultivation_progress as CultivationProgress,
       cultivatorRecord.realm as Cultivator['realm'],
@@ -485,6 +498,9 @@ export function createMinimalCultivator(
         spirit_stones: cultivatorRecord.spirit_stones,
         last_yield_at: cultivatorRecord.last_yield_at || new Date(),
         balance_notes: cultivatorRecord.balance_notes || undefined,
+        gameSettings: normalizeCultivatorGameSettings(
+          cultivatorRecord.gameSettings,
+        ),
         cultivation_progress: getOrInitCultivationProgress(
           cultivatorRecord.cultivation_progress as CultivationProgress,
           cultivatorRecord.realm as Cultivator['realm'],
@@ -885,6 +901,7 @@ export async function updateCultivator(
       | 'status'
       | 'cultivation_progress'
       | 'condition'
+      | 'gameSettings'
     >
   >,
   executor?: DbExecutor | DbTransaction,
@@ -924,6 +941,11 @@ export async function updateCultivator(
   if (updates.condition !== undefined) {
     updateData.condition = (updates.condition as CultivatorCondition) ?? {};
   }
+  if (updates.gameSettings !== undefined) {
+    updateData.gameSettings = normalizeCultivatorGameSettings(
+      updates.gameSettings,
+    );
+  }
 
   await q
     .update(schema.cultivators)
@@ -931,6 +953,22 @@ export async function updateCultivator(
     .where(eq(schema.cultivators.id, cultivatorId));
   const res = await getCultivatorByIdUnsafe(cultivatorId);
   return res?.cultivator || null;
+}
+
+export async function updateCultivatorGameSettings(
+  cultivatorId: string,
+  gameSettings: CultivatorGameSettings,
+  executor?: DbExecutor | DbTransaction,
+): Promise<CultivatorGameSettings> {
+  const normalized = normalizeCultivatorGameSettings(gameSettings);
+  const q = executor ?? getExecutor();
+
+  await q
+    .update(schema.cultivators)
+    .set({ gameSettings: normalized })
+    .where(eq(schema.cultivators.id, cultivatorId));
+
+  return normalized;
 }
 
 async function assertCultivatorOwnership(

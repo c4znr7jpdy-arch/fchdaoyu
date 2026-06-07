@@ -1,4 +1,11 @@
 import { GameplayTags } from '@shared/engine/shared/tag-domain';
+import {
+  DEFAULT_BATTLE_ABILITY_STRATEGY_SETTINGS,
+  normalizeBattleAbilityStrategySettings,
+  type BattleAbilityStrategyMode,
+  type BattleAbilityStrategySettings,
+  type BattleAbilityStrategyWeights,
+} from '@shared/types/gameSettings';
 import type { AbilitySelectionIntent } from '../core/configs';
 import { BuffType } from '../core/types';
 import { Unit } from '../units/Unit';
@@ -26,7 +33,65 @@ export interface AbilitySelectionStrategy {
   select(context: AbilitySelectionContext): AbilitySelectionResult | null;
 }
 
+const MODE_WEIGHTS: Record<
+  BattleAbilityStrategyMode,
+  BattleAbilityStrategyWeights
+> = {
+  balanced: {
+    damageBase: 25,
+    damageExecuteScale: 45,
+    healScale: 90,
+    emergencyHealBonus: 140,
+    restoreMpScale: 70,
+    controlBonus: 35,
+    controlLowHpPenalty: -25,
+    buffBonus: 10,
+    defensiveBase: 5,
+    defensiveLowHpBonus: 35,
+    shieldRepeatPenalty: -35,
+  },
+  aggressive: {
+    damageBase: 45,
+    damageExecuteScale: 70,
+    healScale: 55,
+    emergencyHealBonus: 95,
+    restoreMpScale: 45,
+    controlBonus: 25,
+    controlLowHpPenalty: -35,
+    buffBonus: 5,
+    defensiveBase: 0,
+    defensiveLowHpBonus: 15,
+    shieldRepeatPenalty: -45,
+  },
+  conservative: {
+    damageBase: 15,
+    damageExecuteScale: 30,
+    healScale: 120,
+    emergencyHealBonus: 180,
+    restoreMpScale: 90,
+    controlBonus: 40,
+    controlLowHpPenalty: -15,
+    buffBonus: 15,
+    defensiveBase: 15,
+    defensiveLowHpBonus: 60,
+    shieldRepeatPenalty: -20,
+  },
+};
+
 export class DefaultAbilitySelectionStrategy implements AbilitySelectionStrategy {
+  private readonly settings: BattleAbilityStrategySettings;
+  private readonly weights: BattleAbilityStrategyWeights;
+
+  constructor(settings?: BattleAbilityStrategySettings) {
+    this.settings = normalizeBattleAbilityStrategySettings(
+      settings ?? DEFAULT_BATTLE_ABILITY_STRATEGY_SETTINGS,
+    );
+    this.weights = {
+      ...MODE_WEIGHTS[this.settings.mode],
+      ...this.settings.weights,
+    };
+  }
+
   select(context: AbilitySelectionContext): AbilitySelectionResult | null {
     const scored = context.candidates
       .map((candidate) => this.scoreCandidate(candidate, context))
@@ -47,8 +112,12 @@ export class DefaultAbilitySelectionStrategy implements AbilitySelectionStrategy
       return a.order - b.order || a.ability.id.localeCompare(b.ability.id);
     });
 
-    const { order: _order, ...best } = scored[0];
-    return best;
+    const best = scored[0];
+    return {
+      ability: best.ability,
+      target: best.target,
+      score: best.score,
+    };
   }
 
   private scoreCandidate(
@@ -62,37 +131,50 @@ export class DefaultAbilitySelectionStrategy implements AbilitySelectionStrategy
 
     if (intents.includes('heal_hp')) {
       const hpPercent = caster.getHpPercent();
-      if (hpPercent >= 0.85) return null;
-      score += hpPercent <= 0.35 ? 140 : 90 * (1 - hpPercent);
+      if (hpPercent >= this.settings.healHpSkipThreshold) return null;
+      score +=
+        hpPercent <= this.settings.emergencyHealHpThreshold
+          ? this.weights.emergencyHealBonus
+          : this.weights.healScale * (1 - hpPercent);
     }
 
     if (intents.includes('restore_mp')) {
       const mpPercent = caster.getMpPercent();
-      if (mpPercent >= 0.75) return null;
-      score += 70 * (1 - mpPercent);
+      if (mpPercent >= this.settings.restoreMpSkipThreshold) return null;
+      score += this.weights.restoreMpScale * (1 - mpPercent);
     }
 
     if (intents.includes('control')) {
       if (
-        this.targetHasControl(target) ||
+        (this.settings.avoidRepeatControl && this.targetHasControl(target)) ||
         target.tags.hasTag(GameplayTags.STATUS.IMMUNE.CONTROL)
       ) {
         return null;
       }
-      score += target.getHpPercent() <= 0.2 ? -25 : 35;
+      score +=
+        target.getHpPercent() <= 0.2
+          ? this.weights.controlLowHpPenalty
+          : this.weights.controlBonus;
     }
 
     if (intents.includes('damage')) {
-      score += 25 + (1 - target.getHpPercent()) * 45;
+      score +=
+        this.weights.damageBase +
+        (1 - target.getHpPercent()) * this.weights.damageExecuteScale;
     }
 
     if (intents.includes('buff')) {
-      score += 10;
+      score += this.weights.buffBonus;
     }
 
     if (intents.includes('defensive')) {
-      if (caster.getCurrentShield() > 0) score -= 35;
-      score += caster.getHpPercent() <= 0.5 ? 35 : 5;
+      if (caster.getCurrentShield() > 0) {
+        score += this.weights.shieldRepeatPenalty;
+      }
+      score +=
+        caster.getHpPercent() <= 0.5
+          ? this.weights.defensiveLowHpBonus
+          : this.weights.defensiveBase;
     }
 
     return {

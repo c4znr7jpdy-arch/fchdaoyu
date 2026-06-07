@@ -3,11 +3,17 @@ const {
   getExecutorMock,
   hasCultivatorOwnershipMock,
   insertMock,
+  setMock,
+  updateMock,
+  whereMock,
 } = vi.hoisted(() => ({
-  dbExecutorMock: { tag: 'db-executor' },
+  dbExecutorMock: {} as Record<string, unknown>,
   getExecutorMock: vi.fn(),
   hasCultivatorOwnershipMock: vi.fn(),
   insertMock: vi.fn(),
+  setMock: vi.fn(),
+  updateMock: vi.fn(),
+  whereMock: vi.fn(),
 }));
 
 vi.mock('@server/lib/drizzle/db', () => ({
@@ -41,16 +47,23 @@ vi.mock('@server/lib/repositories/creationProductRepository', async () => {
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { rehydrateStoredProductModel } from '@shared/engine/creation-v2/persistence/ProductPersistenceMapper';
 import { buildPresetArtifact } from '@shared/engine/cultivator/creation/presetProducts';
-import { addArtifactToInventory } from './cultivatorService';
+import {
+  addArtifactToInventory,
+  updateCultivatorGameSettings,
+} from './cultivatorService';
 
 describe('addArtifactToInventory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dbExecutorMock.update = updateMock;
     getExecutorMock.mockReturnValue(dbExecutorMock);
     hasCultivatorOwnershipMock.mockResolvedValue(true);
     insertMock.mockResolvedValue({
       id: 'product-1',
     });
+    updateMock.mockReturnValue({ set: setMock });
+    setMock.mockReturnValue({ where: whereMock });
+    whereMock.mockResolvedValue(undefined);
   });
 
   it('persists the incoming artifact productModel instead of replacing it with an empty shell', async () => {
@@ -121,5 +134,42 @@ describe('addArtifactToInventory', () => {
       addArtifactToInventory('user-1', 'cultivator-1', artifact),
     ).rejects.toThrow('法宝数据缺少有效 productModel，无法入库');
     expect(insertMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateCultivatorGameSettings', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    dbExecutorMock.update = updateMock;
+    getExecutorMock.mockReturnValue(dbExecutorMock);
+    updateMock.mockReturnValue({ set: setMock });
+    setMock.mockReturnValue({ where: whereMock });
+    whereMock.mockResolvedValue(undefined);
+  });
+
+  it('normalizes and persists cultivator game settings', async () => {
+    const result = await updateCultivatorGameSettings('cultivator-1', {
+      battleAbilityStrategy: {
+        version: 1,
+        mode: 'conservative',
+        healHpSkipThreshold: 0.4,
+        emergencyHealHpThreshold: 0.8,
+        restoreMpSkipThreshold: 0.6,
+        avoidRepeatControl: true,
+      },
+    });
+
+    expect(result.battleAbilityStrategy).toMatchObject({
+      mode: 'conservative',
+      healHpSkipThreshold: 0.4,
+      emergencyHealHpThreshold: 0.4,
+      restoreMpSkipThreshold: 0.6,
+      avoidRepeatControl: true,
+    });
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(setMock).toHaveBeenCalledWith({
+      gameSettings: result,
+    });
+    expect(whereMock).toHaveBeenCalledTimes(1);
   });
 });

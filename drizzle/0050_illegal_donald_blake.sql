@@ -1,0 +1,1 @@
+ALTER TABLE "wanjiedaoyou_cultivators" ADD COLUMN "game_settings" jsonb DEFAULT '{}'::jsonb NOT NULL;

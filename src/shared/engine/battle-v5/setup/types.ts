@@ -3,6 +3,7 @@ import {
   AttributeType,
   type ModifierType,
 } from '../core/types';
+import type { BattleAbilityStrategySettings } from '@shared/types/gameSettings';
 
 export type ResourcePointState =
   | { mode: 'absolute'; value: number }
@@ -40,6 +41,7 @@ export interface BattleUnitInitSpec {
     mp?: ResourcePointState;
     shield?: number;
   };
+  selectionStrategySettings?: BattleAbilityStrategySettings;
   statusRefs?: PersistentCombatStatusV5[];
   startingBuffs?: BattleUnitInitStartingBuff[];
 }

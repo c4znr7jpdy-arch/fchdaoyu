@@ -4,6 +4,7 @@ import type { AbilityConfig } from '@shared/engine/creation-v2/contracts/battle'
 import type { AttributeModifierConfig } from '@shared/engine/battle-v5/core/configs';
 import type { ConsumableSpec } from '@shared/types/consumable';
 import type { CultivatorCondition } from '@shared/types/condition';
+import type { CultivatorGameSettings } from '@shared/types/gameSettings';
 import type {
   ConsumableType,
   ElementType,
@@ -295,4 +296,7 @@ export interface Cultivator {
 
   // 角色当前状态（用于存储战斗/副本中产生的持久状态）
   condition?: CultivatorCondition;
+
+  // 当前角色的游戏偏好设置
+  gameSettings?: CultivatorGameSettings;
 }

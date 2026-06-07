@@ -18,6 +18,7 @@ import { mapConsumableRow } from './consumablePersistence';
 import { simulateBattleV5 } from './simulateBattleV5';
 import { toArtifactFromProduct } from './creationProductArtifactSupport';
 import { getCultivatorByIdUnsafe } from './cultivatorService';
+import { withPlayerAbilityStrategySettings } from '@shared/lib/battle/abilityStrategyInit';
 
 const CREATE_LOCK_PREFIX = 'bet_battle:create:lock:';
 const CHALLENGE_LOCK_PREFIX = 'bet_battle:challenge:lock:';
@@ -660,6 +661,10 @@ export async function challengeBetBattle(
     const battleResult = simulateBattleV5(
       challengerBundle.cultivator,
       creatorBundle.cultivator,
+      withPlayerAbilityStrategySettings(
+        undefined,
+        challengerBundle.cultivator,
+      ),
     );
     const winnerId =
       battleResult.winner.id === input.challengerId

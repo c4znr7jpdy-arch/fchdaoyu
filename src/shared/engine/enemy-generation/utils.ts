@@ -156,7 +156,7 @@ export function buildStableProductId(
   if (productType === 'artifact') {
     return `enemy:${variantKey}:artifact:${slot ?? role}:${index}`;
   }
-  return `enemy:${variantKey}:${productType}:${index}`;
+  return `enemy:${variantKey}:${productType}:${role}:${index}`;
 }
 
 export function buildStableSlugSeed(

@@ -3,6 +3,11 @@ import { InkInput } from '@app/components/ui/InkInput';
 import { InkSelect } from '@app/components/ui/InkSelect';
 import { findLlmProvider, LLM_PROVIDERS } from '@shared/config/llmProviders';
 import { useState } from 'react';
+import {
+  SettingsMessage,
+  SettingsSection,
+  settingsLabelClass,
+} from './SettingsFields';
 
 const STORAGE_KEY = 'daoyou_llm_config';
 const DEFAULT_PROVIDER = LLM_PROVIDERS[0].id;
@@ -87,7 +92,13 @@ export function ModelConfigTab() {
 
   return (
     <div className="space-y-5">
-      <InkSelect label="服务商" value={provider} onChange={handleProviderChange}>
+      <InkSelect
+        label="服务商"
+        value={provider}
+        onChange={handleProviderChange}
+        size="sm"
+        labelClassName={settingsLabelClass}
+      >
         {LLM_PROVIDERS.map((item) => (
           <option key={item.id} value={item.id}>
             {item.label}
@@ -101,16 +112,16 @@ export function ModelConfigTab() {
         placeholder="sk-..."
         value={apiKey}
         onChange={setApiKey}
+        size="sm"
+        labelClassName={settingsLabelClass}
       />
 
       <div className="flex flex-col gap-1">
-        <span className="text-ink font-semibold tracking-[0.08em]">
-          Base URL
-        </span>
-        <span className="text-ink-secondary bg-ink/5 rounded-md px-3 py-2 font-mono text-sm select-all">
+        <span className={settingsLabelClass}>Base URL</span>
+        <span className="border-ink/10 text-ink-secondary bg-ink/5 border border-dashed px-2 py-2 font-mono text-sm select-all">
           {currentProvider?.baseUrl || '—'}
         </span>
-        <span className="text-ink-secondary text-[0.82rem]">
+        <span className="text-ink-secondary text-xs leading-5">
           由所选服务商自动确定，不支持自定义输入
         </span>
       </div>
@@ -120,6 +131,8 @@ export function ModelConfigTab() {
         placeholder="如 deepseek-chat"
         value={model}
         onChange={setModel}
+        size="sm"
+        labelClassName={settingsLabelClass}
       />
 
       <InkInput
@@ -127,6 +140,8 @@ export function ModelConfigTab() {
         placeholder="如 deepseek-chat"
         value={fastModel}
         onChange={setFastModel}
+        size="sm"
+        labelClassName={settingsLabelClass}
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -149,23 +164,19 @@ export function ModelConfigTab() {
         ) : null}
 
         {message ? (
-          <span
-            className={`text-sm ${
-              message.type === 'success' ? 'text-teal' : 'text-crimson'
-            }`}
-          >
+          <SettingsMessage type={message.type}>
             {message.text}
-          </span>
+          </SettingsMessage>
         ) : null}
       </div>
 
-      <div className="border-ink/10 border-t pt-4">
+      <SettingsSection>
         <p className="text-ink-secondary text-sm leading-6">
           配置保存在浏览器 localStorage 中，仅当前设备生效，更换浏览器或清除缓存后需要重新配置。
           <br />
           API Key 仅在前端本地存储，服务端通过请求头获取并调用，不会在服务器持久化保存。
         </p>
-      </div>
+      </SettingsSection>
     </div>
   );
 }

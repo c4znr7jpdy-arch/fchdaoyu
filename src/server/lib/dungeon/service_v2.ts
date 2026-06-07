@@ -40,6 +40,7 @@ import { QiService } from '../services/QiService';
 import { ServerEnemyCopyProvider } from '../services/ServerEnemyCopyProvider';
 import { TaskService } from '../services/TaskService';
 import { buildDungeonBattleInit } from './battleInit';
+import { withPlayerAbilityStrategySettings } from '@shared/lib/battle/abilityStrategyInit';
 import {
   buildDungeonRoundLlmContext,
   buildDungeonSettlementLlmContext,
@@ -925,7 +926,10 @@ export class DungeonService {
     const battleResult = simulateBattleV5(
       cultivatorBundle.cultivator,
       enemyObject,
-      session.battleInit,
+      withPlayerAbilityStrategySettings(
+        session.battleInit,
+        cultivatorBundle.cultivator,
+      ),
     );
 
     try {

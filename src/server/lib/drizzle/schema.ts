@@ -63,6 +63,7 @@ export const cultivators = pgTable(
 
     // 角色当前状态（用于存储战斗/副本中产生的持久状态）
     condition: jsonb('condition').notNull().default({}),
+    gameSettings: jsonb('game_settings').notNull().default({}),
 
     // 修为进度系统
     cultivation_progress: jsonb('cultivation_progress').default({}),

@@ -1,5 +1,6 @@
 import { assertConsumableSpec } from '@shared/lib/consumables';
 import { getBreakthroughPillLabel } from '@shared/lib/breakthroughPill';
+import { withPlayerAbilityStrategySettings } from '@shared/lib/battle/abilityStrategyInit';
 import { isConditionStatusActive } from '@shared/lib/condition';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import type { BattleRecord } from '@shared/types/battle';
@@ -1642,7 +1643,11 @@ export const TaskService = {
     }
 
     const opponent = await challengeProfile.buildOpponent(cultivator);
-    const battleResult = simulateBattleV5(cultivator, opponent);
+    const battleResult = simulateBattleV5(
+      cultivator,
+      opponent,
+      withPlayerAbilityStrategySettings(undefined, cultivator),
+    );
     const isWin = battleResult.winner.id === cultivator.id;
 
     if (isWin) {

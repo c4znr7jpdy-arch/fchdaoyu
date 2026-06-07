@@ -7,7 +7,13 @@ import { toAuthActionError } from '@app/lib/auth/authState';
 import type { AccountSetPasswordResponse } from '@shared/contracts/account';
 import type { ApiFailure } from '@shared/contracts/http';
 import { useEffect, useMemo, useState } from 'react';
-import { SettingsField } from './SettingsFields';
+import {
+  SettingsField,
+  SettingsMessage,
+  SettingsSection,
+  SettingsToggle,
+  settingsLabelClass,
+} from './SettingsFields';
 import { formatDateTime } from './utils';
 
 type LinkedAccount = {
@@ -183,7 +189,7 @@ export function AccountSettingsTab() {
 
   return (
     <div className="space-y-6">
-      <section>
+      <SettingsSection>
         <SettingsField label="用户 ID" value={user?.id ?? '—'} mono />
         <SettingsField label="昵称" value={user?.name || '—'} />
         <SettingsField label="邮箱" value={user?.email || '—'} mono />
@@ -195,98 +201,90 @@ export function AccountSettingsTab() {
           label="账号创建时间"
           value={formatDateTime(user?.createdAt)}
         />
-      </section>
+      </SettingsSection>
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-ink font-semibold tracking-[0.08em]">
-            密码维护
-          </h2>
-          <p className="text-ink-secondary mt-1 text-sm leading-6">
-            {passwordMode === 'change'
-              ? '使用当前密码更新登录密码。'
-              : '当前账号尚未设置密码，可在此添加邮箱密码登录方式。'}
-          </p>
-        </div>
-
-        {passwordMode === 'change' ? (
-          <InkInput
-            label="当前密码"
-            type="password"
-            value={currentPassword}
-            onChange={setCurrentPassword}
-            error={currentPassword ? undefined : currentPasswordError}
-            disabled={passwordSubmitting}
-          />
-        ) : null}
-        <InkInput
-          label={passwordMode === 'change' ? '新密码' : '登录密码'}
-          type="password"
-          value={newPassword}
-          onChange={setNewPassword}
-          disabled={passwordSubmitting}
-        />
-        <InkInput
-          label="确认密码"
-          type="password"
-          value={confirmPassword}
-          onChange={setConfirmPassword}
-          error={passwordConfirmationError}
-          disabled={passwordSubmitting}
-        />
-
-        {passwordMode === 'change' ? (
-          <label className="text-ink-secondary flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={revokeOtherSessions}
-              onChange={(event) => setRevokeOtherSessions(event.target.checked)}
+      <SettingsSection
+        title="密码维护"
+        description={
+          passwordMode === 'change'
+            ? '使用当前密码更新登录密码。'
+            : '当前账号尚未设置密码，可在此添加邮箱密码登录方式。'
+        }
+      >
+        <div className="grid gap-4">
+          {passwordMode === 'change' ? (
+            <InkInput
+              label="当前密码"
+              type="password"
+              value={currentPassword}
+              onChange={setCurrentPassword}
+              error={currentPassword ? undefined : currentPasswordError}
               disabled={passwordSubmitting}
+              size="sm"
+              labelClassName={settingsLabelClass}
             />
-            更新后退出其他设备
-          </label>
-        ) : null}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <InkButton
-            variant="primary"
-            onClick={handlePasswordSubmit}
-            disabled={!canSubmitPassword}
-          >
-            {passwordSubmitting
-              ? '处理中...'
-              : passwordMode === 'change'
-                ? '修改密码'
-                : '设置密码'}
-          </InkButton>
-          {passwordMessage ? (
-            <span
-              className={`text-sm ${
-                passwordMessage.type === 'success'
-                  ? 'text-teal'
-                  : 'text-crimson'
-              }`}
-            >
-              {passwordMessage.text}
-            </span>
           ) : null}
-        </div>
-      </section>
+          <InkInput
+            label={passwordMode === 'change' ? '新密码' : '登录密码'}
+            type="password"
+            value={newPassword}
+            onChange={setNewPassword}
+            disabled={passwordSubmitting}
+            size="sm"
+            labelClassName={settingsLabelClass}
+          />
+          <InkInput
+            label="确认密码"
+            type="password"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            error={passwordConfirmationError}
+            disabled={passwordSubmitting}
+            size="sm"
+            labelClassName={settingsLabelClass}
+          />
 
-      <section className="border-ink/10 border-t pt-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-ink font-semibold tracking-[0.08em]">
-              GitHub 绑定
-            </h2>
-            <p className="text-ink-secondary mt-1 text-sm leading-6">
-              {accountsLoading
-                ? '正在读取绑定状态...'
-                : hasGithub
-                  ? '当前账号已绑定 GitHub。'
-                  : '绑定后可使用 GitHub 登录当前账号。'}
-            </p>
+          {passwordMode === 'change' ? (
+            <SettingsToggle
+              checked={revokeOtherSessions}
+              onChange={setRevokeOtherSessions}
+              disabled={passwordSubmitting}
+              label="更新后退出其他设备"
+            />
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <InkButton
+              variant="primary"
+              onClick={handlePasswordSubmit}
+              disabled={!canSubmitPassword}
+            >
+              {passwordSubmitting
+                ? '处理中...'
+                : passwordMode === 'change'
+                  ? '修改密码'
+                  : '设置密码'}
+            </InkButton>
+            {passwordMessage ? (
+              <SettingsMessage type={passwordMessage.type}>
+                {passwordMessage.text}
+              </SettingsMessage>
+            ) : null}
           </div>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="GitHub 绑定"
+        description={
+          accountsLoading
+            ? '正在读取绑定状态...'
+            : hasGithub
+              ? '当前账号已绑定 GitHub。'
+              : '绑定后可使用 GitHub 登录当前账号。'
+        }
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <InkButton
             variant={hasGithub ? 'secondary' : 'primary'}
             onClick={handleBindGithub}
@@ -297,18 +295,16 @@ export function AccountSettingsTab() {
         </div>
 
         {accountsError ? (
-          <p className="text-crimson mt-3 text-sm">{accountsError}</p>
+          <SettingsMessage type="error" className="mt-3 block">
+            {accountsError}
+          </SettingsMessage>
         ) : null}
         {githubMessage ? (
-          <p
-            className={`mt-3 text-sm ${
-              githubMessage.type === 'success' ? 'text-teal' : 'text-crimson'
-            }`}
-          >
+          <SettingsMessage type={githubMessage.type} className="mt-3 block">
             {githubMessage.text}
-          </p>
+          </SettingsMessage>
         ) : null}
-      </section>
+      </SettingsSection>
     </div>
   );
 }

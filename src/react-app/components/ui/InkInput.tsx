@@ -23,6 +23,7 @@ export interface InkInputProps extends InkFieldVariantProps {
   onKeyDown?: (
     event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => void;
+  labelClassName?: string;
 }
 
 /**
@@ -43,6 +44,7 @@ export function InkInput({
   onKeyDown,
   variant,
   size,
+  labelClassName,
 }: InkInputProps) {
   const fieldClass = cn(
     inkFieldVariants({ variant, size }),
@@ -57,7 +59,9 @@ export function InkInput({
   return (
     <label className="flex flex-col gap-1">
       {label && (
-        <span className="text-ink font-semibold tracking-[0.08em]">{label}</span>
+        <span className={cn('text-ink font-semibold tracking-[0.08em]', labelClassName)}>
+          {label}
+        </span>
       )}
       {multiline ? (
         <textarea

@@ -15,6 +15,7 @@ export interface InkSelectProps extends InkFieldVariantProps {
   error?: string;
   disabled?: boolean;
   className?: string;
+  labelClassName?: string;
 }
 
 export function InkSelect({
@@ -28,6 +29,7 @@ export function InkSelect({
   variant,
   size,
   className,
+  labelClassName,
 }: InkSelectProps) {
   const fieldClass = cn(
     inkFieldVariants({ variant, size }),
@@ -38,7 +40,9 @@ export function InkSelect({
   return (
     <label className="flex flex-col gap-1">
       {label && (
-        <span className="text-ink font-semibold tracking-[0.08em]">{label}</span>
+        <span className={cn('text-ink font-semibold tracking-[0.08em]', labelClassName)}>
+          {label}
+        </span>
       )}
       <select
         className={fieldClass}

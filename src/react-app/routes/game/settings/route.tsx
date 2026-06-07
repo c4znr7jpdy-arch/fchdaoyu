@@ -1,8 +1,8 @@
 import {
   GameSceneAsideSection,
   GameSceneFrame,
+  GameSceneTabs,
 } from '@app/components/game-shell';
-import { InkTabs } from '@app/components/ui/InkTabs';
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { AccountSettingsTab } from './components/AccountSettingsTab';
@@ -52,7 +52,7 @@ export default function SettingsPage() {
         </>
       }
     >
-      <InkTabs
+      <GameSceneTabs
         items={SETTINGS_TABS.map((tab) => ({
           label: tab.label,
           value: tab.value,
