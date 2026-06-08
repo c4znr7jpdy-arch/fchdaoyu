@@ -170,13 +170,17 @@ export class LogPresenter {
       ? '发起攻击'
       : `施放${this.formatSkill(ability?.name ?? '未知技能')}`;
 
-    // 情况 1: 闪避/抵抗
-    if (dodge || resist) {
+    // 情况 1: 闪避会导致整次命中失败；控制抵抗只抵消控制效果。
+    if (dodge) {
       const targetName = this.formatName(
-        dodge?.data.targetName ?? resist?.data.targetName ?? '目标',
+        dodge.data.targetName,
       );
-      const reason = dodge ? '闪避' : '抵抗';
-      return `${actor}${actionDesc}，被${targetName}${reason}了！`;
+      return `${actor}${actionDesc}，被${targetName}闪避了！`;
+    }
+
+    if (resist && entries.every((entry) => entry.type === 'resist')) {
+      const targetName = this.formatName(resist.data.targetName);
+      return `${actor}${actionDesc}，被${targetName}抵抗了！`;
     }
 
     // 情况 2: 技能打断
@@ -374,6 +378,15 @@ export class LogPresenter {
       resultParts.push(
         `触发了${this.formatName(tagTrigger.data.targetName)}身上的「${tagTrigger.data.tag}」标记`,
       );
+    }
+
+    if (resist) {
+      const resistedTargets = Array.from(
+        new Set(
+          this.findEntries(entries, 'resist').map((entry) => entry.data.targetName),
+        ),
+      );
+      resultParts.push(`${this.formatQuotedList(resistedTargets)}抵抗了控制效果`);
     }
 
     if (resultParts.length === 0) {

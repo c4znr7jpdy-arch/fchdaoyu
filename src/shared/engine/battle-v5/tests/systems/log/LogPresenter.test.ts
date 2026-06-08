@@ -65,6 +65,41 @@ describe('LogPresenter 行动日志聚合', () => {
     ]);
   });
 
+  it('纯控制被抵抗时应输出抵抗文本', () => {
+    const presenter = new LogPresenter();
+    const span = createActionSpan([
+      createEntry('resist', {
+        targetName: '李四',
+      }),
+    ]);
+    span.ability = { id: 'control', name: '定身术' };
+
+    expect(presenter.formatSpan(span)).toEqual([
+      '「张三」施放《定身术》，被「李四」抵抗了！',
+    ]);
+  });
+
+  it('伤害控制复合技能被抵抗时仍应输出伤害', () => {
+    const presenter = new LogPresenter();
+    const span = createActionSpan([
+      createEntry('damage', {
+        value: 300,
+        remainHp: 700,
+        isCritical: false,
+        targetName: '李四',
+        beforeHp: 1000,
+      }),
+      createEntry('resist', {
+        targetName: '李四',
+      }),
+    ]);
+    span.ability = { id: 'mixed_control_damage', name: '雷锁' };
+
+    expect(presenter.formatSpan(span)).toEqual([
+      '「张三」施放《雷锁》，对「李四」造成 300 点伤害，「李四」抵抗了控制效果',
+    ]);
+  });
+
   it('驱散应使用中文并列分隔符', () => {
     const presenter = new LogPresenter();
     const span = createActionSpan([
