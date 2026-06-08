@@ -332,7 +332,12 @@ export type DungeonRunStatus =
   | 'FINISHED'
   | 'RECOVERABLE_ERROR';
 
-export type DungeonRecoverAction = 'retry' | 'safe_retreat' | 'force_quit';
+export type DungeonRecoverAction =
+  | 'retry'
+  | 'retry_continue'
+  | 'retry_settle'
+  | 'safe_retreat'
+  | 'force_quit';
 
 export interface DungeonCostLedgerEntry {
   actionId: string;
@@ -391,6 +396,7 @@ export interface DungeonState {
   pendingAction?: DungeonPendingAction;
   recoverableActions?: DungeonRecoverAction[];
   realGains?: ResourceOperation[];
+  archiveHistoryCommittedAt?: string;
   accumulatedRewards: RewardBlueprint[];
   /** 当前轮次获得的物品 */
   currentRoundItems?: RewardBlueprint[];

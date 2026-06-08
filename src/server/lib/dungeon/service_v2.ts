@@ -73,6 +73,51 @@ const dungeonEnemyGenerator = new EnemyGenerator({
 const REDIS_TTL = 3600; // 1 hour expiration for active sessions
 const START_LOCK_TTL_SECONDS = 180;
 const RUN_TERMINAL_STATUSES = new Set(['FINISHED']);
+export const DungeonFlowErrorCode = {
+  NOT_FOUND: 'DUNGEON_NOT_FOUND',
+  INVALID_STATE: 'DUNGEON_INVALID_STATE',
+} as const;
+
+export type DungeonFlowErrorCode =
+  (typeof DungeonFlowErrorCode)[keyof typeof DungeonFlowErrorCode];
+
+export class DungeonFlowError extends Error {
+  constructor(
+    public code: DungeonFlowErrorCode,
+    message: string,
+    public status: 404 | 409,
+  ) {
+    super(message);
+    this.name = 'DungeonFlowError';
+  }
+}
+
+type DungeonSettlementResult = {
+  state?: DungeonState;
+  settlement?: DungeonSettlement;
+  isFinished: boolean;
+  realGains?: ResourceOperation[];
+};
+
+const DEFAULT_RECOVERABLE_ACTIONS: DungeonRecoverAction[] = [
+  'safe_retreat',
+  'force_quit',
+];
+const CONTINUE_RECOVERABLE_ACTIONS: DungeonRecoverAction[] = [
+  'retry_continue',
+  'safe_retreat',
+  'force_quit',
+];
+const SETTLE_RECOVERABLE_ACTIONS: DungeonRecoverAction[] = [
+  'retry_settle',
+  'force_quit',
+];
+const ACTION_RECOVERABLE_ACTIONS: DungeonRecoverAction[] = [
+  'retry',
+  'safe_retreat',
+  'force_quit',
+];
+
 const COST_LIMITS: Partial<Record<DungeonOptionCost['type'], number>> = {
   spirit_stones: 10_000_000,
   lifespan: 10_000,
@@ -165,7 +210,7 @@ export class DungeonService {
       };
     });
     if (state.status === 'RECOVERABLE_ERROR') {
-      state.recoverableActions ??= ['retry', 'safe_retreat', 'force_quit'];
+      state.recoverableActions ??= DEFAULT_RECOVERABLE_ACTIONS;
     }
     return state;
   }
@@ -192,7 +237,7 @@ export class DungeonService {
     cultivatorId: string,
     state: DungeonState,
     reason: string,
-    actions: DungeonRecoverAction[] = ['retry', 'safe_retreat', 'force_quit'],
+    actions: DungeonRecoverAction[] = DEFAULT_RECOVERABLE_ACTIONS,
   ) {
     state.status = 'RECOVERABLE_ERROR';
     state.statusReason = reason;
@@ -694,7 +739,7 @@ export class DungeonService {
           cultivatorId,
           state,
           error instanceof Error ? error.message : '结算生成失败',
-          ['retry', 'safe_retreat', 'force_quit'],
+          SETTLE_RECOVERABLE_ACTIONS,
         );
         throw error;
       }
@@ -714,7 +759,7 @@ export class DungeonService {
         cultivatorId,
         state,
         error instanceof Error ? error.message : '下一轮生成失败',
-        ['retry', 'safe_retreat', 'force_quit'],
+        ACTION_RECOVERABLE_ACTIONS,
       );
       throw error;
     }
@@ -982,24 +1027,49 @@ export class DungeonService {
    */
   async continueFromLooting(cultivatorId: string) {
     const state = await this.getState(cultivatorId);
-    if (!state || state.status !== 'LOOTING')
-      throw new Error('Dungeon state invalid or not in looting');
+    if (!state) {
+      throw new DungeonFlowError(
+        DungeonFlowErrorCode.NOT_FOUND,
+        '副本已失效',
+        404,
+      );
+    }
+    if (state.status !== 'LOOTING') {
+      throw new DungeonFlowError(
+        DungeonFlowErrorCode.INVALID_STATE,
+        '当前副本状态已变化，请刷新后重试',
+        409,
+      );
+    }
 
-    state.status = 'EXPLORING';
+    state.status = 'GENERATING_NEXT';
+    state.statusReason = undefined;
+    state.recoverableActions = undefined;
     state.currentRound++;
 
     if (state.currentRound > state.maxRounds) {
       return this.settleDungeon(state);
     }
 
+    return this.generateRoundAfterLooting(cultivatorId, state);
+  }
+
+  private async generateRoundAfterLooting(
+    cultivatorId: string,
+    state: DungeonState,
+  ) {
     let roundData: DungeonRound;
     try {
       roundData = this.normalizeRoundOptions(await this.callAI(state));
     } catch (error) {
       console.error('[DungeonService] 战后生成失败:', error);
-      roundData = this.normalizeRoundOptions(
-        this.buildFallbackRoundAfterBattle(state, '先前强敌'),
+      const recoverable = await this.markRecoverable(
+        cultivatorId,
+        state,
+        error instanceof Error ? error.message : '战后继续推演失败',
+        CONTINUE_RECOVERABLE_ACTIONS,
       );
+      return { state: recoverable, isFinished: false };
     }
 
     const gainedNames = roundData.acquired_items?.map(
@@ -1018,6 +1088,9 @@ export class DungeonService {
     });
     state.currentOptions = roundData.interaction.options;
     state.dangerScore = roundData.status_update.internal_danger_score;
+    state.status = 'EXPLORING';
+    state.statusReason = undefined;
+    state.recoverableActions = undefined;
 
     await this.saveState(cultivatorId, state);
     return { state, roundData, isFinished: false };
@@ -1028,7 +1101,20 @@ export class DungeonService {
    */
   async escapeFromLooting(cultivatorId: string) {
     const state = await this.getState(cultivatorId);
-    if (!state) throw new Error('Dungeon state not found');
+    if (!state) {
+      throw new DungeonFlowError(
+        DungeonFlowErrorCode.NOT_FOUND,
+        '副本已失效',
+        404,
+      );
+    }
+    if (state.status !== 'LOOTING') {
+      throw new DungeonFlowError(
+        DungeonFlowErrorCode.INVALID_STATE,
+        '当前副本状态已变化，请刷新后重试',
+        409,
+      );
+    }
     return this.settleDungeon(state, {
       abandonedBattle: true,
       endDisposition: 'retreated_after_battle',
@@ -1092,22 +1178,9 @@ export class DungeonService {
         lastHistory.outcome = `你不敌 ${enemyName}，被迫退出秘境。${reason ? `（天机紊乱：${reason}）` : ''}`;
       }
 
-      const fallbackSettlement: DungeonSettlement = {
-        ending_narrative:
-          '你在鏖战后力竭遁走，虽保住性命，却再无余力继续探查。',
-        settlement: {
-          reward_tier: 'D',
-          reward_blueprints: [],
-          performance_tags: ['鏖战失利', '仓皇遁走'],
-        },
-      };
-
-      await this.archiveDungeon(state, fallbackSettlement, []);
-      return {
-        isFinished: true,
-        settlement: fallbackSettlement,
-        realGains: [],
-      };
+      return this.settleDungeon(state, {
+        endDisposition: 'retreated_after_battle',
+      });
     }
 
     // 胜利但回调失败，强制进入 LOOTING 状态进行自我修复
@@ -1117,56 +1190,6 @@ export class DungeonService {
     }
     await this.saveState(cultivatorId, state);
     return { state, isFinished: false };
-  }
-
-  /**
-   * 战斗后兜底回合（用于 LLM 失败时避免副本卡死）
-   */
-  private buildFallbackRoundAfterBattle(
-    state: DungeonState,
-    enemyName: string,
-  ): DungeonRound {
-    const nextIsFinal = state.currentRound >= state.maxRounds;
-    const danger = Math.min(100, Math.max(0, state.dangerScore + 5));
-
-    return {
-      scene_description: `你击退了${enemyName}，却因灵机紊乱一时难以推演天机。四周杀机暂缓，你得以短暂整顿气息，再作抉择。`,
-      interaction: {
-        options: [
-          {
-            id: 1,
-            text: '就地调息，稳住道基后继续探查',
-            risk_level: 'low',
-            potential_cost: '进度放缓，但更稳妥',
-            costs: [],
-          },
-          {
-            id: 2,
-            text: '强行追索残留气机，尝试抢先一步',
-            risk_level: 'medium',
-            potential_cost: '灵力额外消耗',
-            costs: [
-              {
-                type: 'cultivation_exp',
-                value: 20,
-                desc: '强行推演天机导致修为损耗',
-              },
-            ],
-          },
-          {
-            id: 3,
-            text: nextIsFinal ? '见好就收，立即撤离结算' : '暂避锋芒，改道徐行',
-            risk_level: 'low',
-            potential_cost: '收获可能减少',
-            costs: [],
-          },
-        ],
-      },
-      status_update: {
-        is_final_round: nextIsFinal,
-        internal_danger_score: danger,
-      },
-    };
   }
 
   /**
@@ -1181,12 +1204,35 @@ export class DungeonService {
       pendingAction?: DungeonPendingAction;
       runtimeCultivator?: Cultivator;
     },
-  ): Promise<{
-    state?: DungeonState;
-    settlement: DungeonSettlement;
-    isFinished: boolean;
-    realGains: ResourceOperation[];
-  }> {
+  ): Promise<DungeonSettlementResult> {
+    state.status = 'SETTLING';
+    state.statusReason = undefined;
+    state.recoverableActions = undefined;
+
+    try {
+      return await this.performSettlement(state, options);
+    } catch (error) {
+      console.error('[DungeonSettlement] 结算失败，进入可恢复状态:', error);
+      const recoverable = await this.markRecoverable(
+        state.cultivatorId,
+        state,
+        error instanceof Error ? error.message : '副本结算失败',
+        SETTLE_RECOVERABLE_ACTIONS,
+      );
+      return { state: recoverable, isFinished: false };
+    }
+  }
+
+  private async performSettlement(
+    state: DungeonState,
+    options?: {
+      skipInjury?: boolean;
+      abandonedBattle?: boolean;
+      endDisposition?: DungeonSettlementLlmContext['endDisposition'];
+      pendingAction?: DungeonPendingAction;
+      runtimeCultivator?: Cultivator;
+    },
+  ): Promise<DungeonSettlementResult> {
     // --- 核心优化：使用 RewardFactory 将 AI 蓝图转化为真实奖励 ---
     // 获取地图境界门槛
     const mapNode = getMapNode(state.mapNodeId);
@@ -1198,27 +1244,34 @@ export class DungeonService {
     const endDisposition =
       options?.endDisposition ??
       (options?.abandonedBattle ? 'abandoned_before_battle' : 'completed');
-    const settlementContext = buildDungeonSettlementLlmContext({
-      state,
-      mapRealm,
-      endDisposition,
-    });
-    const { system: settlementPrompt, user: settlementUserPrompt } =
-      renderPrompt('dungeon-settlement', {
-        materialTypeTable: DUNGEON_MATERIAL_TYPE_TABLE,
-        settlementContextJson: stableCompactStringify(settlementContext),
+    let settlement = state.settlement;
+    if (!settlement) {
+      const settlementContext = buildDungeonSettlementLlmContext({
+        state,
+        mapRealm,
+        endDisposition,
       });
+      const { system: settlementPrompt, user: settlementUserPrompt } =
+        renderPrompt('dungeon-settlement', {
+          materialTypeTable: DUNGEON_MATERIAL_TYPE_TABLE,
+          settlementContextJson: stableCompactStringify(settlementContext),
+        });
 
-    const aiRes = await object(settlementPrompt, settlementUserPrompt, {
-      schema: DungeonSettlementSchema,
-      llmSchema: DungeonSettlementLlmSchema,
-      schemaName: 'DungeonSettlement',
-      sceneId: 'dungeon-settlement',
-    });
+      const aiRes = await object(settlementPrompt, settlementUserPrompt, {
+        schema: DungeonSettlementSchema,
+        llmSchema: DungeonSettlementLlmSchema,
+        schemaName: 'DungeonSettlement',
+        sceneId: 'dungeon-settlement',
+      });
+      settlement = aiRes.object;
+      state.settlement = settlement;
+      await this.saveState(state.cultivatorId, state);
+    }
 
-    const settlement = aiRes.object;
-
-    if (options?.pendingAction) {
+    if (
+      options?.pendingAction &&
+      !this.hasCommittedAction(state, options.pendingAction.actionId)
+    ) {
       const userId = await getCultivatorOwnerId(state.cultivatorId);
       if (!userId) {
         throw new Error('无法获取修真者所属用户');
@@ -1249,15 +1302,24 @@ export class DungeonService {
       this.commitCostsToState(state, options.pendingAction);
       state.pendingAction = undefined;
       state.costPreview = undefined;
+      await this.saveState(state.cultivatorId, state);
     }
 
-    const realGains = RewardFactory.generateAllRewards(
-      settlement.settlement.reward_blueprints as RewardBlueprint[],
-      mapRealm,
-      settlement.settlement.reward_tier,
-      state.dangerScore, // 传递危险分数用于奖励计算
-      state.playerInfo, // 传递玩家信息用于修为计算
+    const committedSettlementGain = state.gainLedger?.find(
+      (entry) => entry.source === 'settlement',
     );
+    const realGains =
+      state.realGains ??
+      committedSettlementGain?.gains ??
+      RewardFactory.generateAllRewards(
+        settlement.settlement.reward_blueprints as RewardBlueprint[],
+        mapRealm,
+        settlement.settlement.reward_tier,
+        state.dangerScore, // 传递危险分数用于奖励计算
+        state.playerInfo, // 传递玩家信息用于修为计算
+      );
+    state.realGains = realGains;
+    await this.saveState(state.cultivatorId, state);
 
     // 获取 userId
     const userId = await getCultivatorOwnerId(state.cultivatorId);
@@ -1265,25 +1327,28 @@ export class DungeonService {
       throw new Error('无法获取修真者所属用户');
     }
 
-    // DungeonResourceGain 与 ResourceOperation 结构兼容
-    // desc 字段在 ResourceEngine 中会被忽略
-    const result = await resourceEngine.gain(
-      userId,
-      state.cultivatorId,
-      realGains as ResourceOperation[],
-    );
+    if (!committedSettlementGain) {
+      // DungeonResourceGain 与 ResourceOperation 结构兼容
+      // desc 字段在 ResourceEngine 中会被忽略
+      const result = await resourceEngine.gain(
+        userId,
+        state.cultivatorId,
+        realGains as ResourceOperation[],
+      );
 
-    if (!result.success) {
-      console.error('[DungeonSettlement] 资源获得失败:', result.errors);
+      if (!result.success) {
+        throw new Error(result.errors?.join('; ') || '资源获得失败');
+      }
+
+      state.gainLedger ??= [];
+      state.gainLedger.push({
+        source: 'settlement',
+        gains: realGains,
+        committedAt: new Date().toISOString(),
+      });
+      await this.saveState(state.cultivatorId, state);
     }
 
-    // 清理并存档 (逻辑同你之前)
-    state.gainLedger ??= [];
-    state.gainLedger.push({
-      source: 'settlement',
-      gains: realGains,
-      committedAt: new Date().toISOString(),
-    });
     await this.archiveDungeon(state, settlement, realGains);
     if (!options?.abandonedBattle) {
       try {
@@ -1503,18 +1568,20 @@ export class DungeonService {
       condition: state.condition,
     });
 
-    // Archive to DB
-    await getExecutor()
-      .insert(dungeonHistories)
-      .values({
-        cultivatorId: state.cultivatorId,
-        theme: state.theme,
-        result: settlement,
-        log: state.history
-          .map((h) => `[Round ${h.round}] ${h.scene} -> Choice: ${h.choice}`)
-          .join('\n'),
-        realGains: realGains ?? null,
-      });
+    if (!state.archiveHistoryCommittedAt) {
+      await getExecutor()
+        .insert(dungeonHistories)
+        .values({
+          cultivatorId: state.cultivatorId,
+          theme: state.theme,
+          result: settlement,
+          log: state.history
+            .map((h) => `[Round ${h.round}] ${h.scene} -> Choice: ${h.choice}`)
+            .join('\n'),
+          realGains: realGains ?? null,
+        });
+      state.archiveHistoryCommittedAt = new Date().toISOString();
+    }
 
     if (state.runId) {
       await getExecutor()
@@ -1558,6 +1625,44 @@ export class DungeonService {
         abandonedBattle: true,
         endDisposition: 'retreated_after_battle',
       });
+    }
+
+    if (action === 'retry_continue') {
+      if (
+        state.status !== 'RECOVERABLE_ERROR' ||
+        !state.recoverableActions?.includes('retry_continue')
+      ) {
+        throw new DungeonFlowError(
+          DungeonFlowErrorCode.INVALID_STATE,
+          '当前副本状态无法重试推进',
+          409,
+        );
+      }
+      state.status = 'GENERATING_NEXT';
+      state.statusReason = undefined;
+      state.recoverableActions = undefined;
+      if (state.currentRound > state.maxRounds) {
+        return this.settleDungeon(state);
+      }
+      return this.generateRoundAfterLooting(cultivatorId, state);
+    }
+
+    if (action === 'retry_settle') {
+      if (
+        state.status !== 'RECOVERABLE_ERROR' ||
+        !state.recoverableActions?.includes('retry_settle')
+      ) {
+        throw new DungeonFlowError(
+          DungeonFlowErrorCode.INVALID_STATE,
+          '当前副本状态无法重试结算',
+          409,
+        );
+      }
+      state.status = 'SETTLING';
+      state.statusReason = undefined;
+      state.recoverableActions = undefined;
+      delete state.activeBattleId;
+      return this.settleDungeon(state);
     }
 
     if (action === 'retry') {

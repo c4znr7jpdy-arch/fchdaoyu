@@ -2,7 +2,10 @@ import { InkSection } from '@app/components/layout';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
 import { InkNotice } from '@app/components/ui/InkNotice';
-import { DungeonOption } from '@shared/lib/dungeon/types';
+import type {
+  DungeonOption,
+  DungeonRecoverAction,
+} from '@shared/lib/dungeon/types';
 import { getMapNode } from '@shared/lib/game/mapSystem';
 import {
   getPillToxicityStage,
@@ -38,7 +41,7 @@ interface DungeonViewRendererProps {
     continueLooting: () => Promise<void>;
     escapeLooting: () => Promise<void>;
     recoverDungeon: (
-      action: 'retry' | 'safe_retreat' | 'force_quit',
+      action: DungeonRecoverAction,
     ) => Promise<void>;
     startBattle: (enemyName: string) => void;
     abandonBattle: (result: DungeonAbandonBattleResult) => Promise<void>;
@@ -223,10 +226,26 @@ export function DungeonViewRenderer({
 
   if (viewState.type === 'recoverable_error') {
     const actionsAvailable = viewState.state.recoverableActions ?? [
-      'retry',
       'safe_retreat',
       'force_quit',
-    ];
+    ] satisfies DungeonRecoverAction[];
+    const recoverActionLabels: Record<DungeonRecoverAction, string> = {
+      retry: '重新推演',
+      retry_continue: '重试推进',
+      retry_settle: '重试结算',
+      safe_retreat: '安全撤退',
+      force_quit: '放弃副本',
+    };
+    const recoverActionVariants: Record<
+      DungeonRecoverAction,
+      'primary' | 'secondary' | 'ghost'
+    > = {
+      retry: 'primary',
+      retry_continue: 'primary',
+      retry_settle: 'primary',
+      safe_retreat: 'secondary',
+      force_quit: 'ghost',
+    };
     return (
       <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('exploring')}>
         <InkCard className="space-y-4 p-6">
@@ -237,33 +256,16 @@ export function DungeonViewRenderer({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {actionsAvailable.includes('retry') ? (
+            {actionsAvailable.map((action) => (
               <InkButton
-                variant="primary"
+                key={action}
+                variant={recoverActionVariants[action]}
                 disabled={processing}
-                onClick={() => actions.recoverDungeon('retry')}
+                onClick={() => actions.recoverDungeon(action)}
               >
-                重新推演
+                {recoverActionLabels[action]}
               </InkButton>
-            ) : null}
-            {actionsAvailable.includes('safe_retreat') ? (
-              <InkButton
-                variant="secondary"
-                disabled={processing}
-                onClick={() => actions.recoverDungeon('safe_retreat')}
-              >
-                安全撤退
-              </InkButton>
-            ) : null}
-            {actionsAvailable.includes('force_quit') ? (
-              <InkButton
-                variant="ghost"
-                disabled={processing}
-                onClick={() => actions.recoverDungeon('force_quit')}
-              >
-                放弃副本
-              </InkButton>
-            ) : null}
+            ))}
           </div>
         </InkCard>
       </DungeonSceneScreen>

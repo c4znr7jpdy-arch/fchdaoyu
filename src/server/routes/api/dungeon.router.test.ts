@@ -5,12 +5,15 @@ const {
   probeBattleEnemyMock,
   abandonBattleMock,
   executeBattleMock,
+  continueFromLootingMock,
+  escapeFromLootingMock,
   recoverDungeonMock,
   listCultivatorTasksMock,
   getCultivatorByIdUnsafeMock,
   getCultivatorDisplaySnapshotMock,
   getMapNodeMock,
   isSatelliteNodeMock,
+  DungeonFlowErrorMock,
   QiInsufficientErrorMock,
   QiServiceErrorMock,
 } = vi.hoisted(() => ({
@@ -18,12 +21,25 @@ const {
   probeBattleEnemyMock: vi.fn(),
   abandonBattleMock: vi.fn(),
   executeBattleMock: vi.fn(),
+  continueFromLootingMock: vi.fn(),
+  escapeFromLootingMock: vi.fn(),
   recoverDungeonMock: vi.fn(),
   listCultivatorTasksMock: vi.fn(),
   getCultivatorByIdUnsafeMock: vi.fn(),
   getCultivatorDisplaySnapshotMock: vi.fn(),
   getMapNodeMock: vi.fn(),
   isSatelliteNodeMock: vi.fn(),
+  DungeonFlowErrorMock: class DungeonFlowError extends Error {
+    code: string;
+    status: 404 | 409;
+
+    constructor(code: string, message: string, status: 404 | 409) {
+      super(message);
+      this.name = 'DungeonFlowError';
+      this.code = code;
+      this.status = status;
+    }
+  },
   QiInsufficientErrorMock: class QiInsufficientError extends Error {
     code = 'QI_INSUFFICIENT';
     action: string;
@@ -57,13 +73,14 @@ vi.mock('@server/lib/hono/middleware', () => ({
 }));
 
 vi.mock('@server/lib/dungeon/service_v2', () => ({
+  DungeonFlowError: DungeonFlowErrorMock,
   dungeonService: {
     startDungeon: startDungeonMock,
     getState: vi.fn(),
     handleAction: vi.fn(),
     quitDungeon: vi.fn(),
-    continueFromLooting: vi.fn(),
-    escapeFromLooting: vi.fn(),
+    continueFromLooting: continueFromLootingMock,
+    escapeFromLooting: escapeFromLootingMock,
     probeBattleEnemy: probeBattleEnemyMock,
     abandonBattle: abandonBattleMock,
     executeBattle: executeBattleMock,
@@ -393,6 +410,98 @@ describe('dungeon battle router', () => {
     );
   });
 
+  it('continues from dungeon looting via POST /api/dungeon/looting/continue', async () => {
+    continueFromLootingMock.mockResolvedValueOnce({
+      state: {
+        status: 'EXPLORING',
+        currentRound: 3,
+      },
+      roundData: {
+        scene_description: '你继续深入秘境。',
+      },
+      isFinished: false,
+    });
+
+    const response = await createApp().request(
+      '/api/dungeon/looting/continue',
+      {
+        method: 'POST',
+      },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      state: {
+        status: 'EXPLORING',
+        currentRound: 3,
+      },
+      roundData: {
+        scene_description: '你继续深入秘境。',
+      },
+      isFinished: false,
+    });
+    expect(continueFromLootingMock).toHaveBeenCalledWith('cultivator-1');
+  });
+
+  it('returns 409 when continuing from looting after dungeon state changed', async () => {
+    continueFromLootingMock.mockRejectedValueOnce(
+      new DungeonFlowErrorMock(
+        'DUNGEON_INVALID_STATE',
+        '当前副本状态已变化，请刷新后重试',
+        409,
+      ),
+    );
+
+    const response = await createApp().request(
+      '/api/dungeon/looting/continue',
+      {
+        method: 'POST',
+      },
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: '当前副本状态已变化，请刷新后重试',
+      code: 'DUNGEON_INVALID_STATE',
+    });
+  });
+
+  it('returns a business 500 when continuing from looting fails unexpectedly', async () => {
+    continueFromLootingMock.mockRejectedValueOnce(new Error('副本推进失败'));
+
+    const response = await createApp().request(
+      '/api/dungeon/looting/continue',
+      {
+        method: 'POST',
+      },
+    );
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: '副本推进失败',
+    });
+  });
+
+  it('returns 409 when escaping from looting after dungeon state changed', async () => {
+    escapeFromLootingMock.mockRejectedValueOnce(
+      new DungeonFlowErrorMock(
+        'DUNGEON_INVALID_STATE',
+        '当前副本状态已变化，请刷新后重试',
+        409,
+      ),
+    );
+
+    const response = await createApp().request('/api/dungeon/looting/escape', {
+      method: 'POST',
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: '当前副本状态已变化，请刷新后重试',
+      code: 'DUNGEON_INVALID_STATE',
+    });
+  });
+
   it('recovers a dungeon via POST /api/dungeon/recover', async () => {
     recoverDungeonMock.mockResolvedValueOnce({
       state: {
@@ -419,5 +528,60 @@ describe('dungeon battle router', () => {
       isFinished: false,
     });
     expect(recoverDungeonMock).toHaveBeenCalledWith('cultivator-1', 'retry');
+  });
+
+  it('accepts explicit recover actions for continue and settlement retries', async () => {
+    recoverDungeonMock
+      .mockResolvedValueOnce({
+        state: {
+          status: 'EXPLORING',
+        },
+        isFinished: false,
+      })
+      .mockResolvedValueOnce({
+        isFinished: true,
+        settlement: {
+          ending_narrative: '结算完成',
+        },
+        realGains: [],
+      });
+
+    const retryContinueResponse = await createApp().request(
+      '/api/dungeon/recover',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'retry_continue',
+        }),
+      },
+    );
+    const retrySettleResponse = await createApp().request(
+      '/api/dungeon/recover',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'retry_settle',
+        }),
+      },
+    );
+
+    expect(retryContinueResponse.status).toBe(200);
+    expect(retrySettleResponse.status).toBe(200);
+    expect(recoverDungeonMock).toHaveBeenNthCalledWith(
+      1,
+      'cultivator-1',
+      'retry_continue',
+    );
+    expect(recoverDungeonMock).toHaveBeenNthCalledWith(
+      2,
+      'cultivator-1',
+      'retry_settle',
+    );
   });
 });

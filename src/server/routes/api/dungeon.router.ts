@@ -9,7 +9,10 @@ import {
   checkDungeonLimit,
   getDungeonLimitConfig,
 } from '@server/lib/dungeon/dungeonLimiter';
-import { dungeonService } from '@server/lib/dungeon/service_v2';
+import {
+  DungeonFlowError,
+  dungeonService,
+} from '@server/lib/dungeon/service_v2';
 import {
   QiInsufficientError,
   QiServiceError,
@@ -33,7 +36,13 @@ const ActionSchema = z.object({
 });
 
 const RecoverSchema = z.object({
-  action: z.enum(['retry', 'safe_retreat', 'force_quit']),
+  action: z.enum([
+    'retry',
+    'retry_continue',
+    'retry_settle',
+    'safe_retreat',
+    'force_quit',
+  ]),
 });
 
 const router = new Hono<AppEnv>();
@@ -165,6 +174,13 @@ router.post('/recover', requireActiveCultivator(), async (c) => {
     const result = await dungeonService.recoverDungeon(cultivator.id, action);
     return c.json(result);
   } catch (error) {
+    if (error instanceof DungeonFlowError) {
+      return jsonWithStatus(
+        c,
+        { error: error.message, code: error.code },
+        error.status,
+      );
+    }
     const message = error instanceof Error ? error.message : '副本恢复失败';
     return c.json({ error: message }, 500);
   }
@@ -244,23 +260,47 @@ limitRouter.get('/', requireActiveCultivator(), async (c) => {
 });
 
 lootingRouter.post('/continue', requireActiveCultivator(), async (c) => {
-  const cultivator = c.get('cultivator');
-  if (!cultivator) {
-    return c.json({ error: '当前没有活跃角色' }, 404);
-  }
+  try {
+    const cultivator = c.get('cultivator');
+    if (!cultivator) {
+      return c.json({ error: '当前没有活跃角色' }, 404);
+    }
 
-  const result = await dungeonService.continueFromLooting(cultivator.id);
-  return c.json(result);
+    const result = await dungeonService.continueFromLooting(cultivator.id);
+    return c.json(result);
+  } catch (error) {
+    if (error instanceof DungeonFlowError) {
+      return jsonWithStatus(
+        c,
+        { error: error.message, code: error.code },
+        error.status,
+      );
+    }
+    const message = error instanceof Error ? error.message : '副本推进失败';
+    return c.json({ error: message }, 500);
+  }
 });
 
 lootingRouter.post('/escape', requireActiveCultivator(), async (c) => {
-  const cultivator = c.get('cultivator');
-  if (!cultivator) {
-    return c.json({ error: '当前没有活跃角色' }, 404);
-  }
+  try {
+    const cultivator = c.get('cultivator');
+    if (!cultivator) {
+      return c.json({ error: '当前没有活跃角色' }, 404);
+    }
 
-  const result = await dungeonService.escapeFromLooting(cultivator.id);
-  return c.json(result);
+    const result = await dungeonService.escapeFromLooting(cultivator.id);
+    return c.json(result);
+  } catch (error) {
+    if (error instanceof DungeonFlowError) {
+      return jsonWithStatus(
+        c,
+        { error: error.message, code: error.code },
+        error.status,
+      );
+    }
+    const message = error instanceof Error ? error.message : '副本结算失败';
+    return c.json({ error: message }, 500);
+  }
 });
 
 battleRouter.get('/probe', requireActiveCultivator(), async (c) => {

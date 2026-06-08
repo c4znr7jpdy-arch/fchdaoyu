@@ -1,8 +1,9 @@
 import { BattleCallbackData } from '@app/routes/game/dungeon/components/DungeonBattle';
 import { DungeonAbandonBattleResult } from './useEnemyProbe';
 import type { ResourceOperation } from '@shared/engine/resource/types';
-import {
+import type {
   DungeonOption,
+  DungeonRecoverAction,
   DungeonRound,
   DungeonSettlement,
   DungeonState,
@@ -39,6 +40,44 @@ export type DungeonViewState =
       settlement?: DungeonSettlement;
       realGains?: ResourceOperation[];
     };
+
+export type DungeonMutationResolution =
+  | { type: 'none' }
+  | { type: 'refresh' }
+  | { type: 'state'; state: DungeonState }
+  | {
+      type: 'settlement';
+      settlement?: DungeonSettlement;
+      realGains?: ResourceOperation[];
+    }
+  | { type: 'clear' };
+
+export function resolveDungeonMutationResult(
+  data:
+    | {
+        conflict?: boolean;
+        state?: DungeonState;
+        isFinished?: boolean;
+        settlement?: DungeonSettlement;
+        realGains?: ResourceOperation[];
+        success?: boolean;
+      }
+    | null
+    | undefined,
+): DungeonMutationResolution {
+  if (!data) return { type: 'none' };
+  if (data.conflict) return { type: 'refresh' };
+  if (data.isFinished) {
+    return {
+      type: 'settlement',
+      settlement: data.settlement,
+      realGains: data.realGains,
+    };
+  }
+  if (data.state) return { type: 'state', state: data.state };
+  if (data.success) return { type: 'clear' };
+  return { type: 'none' };
+}
 
 /**
  * 副本视图模型 Hook
@@ -181,77 +220,50 @@ export function useDungeonViewModel(
    */
   const handlePerformAction = async (option: DungeonOption) => {
     const data = await performAction(option);
-    if (!data) return;
-
-    if (data.isFinished) {
-      setState((prev) =>
-        prev
-          ? {
-              ...prev,
-              isFinished: true,
-              settlement: data.settlement,
-              realGains: data.realGains,
-            }
-          : null,
-      );
-    } else {
-      setState(data.state);
-    }
+    applyMutationResult(data);
   };
 
   const handleContinueLooting = async () => {
     const data = await continueLooting();
-    if (data?.state) {
-      setState(data.state);
-    } else if (data?.isFinished) {
-      setState((prev) =>
-        prev
-          ? {
-              ...prev,
-              isFinished: true,
-              settlement: data.settlement,
-              realGains: data.realGains,
-            }
-          : null,
-      );
-    }
+    applyMutationResult(data);
   };
 
   const handleEscapeLooting = async () => {
     const data = await escapeLooting();
-    if (data?.isFinished) {
-      setState((prev) =>
-        prev
-          ? {
-              ...prev,
-              isFinished: true,
-              settlement: data.settlement,
-              realGains: data.realGains,
-            }
-          : null,
-      );
-    }
+    applyMutationResult(data);
   };
 
-  const handleRecoverDungeon = async (
-    action: 'retry' | 'safe_retreat' | 'force_quit',
-  ) => {
+  const handleRecoverDungeon = async (action: DungeonRecoverAction) => {
     const data = await recoverDungeon(action);
-    if (!data) return;
-    if (data.state) {
-      setState(data.state);
-    } else if (data.isFinished) {
+    applyMutationResult(data);
+  };
+
+  const applyMutationResult = (
+    data: Parameters<typeof resolveDungeonMutationResult>[0],
+  ) => {
+    const resolution = resolveDungeonMutationResult(data);
+    if (resolution.type === 'refresh') {
+      refresh();
+      return;
+    }
+    if (resolution.type === 'state') {
+      setState(resolution.state);
+      return;
+    }
+    if (resolution.type === 'settlement') {
       setState((prev) =>
         prev
           ? {
               ...prev,
               isFinished: true,
-              settlement: data.settlement,
-              realGains: data.realGains,
+              settlement: resolution.settlement,
+              realGains: resolution.realGains,
             }
           : null,
       );
-    } else if (data.success) {
+      return;
+    }
+    if (resolution.type === 'clear') {
       setState(null);
     }
   };

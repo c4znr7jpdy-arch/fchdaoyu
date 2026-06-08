@@ -1,6 +1,9 @@
 import { useInkUI } from '@app/components/providers/InkUIProvider';
 import { getQiErrorMessage } from '@app/components/feature/cultivator/useQiActionConfirm';
-import { DungeonOption } from '@shared/lib/dungeon/types';
+import type {
+  DungeonOption,
+  DungeonRecoverAction,
+} from '@shared/lib/dungeon/types';
 import { useState } from 'react';
 
 function createActionId() {
@@ -126,7 +129,13 @@ export function useDungeonActions() {
       setProcessing(true);
       const res = await fetch('/api/dungeon/looting/continue', { method: 'POST' });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (data.error) {
+        if (res.status === 409) {
+          pushToast({ message: data.error, tone: 'danger' });
+          return { conflict: true };
+        }
+        throw new Error(data.error);
+      }
       return data;
     } catch (e) {
       pushToast({ message: e instanceof Error ? e.message : '操作失败', tone: 'danger' });
@@ -144,7 +153,13 @@ export function useDungeonActions() {
       setProcessing(true);
       const res = await fetch('/api/dungeon/looting/escape', { method: 'POST' });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (data.error) {
+        if (res.status === 409) {
+          pushToast({ message: data.error, tone: 'danger' });
+          return { conflict: true };
+        }
+        throw new Error(data.error);
+      }
       return data;
     } catch (e) {
       pushToast({ message: e instanceof Error ? e.message : '操作失败', tone: 'danger' });
@@ -154,9 +169,7 @@ export function useDungeonActions() {
     }
   };
 
-  const recoverDungeon = async (
-    action: 'retry' | 'safe_retreat' | 'force_quit',
-  ) => {
+  const recoverDungeon = async (action: DungeonRecoverAction) => {
     try {
       setProcessing(true);
       const res = await fetch('/api/dungeon/recover', {
@@ -165,7 +178,13 @@ export function useDungeonActions() {
         body: JSON.stringify({ action }),
       });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (data.error) {
+        if (res.status === 409) {
+          pushToast({ message: data.error, tone: 'danger' });
+          return { conflict: true };
+        }
+        throw new Error(data.error);
+      }
       return data;
     } catch (e) {
       pushToast({
