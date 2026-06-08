@@ -107,7 +107,10 @@ import {
 } from './service_v2';
 import { object as objectMock } from '@server/utils/aiClient';
 import { renderPrompt } from '@server/lib/prompts';
-import { getCultivatorOwnerId } from '../services/cultivatorService';
+import {
+  getCultivatorByIdUnsafe,
+  getCultivatorOwnerId,
+} from '../services/cultivatorService';
 
 interface TestableDungeonService {
   createBattleSession(
@@ -382,6 +385,121 @@ describe('DungeonService dungeon enemy scaling', () => {
   });
 });
 
+describe('DungeonService action recovery', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    redisSetMock.mockResolvedValue('OK');
+    resourceConsumeMock.mockResolvedValue({ success: true });
+    vi.mocked(getCultivatorOwnerId).mockResolvedValue('user-1');
+    vi.mocked(getCultivatorByIdUnsafe).mockResolvedValue({
+      cultivator: createEnemy({
+        realm: '元婴',
+        realmStage: '后期',
+        name: '韩立',
+      }),
+    } as Awaited<ReturnType<typeof getCultivatorByIdUnsafe>>);
+    getMapNodeMock.mockReturnValue({
+      id: 'easy-map',
+      name: '太岳山脉',
+      region: '天南',
+      realm_requirement: '筑基',
+      dungeon_config: { difficulty: 'easy' },
+      tags: [],
+      description: '',
+      connections: [],
+      x: 0,
+      y: 0,
+    });
+  });
+
+  it('returns recoverable state when regular next-round LLM generation fails', async () => {
+    const service = new DungeonService();
+    const state = createDungeonState('easy-map');
+    state.currentRound = 2;
+    state.currentOptions = [
+      {
+        id: 1,
+        text: '探查石门',
+        risk_level: 'medium',
+        potential_cost: '可能惊动禁制',
+        costs: [],
+      },
+    ];
+    state.history.push({
+      round: 2,
+      scene: '石门之后传来低沉回响。',
+    });
+    vi.spyOn(service, 'getState').mockResolvedValueOnce(state);
+    vi.spyOn(service as any, 'callAI').mockRejectedValueOnce(
+      new Error('round LLM down'),
+    );
+    vi.spyOn(service, 'saveState').mockResolvedValue();
+
+    const result = await service.handleAction(
+      'cultivator-1',
+      1,
+      'action-1',
+    );
+
+    expect(result).toMatchObject({
+      actionId: 'action-1',
+      isFinished: false,
+      state: {
+        status: 'RECOVERABLE_ERROR',
+        currentRound: 2,
+        statusReason: 'round LLM down',
+        pendingAction: {
+          actionId: 'action-1',
+          status: 'failed',
+        },
+        recoverableActions: ['retry', 'safe_retreat', 'force_quit'],
+      },
+    });
+  });
+
+  it('returns recoverable state when battle enemy generation fails', async () => {
+    const service = new DungeonService();
+    const state = createDungeonState('easy-map');
+    state.currentOptions = [
+      {
+        id: 1,
+        text: '踏入阴影',
+        risk_level: 'high',
+        potential_cost: '遭遇守陵阴魂',
+        costs: [createBattleCost(80)],
+      },
+    ];
+    state.history.push({
+      round: 1,
+      scene: '阴影深处浮现一座破碎祭台。',
+    });
+    vi.spyOn(service, 'getState').mockResolvedValueOnce(state);
+    enrichNarrativeMock.mockRejectedValueOnce(new Error('enemy LLM down'));
+    vi.spyOn(service, 'saveState').mockResolvedValue();
+
+    const result = await service.handleAction(
+      'cultivator-1',
+      1,
+      'battle-action-1',
+    );
+
+    expect(result).toMatchObject({
+      actionId: 'battle-action-1',
+      isFinished: false,
+      state: {
+        status: 'RECOVERABLE_ERROR',
+        statusReason: 'enemy LLM down',
+        pendingAction: {
+          actionId: 'battle-action-1',
+          status: 'failed',
+        },
+        recoverableActions: ['retry', 'safe_retreat', 'force_quit'],
+      },
+    });
+    expect(result.state?.activeBattleId).toBeUndefined();
+  });
+});
+
 describe('DungeonService looting continuation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -564,6 +682,49 @@ describe('DungeonService looting continuation', () => {
       },
     });
     expect(result.settlement).toBeUndefined();
+  });
+
+  it('keeps final-round pending action costs retryable instead of skipping to retry_settle', async () => {
+    const service = new DungeonService();
+    const state = createDungeonState('easy-map');
+    state.status = 'SETTLING';
+    state.currentRound = 5;
+    state.maxRounds = 5;
+    const pendingAction = {
+      actionId: 'action-1',
+      choiceId: 1,
+      choiceText: '强取灵材',
+      round: 5,
+      status: 'pending' as const,
+      costs: [{ type: 'spirit_stones' as const, value: 10 }],
+      createdAt: new Date(0).toISOString(),
+    };
+    vi.spyOn(service, 'saveState').mockResolvedValue();
+    vi.mocked(objectMock).mockResolvedValueOnce({
+      object: createSettlement(),
+    } as Awaited<ReturnType<typeof objectMock>>);
+    resourceConsumeMock.mockResolvedValueOnce({
+      success: false,
+      errors: ['灵石不足'],
+    });
+
+    const result = await service.settleDungeon(state, { pendingAction });
+
+    expect(result).toMatchObject({
+      isFinished: false,
+      state: {
+        status: 'RECOVERABLE_ERROR',
+        statusReason: '灵石不足',
+        pendingAction: {
+          actionId: 'action-1',
+          status: 'failed',
+          error: '灵石不足',
+        },
+        recoverableActions: ['retry', 'safe_retreat', 'force_quit'],
+      },
+    });
+    expect(result.state?.settlement).toBeUndefined();
+    expect(resourceGainMock).not.toHaveBeenCalled();
   });
 
   it('retries settlement from saved settlement gains without rerunning LLM or rewards', async () => {

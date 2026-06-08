@@ -72,6 +72,7 @@ const dungeonEnemyGenerator = new EnemyGenerator({
 
 const REDIS_TTL = 3600; // 1 hour expiration for active sessions
 const START_LOCK_TTL_SECONDS = 180;
+const FLOW_LOCK_TTL_SECONDS = 180;
 const RUN_TERMINAL_STATUSES = new Set(['FINISHED']);
 export const DungeonFlowErrorCode = {
   NOT_FOUND: 'DUNGEON_NOT_FOUND',
@@ -89,6 +90,16 @@ export class DungeonFlowError extends Error {
   ) {
     super(message);
     this.name = 'DungeonFlowError';
+  }
+}
+
+class DungeonSettlementRecoverableError extends Error {
+  constructor(
+    message: string,
+    public actions: DungeonRecoverAction[],
+  ) {
+    super(message);
+    this.name = 'DungeonSettlementRecoverableError';
   }
 }
 
@@ -141,6 +152,10 @@ function getDungeonKey(cultivatorId: string) {
 
 function getDungeonStartLockKey(cultivatorId: string) {
   return `dungeon:starting:${cultivatorId}`;
+}
+
+function getDungeonFlowLockKey(cultivatorId: string) {
+  return `dungeon:flow:${cultivatorId}`;
 }
 
 function getDungeonBattleKey(battleId: string) {
@@ -248,6 +263,28 @@ export class DungeonService {
     }
     await this.saveState(cultivatorId, state);
     return state;
+  }
+
+  private async acquireFlowLock(cultivatorId: string) {
+    const flowLockKey = getDungeonFlowLockKey(cultivatorId);
+    const lockAcquired = await redis.set(
+      flowLockKey,
+      '1',
+      'EX',
+      FLOW_LOCK_TTL_SECONDS,
+      'NX',
+    );
+    if (!lockAcquired) {
+      throw new DungeonFlowError(
+        DungeonFlowErrorCode.INVALID_STATE,
+        '副本操作正在处理中，请稍后重试',
+        409,
+      );
+    }
+
+    return async () => {
+      await redis.del(flowLockKey);
+    };
   }
 
   private hasCommittedAction(state: DungeonState, actionId: string) {
@@ -580,6 +617,19 @@ export class DungeonService {
     choiceId: number,
     actionId: string = randomUUID(),
   ) {
+    const releaseFlowLock = await this.acquireFlowLock(cultivatorId);
+    try {
+      return await this.handleActionUnlocked(cultivatorId, choiceId, actionId);
+    } finally {
+      await releaseFlowLock();
+    }
+  }
+
+  private async handleActionUnlocked(
+    cultivatorId: string,
+    choiceId: number,
+    actionId: string = randomUUID(),
+  ) {
     const state = await this.getState(cultivatorId);
     if (!state) throw new Error('副本已失效');
     if (this.hasCommittedAction(state, actionId)) {
@@ -682,13 +732,24 @@ export class DungeonService {
 
     const battleCost = actionCosts.find((c) => c.type === 'battle');
     if (battleCost) {
-      const session = await this.createBattleSession(
-        cultivatorId,
-        getDungeonKey(cultivatorId),
-        battleCost,
-        state.playerInfo,
-        state,
-      );
+      let session: BattleSession & { enemyObject: Cultivator };
+      try {
+        session = await this.createBattleSession(
+          cultivatorId,
+          getDungeonKey(cultivatorId),
+          battleCost,
+          state.playerInfo,
+          state,
+        );
+      } catch (error) {
+        const recoverable = await this.markRecoverable(
+          cultivatorId,
+          state,
+          error instanceof Error ? error.message : '遭遇战生成失败',
+          ACTION_RECOVERABLE_ACTIONS,
+        );
+        return { actionId, state: recoverable, isFinished: false };
+      }
 
       try {
         await consumeActionCostsOrThrow();
@@ -755,13 +816,13 @@ export class DungeonService {
       roundData = this.normalizeRoundOptions(await this.callAI(state));
     } catch (error) {
       state.currentRound--;
-      await this.markRecoverable(
+      const recoverable = await this.markRecoverable(
         cultivatorId,
         state,
         error instanceof Error ? error.message : '下一轮生成失败',
         ACTION_RECOVERABLE_ACTIONS,
       );
-      throw error;
+      return { actionId, state: recoverable, isFinished: false };
     }
 
     // LLM 成功后再扣资源，避免“生成失败但资源已扣除”
@@ -958,6 +1019,15 @@ export class DungeonService {
   }
 
   async executeBattle(cultivatorId: string, battleId: string) {
+    const releaseFlowLock = await this.acquireFlowLock(cultivatorId);
+    try {
+      return await this.executeBattleUnlocked(cultivatorId, battleId);
+    } finally {
+      await releaseFlowLock();
+    }
+  }
+
+  private async executeBattleUnlocked(cultivatorId: string, battleId: string) {
     const { battleKey, enemyObject, session } = await this.getBattleContext(
       cultivatorId,
       battleId,
@@ -1003,6 +1073,15 @@ export class DungeonService {
   }
 
   async abandonBattle(cultivatorId: string, battleId: string) {
+    const releaseFlowLock = await this.acquireFlowLock(cultivatorId);
+    try {
+      return await this.abandonBattleUnlocked(cultivatorId, battleId);
+    } finally {
+      await releaseFlowLock();
+    }
+  }
+
+  private async abandonBattleUnlocked(cultivatorId: string, battleId: string) {
     const state = await this.getState(cultivatorId);
     if (!state || state.activeBattleId !== battleId) {
       throw new Error('当前没有匹配的遭遇战');
@@ -1026,32 +1105,37 @@ export class DungeonService {
    * 休整后继续探索 (触发 AI 生成下一轮)
    */
   async continueFromLooting(cultivatorId: string) {
-    const state = await this.getState(cultivatorId);
-    if (!state) {
-      throw new DungeonFlowError(
-        DungeonFlowErrorCode.NOT_FOUND,
-        '副本已失效',
-        404,
-      );
-    }
-    if (state.status !== 'LOOTING') {
-      throw new DungeonFlowError(
-        DungeonFlowErrorCode.INVALID_STATE,
-        '当前副本状态已变化，请刷新后重试',
-        409,
-      );
-    }
+    const releaseFlowLock = await this.acquireFlowLock(cultivatorId);
+    try {
+      const state = await this.getState(cultivatorId);
+      if (!state) {
+        throw new DungeonFlowError(
+          DungeonFlowErrorCode.NOT_FOUND,
+          '副本已失效',
+          404,
+        );
+      }
+      if (state.status !== 'LOOTING') {
+        throw new DungeonFlowError(
+          DungeonFlowErrorCode.INVALID_STATE,
+          '当前副本状态已变化，请刷新后重试',
+          409,
+        );
+      }
 
-    state.status = 'GENERATING_NEXT';
-    state.statusReason = undefined;
-    state.recoverableActions = undefined;
-    state.currentRound++;
+      state.status = 'GENERATING_NEXT';
+      state.statusReason = undefined;
+      state.recoverableActions = undefined;
+      state.currentRound++;
 
-    if (state.currentRound > state.maxRounds) {
-      return this.settleDungeon(state);
+      if (state.currentRound > state.maxRounds) {
+        return this.settleDungeon(state);
+      }
+
+      return this.generateRoundAfterLooting(cultivatorId, state);
+    } finally {
+      await releaseFlowLock();
     }
-
-    return this.generateRoundAfterLooting(cultivatorId, state);
   }
 
   private async generateRoundAfterLooting(
@@ -1100,30 +1184,35 @@ export class DungeonService {
    * 战后见好就收
    */
   async escapeFromLooting(cultivatorId: string) {
-    const state = await this.getState(cultivatorId);
-    if (!state) {
-      throw new DungeonFlowError(
-        DungeonFlowErrorCode.NOT_FOUND,
-        '副本已失效',
-        404,
-      );
+    const releaseFlowLock = await this.acquireFlowLock(cultivatorId);
+    try {
+      const state = await this.getState(cultivatorId);
+      if (!state) {
+        throw new DungeonFlowError(
+          DungeonFlowErrorCode.NOT_FOUND,
+          '副本已失效',
+          404,
+        );
+      }
+      if (state.status !== 'LOOTING') {
+        throw new DungeonFlowError(
+          DungeonFlowErrorCode.INVALID_STATE,
+          '当前副本状态已变化，请刷新后重试',
+          409,
+        );
+      }
+      return this.settleDungeon(state, {
+        abandonedBattle: true,
+        endDisposition: 'retreated_after_battle',
+      });
+    } finally {
+      await releaseFlowLock();
     }
-    if (state.status !== 'LOOTING') {
-      throw new DungeonFlowError(
-        DungeonFlowErrorCode.INVALID_STATE,
-        '当前副本状态已变化，请刷新后重试',
-        409,
-      );
-    }
-    return this.settleDungeon(state, {
-      abandonedBattle: true,
-      endDisposition: 'retreated_after_battle',
-    });
   }
 
   /**
-   * 战斗回调失败时的强恢复路径（不依赖 LLM）
-   * 目标：确保不会卡在 IN_BATTLE，且玩家可继续流程
+   * 战斗回调失败时的恢复路径。
+   * 目标：确保不会卡在战斗中，后续结算失败也能进入可重试状态。
    */
   async recoverAfterBattleCallbackFailure(
     cultivatorId: string,
@@ -1213,11 +1302,15 @@ export class DungeonService {
       return await this.performSettlement(state, options);
     } catch (error) {
       console.error('[DungeonSettlement] 结算失败，进入可恢复状态:', error);
+      const recoverableActions =
+        error instanceof DungeonSettlementRecoverableError
+          ? error.actions
+          : SETTLE_RECOVERABLE_ACTIONS;
       const recoverable = await this.markRecoverable(
         state.cultivatorId,
         state,
         error instanceof Error ? error.message : '副本结算失败',
-        SETTLE_RECOVERABLE_ACTIONS,
+        recoverableActions,
       );
       return { state: recoverable, isFinished: false };
     }
@@ -1264,8 +1357,6 @@ export class DungeonService {
         sceneId: 'dungeon-settlement',
       });
       settlement = aiRes.object;
-      state.settlement = settlement;
-      await this.saveState(state.cultivatorId, state);
     }
 
     if (
@@ -1290,7 +1381,10 @@ export class DungeonService {
         };
         state.costPreview = undefined;
         await this.saveState(state.cultivatorId, state);
-        throw new Error(result.errors?.join('; ') || '资源消耗失败');
+        throw new DungeonSettlementRecoverableError(
+          result.errors?.join('; ') || '资源消耗失败',
+          ACTION_RECOVERABLE_ACTIONS,
+        );
       }
       if (options.runtimeCultivator) {
         this.applyConditionCosts(
@@ -1302,6 +1396,11 @@ export class DungeonService {
       this.commitCostsToState(state, options.pendingAction);
       state.pendingAction = undefined;
       state.costPreview = undefined;
+      await this.saveState(state.cultivatorId, state);
+    }
+
+    if (!state.settlement) {
+      state.settlement = settlement;
       await this.saveState(state.cultivatorId, state);
     }
 
@@ -1330,22 +1429,41 @@ export class DungeonService {
     if (!committedSettlementGain) {
       // DungeonResourceGain 与 ResourceOperation 结构兼容
       // desc 字段在 ResourceEngine 中会被忽略
+      const nextGainLedger = [
+        ...(state.gainLedger ?? []),
+        {
+          source: 'settlement' as const,
+          gains: realGains,
+          committedAt: new Date().toISOString(),
+        },
+      ];
+      const runId = state.runId;
       const result = await resourceEngine.gain(
         userId,
         state.cultivatorId,
         realGains as ResourceOperation[],
+        runId
+          ? async (tx) => {
+              await tx
+                .update(dungeonRuns)
+                .set({
+                  runState: {
+                    ...state,
+                    gainLedger: nextGainLedger,
+                    realGains,
+                  },
+                  gainLedger: nextGainLedger,
+                })
+                .where(eq(dungeonRuns.id, runId));
+            }
+          : undefined,
       );
 
       if (!result.success) {
         throw new Error(result.errors?.join('; ') || '资源获得失败');
       }
 
-      state.gainLedger ??= [];
-      state.gainLedger.push({
-        source: 'settlement',
-        gains: realGains,
-        committedAt: new Date().toISOString(),
-      });
+      state.gainLedger = nextGainLedger;
       await this.saveState(state.cultivatorId, state);
     }
 
@@ -1568,10 +1686,9 @@ export class DungeonService {
       condition: state.condition,
     });
 
-    if (!state.archiveHistoryCommittedAt) {
-      await getExecutor()
-        .insert(dungeonHistories)
-        .values({
+    await getExecutor().transaction(async (tx) => {
+      if (!state.archiveHistoryCommittedAt) {
+        await tx.insert(dungeonHistories).values({
           cultivatorId: state.cultivatorId,
           theme: state.theme,
           result: settlement,
@@ -1580,24 +1697,25 @@ export class DungeonService {
             .join('\n'),
           realGains: realGains ?? null,
         });
-      state.archiveHistoryCommittedAt = new Date().toISOString();
-    }
+        state.archiveHistoryCommittedAt = new Date().toISOString();
+      }
 
-    if (state.runId) {
-      await getExecutor()
-        .update(dungeonRuns)
-        .set({
-          status: 'FINISHED',
-          runState: this.normalizeState(state),
-          costLedger: state.costLedger ?? [],
-          gainLedger: state.gainLedger ?? [],
-          pendingAction: null,
-          activeBattleId: null,
-          battlePayload: null,
-          endedAt: new Date(),
-        })
-        .where(eq(dungeonRuns.id, state.runId));
-    }
+      if (state.runId) {
+        await tx
+          .update(dungeonRuns)
+          .set({
+            status: 'FINISHED',
+            runState: this.normalizeState(state),
+            costLedger: state.costLedger ?? [],
+            gainLedger: state.gainLedger ?? [],
+            pendingAction: null,
+            activeBattleId: null,
+            battlePayload: null,
+            endedAt: new Date(),
+          })
+          .where(eq(dungeonRuns.id, state.runId));
+      }
+    });
 
     // Clear Redis
     await redis.del(getDungeonKey(state.cultivatorId));
@@ -1607,6 +1725,18 @@ export class DungeonService {
    * Abandon the current dungeon
    */
   async recoverDungeon(cultivatorId: string, action: DungeonRecoverAction) {
+    const releaseFlowLock = await this.acquireFlowLock(cultivatorId);
+    try {
+      return await this.recoverDungeonUnlocked(cultivatorId, action);
+    } finally {
+      await releaseFlowLock();
+    }
+  }
+
+  private async recoverDungeonUnlocked(
+    cultivatorId: string,
+    action: DungeonRecoverAction,
+  ) {
     const state = await this.getState(cultivatorId);
     if (!state) {
       throw new Error('副本已失效');
@@ -1683,7 +1813,11 @@ export class DungeonService {
       state.pendingAction = undefined;
       state.costPreview = undefined;
       await this.saveState(cultivatorId, state);
-      return this.handleAction(cultivatorId, pending.choiceId, pending.actionId);
+      return this.handleActionUnlocked(
+        cultivatorId,
+        pending.choiceId,
+        pending.actionId,
+      );
     }
 
     throw new Error('未知的副本恢复动作');

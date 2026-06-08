@@ -157,6 +157,13 @@ router.post('/action', requireActiveCultivator(), async (c) => {
     );
     return c.json(result);
   } catch (error) {
+    if (error instanceof DungeonFlowError) {
+      return jsonWithStatus(
+        c,
+        { error: error.message, code: error.code },
+        error.status,
+      );
+    }
     const message = error instanceof Error ? error.message : '副本推进失败';
     const status = /不足|没有符合条件|资源消耗失败/.test(message) ? 409 : 500;
     return c.json({ error: message }, status);
@@ -337,6 +344,13 @@ battleRouter.post('/abandon', requireActiveCultivator(), async (c) => {
     const result = await dungeonService.abandonBattle(cultivator.id, battleId);
     return c.json(result);
   } catch (error) {
+    if (error instanceof DungeonFlowError) {
+      return jsonWithStatus(
+        c,
+        { error: error.message, code: error.code },
+        error.status,
+      );
+    }
     const message =
       error instanceof Error ? error.message : '放弃遭遇战失败';
     const status = /遭遇战|修真者/.test(message) ? 404 : 500;
@@ -364,6 +378,13 @@ battleRouter.post('/execute/v5', requireActiveCultivator(), async (c) => {
       },
     });
   } catch (error) {
+    if (error instanceof DungeonFlowError) {
+      return jsonWithStatus(
+        c,
+        { error: error.message, code: error.code },
+        error.status,
+      );
+    }
     const message =
       error instanceof Error ? error.message : '遭遇战执行失败';
     const status = /遭遇战|修真者/.test(message) ? 404 : 500;

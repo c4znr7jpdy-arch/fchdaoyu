@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 
 const {
   startDungeonMock,
+  handleActionMock,
   probeBattleEnemyMock,
   abandonBattleMock,
   executeBattleMock,
@@ -18,6 +19,7 @@ const {
   QiServiceErrorMock,
 } = vi.hoisted(() => ({
   startDungeonMock: vi.fn(),
+  handleActionMock: vi.fn(),
   probeBattleEnemyMock: vi.fn(),
   abandonBattleMock: vi.fn(),
   executeBattleMock: vi.fn(),
@@ -77,7 +79,7 @@ vi.mock('@server/lib/dungeon/service_v2', () => ({
   dungeonService: {
     startDungeon: startDungeonMock,
     getState: vi.fn(),
-    handleAction: vi.fn(),
+    handleAction: handleActionMock,
     quitDungeon: vi.fn(),
     continueFromLooting: continueFromLootingMock,
     escapeFromLooting: escapeFromLootingMock,
@@ -299,6 +301,33 @@ describe('dungeon battle router', () => {
     expect(startDungeonMock).toHaveBeenCalledWith('cultivator-1', 'node-1');
   });
 
+  it('returns 409 when dungeon action is already being processed', async () => {
+    handleActionMock.mockRejectedValueOnce(
+      new DungeonFlowErrorMock(
+        'DUNGEON_INVALID_STATE',
+        '副本操作正在处理中，请稍后重试',
+        409,
+      ),
+    );
+
+    const response = await createApp().request('/api/dungeon/action', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        choiceId: 1,
+        actionId: 'action-1',
+      }),
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: '副本操作正在处理中，请稍后重试',
+      code: 'DUNGEON_INVALID_STATE',
+    });
+  });
+
   it('probes the current dungeon enemy via GET /api/dungeon/battle/probe', async () => {
     probeBattleEnemyMock.mockResolvedValueOnce({
       id: 'enemy-1',
@@ -356,6 +385,32 @@ describe('dungeon battle router', () => {
     );
   });
 
+  it('returns 409 when abandoning a dungeon battle while another flow is processing', async () => {
+    abandonBattleMock.mockRejectedValueOnce(
+      new DungeonFlowErrorMock(
+        'DUNGEON_INVALID_STATE',
+        '副本操作正在处理中，请稍后重试',
+        409,
+      ),
+    );
+
+    const response = await createApp().request('/api/dungeon/battle/abandon', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        battleId: 'battle-1',
+      }),
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: '副本操作正在处理中，请稍后重试',
+      code: 'DUNGEON_INVALID_STATE',
+    });
+  });
+
   it('executes the current dungeon battle via POST /api/dungeon/battle/execute/v5', async () => {
     executeBattleMock.mockResolvedValueOnce({
       battleResult: {
@@ -408,6 +463,35 @@ describe('dungeon battle router', () => {
       'cultivator-1',
       'battle-1',
     );
+  });
+
+  it('returns 409 when executing a dungeon battle while another flow is processing', async () => {
+    executeBattleMock.mockRejectedValueOnce(
+      new DungeonFlowErrorMock(
+        'DUNGEON_INVALID_STATE',
+        '副本操作正在处理中，请稍后重试',
+        409,
+      ),
+    );
+
+    const response = await createApp().request(
+      '/api/dungeon/battle/execute/v5',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          battleId: 'battle-1',
+        }),
+      },
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: '副本操作正在处理中，请稍后重试',
+      code: 'DUNGEON_INVALID_STATE',
+    });
   });
 
   it('continues from dungeon looting via POST /api/dungeon/looting/continue', async () => {
