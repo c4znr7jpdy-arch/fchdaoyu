@@ -2,7 +2,6 @@ import type {
   BattleInitConfigV5,
 } from '@shared/engine/battle-v5/setup/types';
 import type { ResourceOperation } from '@shared/engine/resource/types';
-import type { CultivatorCondition } from '@shared/types/condition';
 import {
   ENEMY_RACE_VALUES,
   REALM_STAGE_VALUES,
@@ -402,7 +401,6 @@ export interface DungeonState {
   currentRoundItems?: RewardBlueprint[];
   accumulatedHpLoss: number;
   accumulatedMpLoss: number;
-  condition: CultivatorCondition;
 }
 
 export interface DungeonRoundLlmContext {
@@ -438,11 +436,6 @@ export interface DungeonRoundLlmContext {
     outcomeSummary?: string;
     gainedItemNames?: string[];
   }>;
-  resourcePressure: {
-    hpLossRatio: number;
-    mpLossRatio: number;
-    hasWeakness: boolean;
-  };
   battleAftermath?: string;
   accumulatedRewardNames: string[];
 }

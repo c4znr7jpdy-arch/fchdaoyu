@@ -33,9 +33,7 @@ import {
   getCultivatorByIdUnsafe,
   getCultivatorOwnerId,
   getPaginatedInventoryByType,
-  updateCultivator,
 } from '../services/cultivatorService';
-import { ConditionService } from '../services/ConditionService';
 import { QiService } from '../services/QiService';
 import { ServerEnemyCopyProvider } from '../services/ServerEnemyCopyProvider';
 import { TaskService } from '../services/TaskService';
@@ -255,6 +253,7 @@ export class DungeonService {
     actions: DungeonRecoverAction[] = DEFAULT_RECOVERABLE_ACTIONS,
   ) {
     state.status = 'RECOVERABLE_ERROR';
+    state.isFinished = false;
     state.statusReason = reason;
     state.recoverableActions = actions;
     if (state.pendingAction) {
@@ -325,39 +324,6 @@ export class DungeonService {
       ...action,
       status: 'committed',
     };
-  }
-
-  private applyConditionCosts(
-    state: DungeonState,
-    runtimeCultivator: Cultivator,
-    costs: DungeonOptionCost[],
-  ) {
-    for (const cost of costs) {
-      if (cost.type === 'hp_loss') {
-        state.condition = ConditionService.applyExternalResourceLoss(
-          runtimeCultivator,
-          state.condition,
-          {
-            hpPercent: cost.value,
-          },
-        );
-      } else if (cost.type === 'mp_loss') {
-        state.condition = ConditionService.applyExternalResourceLoss(
-          runtimeCultivator,
-          state.condition,
-          {
-            mpPercent: cost.value,
-          },
-        );
-      } else if (cost.type === 'weak') {
-        state.condition = ConditionService.addOrStackStatus(
-          state.condition,
-          'weakness',
-          cost.value,
-          'event',
-        );
-      }
-    }
   }
 
   private async getBattleContext(cultivatorId: string, battleId: string) {
@@ -525,18 +491,7 @@ export class DungeonService {
       // 1. 获取玩家与地图数据 (逻辑同你之前)
       const context = await this.prepareDungeonContext(cultivatorId, mapNodeId);
 
-      // 2. 加载持久状态和环境状态
-      const cultivator = await getCultivatorByIdUnsafe(cultivatorId);
-      if (!cultivator || !cultivator.cultivator) {
-        throw new Error('未找到修真者数据');
-      }
-
-      const hydratedCondition = ConditionService.tickNaturalRecovery(
-        cultivator.cultivator,
-        cultivator.cultivator.condition,
-      );
-
-      // 3. 初始状态
+      // 2. 初始状态
       const state: DungeonState = {
         ...context,
         mapNodeId, // 保存地图节点ID
@@ -552,15 +507,14 @@ export class DungeonService {
         gainLedger: [],
         accumulatedRewards: [],
         status: 'EXPLORING',
-        condition: hydratedCondition,
         accumulatedHpLoss: 0, // 累积气血损失百分比 (0-1)
         accumulatedMpLoss: 0, // 累积法力损失百分比 (0-1)
       };
 
-      // 4. 首次 AI 调用
+      // 3. 首次 AI 调用
       const roundData = this.normalizeRoundOptions(await this.callAI(state));
 
-      // 5. 更新历史并存入 Redis
+      // 4. 更新历史并存入 Redis
       const gainedNames = roundData.acquired_items?.map(
         (i) => i.name || '未知物品',
       );
@@ -635,14 +589,6 @@ export class DungeonService {
     if (this.hasCommittedAction(state, actionId)) {
       return { actionId, state, isFinished: state.isFinished };
     }
-    const cultivatorBundle = await getCultivatorByIdUnsafe(cultivatorId);
-    if (!cultivatorBundle?.cultivator) {
-      throw new Error('未找到修真者数据');
-    }
-    const runtimeCultivator = {
-      ...cultivatorBundle.cultivator,
-      condition: state.condition,
-    };
 
     // 1. 校验选项
     const chosenOption = state.currentOptions?.find((o) => o.id === choiceId);
@@ -765,7 +711,6 @@ export class DungeonService {
         throw error;
       }
 
-      this.applyConditionCosts(state, runtimeCultivator, actionCosts);
       this.commitCostsToState(state, pendingAction);
       state.pendingAction = undefined;
       state.costPreview = undefined;
@@ -792,7 +737,6 @@ export class DungeonService {
       try {
         const result = await this.settleDungeon(state, {
           pendingAction,
-          runtimeCultivator,
         });
         return { actionId, ...result };
       } catch (error) {
@@ -840,7 +784,6 @@ export class DungeonService {
       await this.saveState(cultivatorId, state);
       throw error;
     }
-    this.applyConditionCosts(state, runtimeCultivator, actionCosts);
     this.commitCostsToState(state, pendingAction);
     state.pendingAction = undefined;
     state.costPreview = undefined;
@@ -915,7 +858,7 @@ export class DungeonService {
     );
     const enemy = draft.cultivator;
 
-    // 构建 BattleSession，传递状态快照和虚拟气血/法力损失百分比
+    // 构建 BattleSession。副本 run 不注入角色 HP/MP/status，交由战斗系统使用默认初始状态。
     const session: BattleSession = {
       battleId,
       dungeonStateKey,
@@ -927,7 +870,7 @@ export class DungeonService {
         level: `${enemy.realm} ${enemy.realm_stage}`,
         difficulty: enemyDifficulty,
       },
-      battleInit: buildDungeonBattleInit(dungeonState),
+      battleInit: buildDungeonBattleInit(),
     };
 
     // Save to Redis
@@ -969,30 +912,6 @@ export class DungeonService {
         ? battleResult.winner.name
         : battleResult.loser.name;
     const isWin = battleResult.winner.name === state.playerInfo.name;
-    const playerSnapshot = isWin
-      ? battleResult.winnerSnapshot
-      : battleResult.loserSnapshot;
-
-    if (!playerSnapshot) {
-      throw new Error('战斗终局缺少玩家状态快照');
-    }
-
-    const cultivatorBundle = await getCultivatorByIdUnsafe(cultivatorId);
-    if (!cultivatorBundle?.cultivator) {
-      throw new Error('未找到修真者数据');
-    }
-
-    const persistedBattleState = ConditionService.applyBattleOutcome(
-      {
-        ...cultivatorBundle.cultivator,
-        condition: state.condition,
-      },
-      state.condition,
-      playerSnapshot,
-      'persistent_pve',
-      !isWin,
-    );
-    state.condition = persistedBattleState;
 
     // 战斗失败处理：生成伤势状态
     if (!isWin) {
@@ -1240,29 +1159,6 @@ export class DungeonService {
     const lastHistory = state.history[state.history.length - 1];
 
     if (!isWin) {
-      const cultivatorBundle = await getCultivatorByIdUnsafe(cultivatorId);
-      if (!cultivatorBundle?.cultivator) {
-        throw new Error('未找到修真者数据');
-      }
-      const playerSnapshot =
-        battleResult.winner.id === cultivatorId
-          ? battleResult.winnerSnapshot
-          : battleResult.loserSnapshot;
-      if (playerSnapshot) {
-        const persistedBattleState =
-          ConditionService.applyBattleOutcome(
-            {
-              ...cultivatorBundle.cultivator,
-              condition: state.condition,
-            },
-            state.condition,
-            playerSnapshot,
-            'persistent_pve',
-            true,
-          );
-        state.condition = persistedBattleState;
-      }
-
       if (lastHistory) {
         lastHistory.outcome = `你不敌 ${enemyName}，被迫退出秘境。${reason ? `（天机紊乱：${reason}）` : ''}`;
       }
@@ -1291,7 +1187,6 @@ export class DungeonService {
       abandonedBattle?: boolean; // 标记为主动放弃
       endDisposition?: DungeonSettlementLlmContext['endDisposition'];
       pendingAction?: DungeonPendingAction;
-      runtimeCultivator?: Cultivator;
     },
   ): Promise<DungeonSettlementResult> {
     state.status = 'SETTLING';
@@ -1323,7 +1218,6 @@ export class DungeonService {
       abandonedBattle?: boolean;
       endDisposition?: DungeonSettlementLlmContext['endDisposition'];
       pendingAction?: DungeonPendingAction;
-      runtimeCultivator?: Cultivator;
     },
   ): Promise<DungeonSettlementResult> {
     // --- 核心优化：使用 RewardFactory 将 AI 蓝图转化为真实奖励 ---
@@ -1384,13 +1278,6 @@ export class DungeonService {
         throw new DungeonSettlementRecoverableError(
           result.errors?.join('; ') || '资源消耗失败',
           ACTION_RECOVERABLE_ACTIONS,
-        );
-      }
-      if (options.runtimeCultivator) {
-        this.applyConditionCosts(
-          state,
-          options.runtimeCultivator,
-          options.pendingAction.costs,
         );
       }
       this.commitCostsToState(state, options.pendingAction);
@@ -1602,16 +1489,6 @@ export class DungeonService {
       state = parseRedisJson<DungeonState>(await redis.get(key), key);
     }
     if (!state) return null;
-    if (!state.condition) {
-      const cultivatorBundle = await getCultivatorByIdUnsafe(cultivatorId);
-      if (cultivatorBundle?.cultivator) {
-        const hydrated = ConditionService.tickNaturalRecovery(
-          cultivatorBundle.cultivator,
-          cultivatorBundle.cultivator.condition,
-        );
-        state.condition = hydrated;
-      }
-    }
     return this.normalizeState(state);
   }
 
@@ -1681,10 +1558,6 @@ export class DungeonService {
     state.costPreview = undefined;
     state.recoverableActions = undefined;
     state.activeBattleId = undefined;
-
-    await updateCultivator(state.cultivatorId, {
-      condition: state.condition,
-    });
 
     await getExecutor().transaction(async (tx) => {
       if (!state.archiveHistoryCommittedAt) {
@@ -1834,9 +1707,6 @@ export class DungeonService {
       state.costPreview = undefined;
       state.recoverableActions = undefined;
       state.activeBattleId = undefined;
-      await updateCultivator(cultivatorId, {
-        condition: state.condition,
-      });
       await getExecutor()
         .insert(dungeonHistories)
         .values({

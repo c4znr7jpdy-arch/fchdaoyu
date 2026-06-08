@@ -1,6 +1,5 @@
 import type { ResolvedDungeonMapConfig } from '@shared/lib/game/mapSystem';
 import type { RealmType } from '@shared/types/constants';
-import type { ConditionStatusKey } from '@shared/types/condition';
 import { truncateText } from '@server/utils/llmPayload';
 import type {
   DungeonOptionCost,
@@ -17,12 +16,6 @@ const SCENE_SUMMARY_MAX_CHARS = 80;
 const OUTCOME_SUMMARY_MAX_CHARS = 60;
 const MAP_DESCRIPTION_MAX_CHARS = 80;
 const FALLBACK_TEXT = '未见分明痕迹';
-const PRESSURE_STATUS_KEYS = new Set<ConditionStatusKey>([
-  'weakness',
-  'minor_wound',
-  'major_wound',
-  'near_death',
-]);
 
 function uniqueStrings(values: Array<string | undefined | null>): string[] {
   return Array.from(
@@ -188,9 +181,6 @@ export function buildDungeonRoundLlmContext(args: {
   phase: string;
 }): DungeonRoundLlmContext {
   const { state, mapConfig, realmGap, phase } = args;
-  const activePressure = state.condition.statuses.some((status) =>
-    PRESSURE_STATUS_KEYS.has(status.key),
-  );
   const battleAftermath = buildBattleAftermath(state.history);
 
   return {
@@ -225,11 +215,6 @@ export function buildDungeonRoundLlmContext(args: {
       combatStyleSummary: buildCombatStyleSummary(state),
     },
     history: state.history.slice(-HISTORY_LIMIT).map(summarizeHistoryEntry),
-    resourcePressure: {
-      hpLossRatio: Number(state.accumulatedHpLoss.toFixed(3)),
-      mpLossRatio: Number(state.accumulatedMpLoss.toFixed(3)),
-      hasWeakness: activePressure,
-    },
     ...(battleAftermath ? { battleAftermath } : {}),
     accumulatedRewardNames: summarizeRewardNames(state.accumulatedRewards),
   };

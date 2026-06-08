@@ -113,9 +113,9 @@ export const defaultDungeonSceneDescriptor =
   dungeonSceneDescriptors.map_selection;
 
 const DUNGEON_SCENE_TOP_OFFSET_FALLBACK =
-  'calc(env(safe-area-inset-top) + 5rem)';
+  'calc(env(safe-area-inset-top) + 3.5rem)';
 
-export const DUNGEON_SCENE_CONTENT_TOP_GAP = `calc(var(--dungeon-scene-top-offset, ${DUNGEON_SCENE_TOP_OFFSET_FALLBACK}) + 0.75rem)`;
+export const DUNGEON_SCENE_CONTENT_TOP_GAP = `calc(var(--dungeon-scene-top-offset, ${DUNGEON_SCENE_TOP_OFFSET_FALLBACK}) + 0.5rem)`;
 export const DUNGEON_SCENE_CONTENT_BOTTOM_GAP =
   'calc(env(safe-area-inset-bottom) + 2.5rem)';
 

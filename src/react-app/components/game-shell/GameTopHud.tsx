@@ -28,10 +28,10 @@ function HudMeter({
     tone === 'hp'
       ? 'bg-crimson'
       : tone === 'mp'
-        ? 'bg-teal'
-        : tone === 'progress'
-          ? 'bg-ink'
-          : 'bg-wood';
+        ? 'bg-[var(--color-tier-xuan)]'
+      : tone === 'progress'
+        ? 'bg-ink'
+        : 'bg-wood';
 
   const className = cn(
     'min-w-0 space-y-1',

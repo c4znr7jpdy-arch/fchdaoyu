@@ -21,6 +21,7 @@ import {
   useSpecialSceneBackOverride,
 } from './special-scene';
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -454,12 +455,14 @@ export function GameGenesisLayout() {
 }
 
 const DUNGEON_SCENE_TOP_OFFSET_FALLBACK =
-  'calc(env(safe-area-inset-top) + 5rem)';
+  'calc(env(safe-area-inset-top) + 3.5rem)';
 
 function DungeonSceneChrome({
   chromeRef,
+  isScrolled,
 }: {
   chromeRef?: RefObject<HTMLDivElement | null>;
+  isScrolled: boolean;
 }) {
   const navigate = useNavigate();
   const descriptor = useResolvedDungeonScene();
@@ -467,28 +470,23 @@ function DungeonSceneChrome({
   return (
     <div
       ref={chromeRef}
-      className="pointer-events-none absolute inset-x-0 top-0 z-30 px-3 pt-[calc(env(safe-area-inset-top)+0.65rem)] md:px-5"
+      className="pointer-events-none absolute inset-x-0 top-0 z-30"
     >
-      <div className="border-battle-rule-strong bg-[rgba(248,243,230,0.92)] pointer-events-auto flex items-start justify-between gap-4 border border-dashed px-3 py-2 shadow-[0_10px_30px_rgba(44,24,16,0.08)] backdrop-blur-sm">
-        <button
-          type="button"
-          onClick={() => navigate(descriptor.backAction.href)}
-          className="text-battle-muted hover:text-crimson shrink-0 text-sm transition"
-        >
-          [{descriptor.backAction.label}]
-        </button>
-        <div className="min-w-0 text-right">
-          <div className="text-battle-muted text-[0.66rem] tracking-[0.18em]">
-            副本宿主
-          </div>
-          <div className="text-ink mt-1 text-sm leading-6 md:text-base">
-            {descriptor.sceneLabel}
-          </div>
-          {descriptor.subtitle ? (
-            <div className="text-battle-muted mt-1 text-xs leading-6">
-              {descriptor.subtitle}
-            </div>
-          ) : null}
+      <div
+        className={
+          isScrolled
+            ? 'border-ink/10 pointer-events-auto border-b border-dashed backdrop-blur-sm'
+            : 'pointer-events-auto'
+        }
+      >
+        <div className="mx-auto flex min-h-12 w-full max-w-5xl items-center gap-3 px-3 pt-[env(safe-area-inset-top)] md:px-6">
+          <button
+            type="button"
+            onClick={() => navigate(descriptor.backAction.href)}
+            className="text-battle-muted hover:text-crimson shrink-0 text-sm transition"
+          >
+            {descriptor.backAction.label}
+          </button>
         </div>
       </div>
     </div>
@@ -498,7 +496,9 @@ function DungeonSceneChrome({
 function GameDungeonLayoutBody() {
   const descriptor = useResolvedDungeonScene();
   const chromeRef = useRef<HTMLDivElement | null>(null);
+  const mainRef = useRef<HTMLElement | null>(null);
   const [chromeHeight, setChromeHeight] = useState<number | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
   const isImmersiveBattleScene = descriptor.density === 'full';
 
   useEffect(() => {
@@ -533,6 +533,14 @@ function GameDungeonLayoutBody() {
       }) as CSSProperties,
     [chromeHeight],
   );
+  const updateScrollState = useCallback(() => {
+    const node = mainRef.current;
+    setIsScrolled(Boolean(node && node.scrollTop > 8));
+  }, []);
+
+  useEffect(() => {
+    updateScrollState();
+  }, [descriptor, updateScrollState]);
 
   return (
     <div
@@ -540,8 +548,15 @@ function GameDungeonLayoutBody() {
       style={dungeonLayoutStyle}
     >
       <div className="relative h-full overflow-hidden">
-        {!isImmersiveBattleScene && <DungeonSceneChrome chromeRef={chromeRef} />}
+        {!isImmersiveBattleScene && (
+          <DungeonSceneChrome
+            chromeRef={chromeRef}
+            isScrolled={isScrolled}
+          />
+        )}
         <main
+          ref={mainRef}
+          onScroll={updateScrollState}
           className={
             isImmersiveBattleScene
               ? 'h-full overflow-hidden'

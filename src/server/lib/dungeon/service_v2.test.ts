@@ -111,6 +111,7 @@ import {
   getCultivatorByIdUnsafe,
   getCultivatorOwnerId,
 } from '../services/cultivatorService';
+import { getExecutor } from '../drizzle/db';
 
 interface TestableDungeonService {
   createBattleSession(
@@ -211,35 +212,6 @@ function createDungeonState(mapNodeId: string): DungeonState {
     accumulatedRewards: [],
     accumulatedHpLoss: 0,
     accumulatedMpLoss: 0,
-    condition: {
-      version: 1,
-      resources: {
-        hp: { current: 1000 },
-        mp: { current: 800 },
-      },
-      gauges: {
-        pillToxicity: 0,
-      },
-      tracks: {
-        tempering: {
-          vitality: { level: 0, progress: 0 },
-          spirit: { level: 0, progress: 0 },
-          wisdom: { level: 0, progress: 0 },
-          speed: { level: 0, progress: 0 },
-          willpower: { level: 0, progress: 0 },
-        },
-        marrowWash: { level: 0, progress: 0 },
-      },
-      counters: {
-        longTermPillUsesByRealm: {},
-        cultivationPillUsesByRealm: {},
-        longevityPillUsesByRealm: {},
-      },
-      statuses: [],
-      timestamps: {
-        lastRecoveryAt: new Date(0).toISOString(),
-      },
-    },
   };
 }
 
@@ -756,5 +728,63 @@ describe('DungeonService looting continuation', () => {
     expect(objectMock).not.toHaveBeenCalled();
     expect(resourceGainMock).not.toHaveBeenCalled();
     expect(archiveSpy).toHaveBeenCalledWith(state, state.settlement, gains);
+  });
+
+  it('keeps archive failures recoverable instead of presenting a finished settlement', async () => {
+    const service = new DungeonService();
+    const state = createDungeonState('easy-map');
+    const gains = [{ type: 'spirit_stones' as const, value: 10 }];
+    state.status = 'SETTLING';
+    state.settlement = createSettlement();
+    state.realGains = gains;
+    state.gainLedger = [
+      {
+        source: 'settlement',
+        gains,
+        committedAt: new Date(0).toISOString(),
+      },
+    ];
+    vi.spyOn(service, 'saveState').mockResolvedValue();
+    vi.mocked(getExecutor).mockReturnValue({
+      transaction: vi.fn().mockRejectedValue(new Error('archive DB down')),
+    } as unknown as ReturnType<typeof getExecutor>);
+
+    const result = await service.settleDungeon(state);
+
+    expect(result).toMatchObject({
+      isFinished: false,
+      state: {
+        status: 'RECOVERABLE_ERROR',
+        isFinished: false,
+        statusReason: 'archive DB down',
+        recoverableActions: ['retry_settle', 'force_quit'],
+        settlement: state.settlement,
+        realGains: gains,
+      },
+    });
+    expect(objectMock).not.toHaveBeenCalled();
+    expect(resourceGainMock).not.toHaveBeenCalled();
+  });
+
+  it('archives a dungeon without overwriting the cultivator condition', async () => {
+    const service = new DungeonService();
+    const state = createDungeonState('easy-map');
+    const settlement = createSettlement();
+    const valuesMock = vi.fn();
+    const insertMock = vi.fn(() => ({ values: valuesMock }));
+    const updateMock = vi.fn();
+    vi.mocked(getExecutor).mockReturnValue({
+      transaction: vi.fn(async (callback: (tx: unknown) => Promise<void>) =>
+        callback({
+          insert: insertMock,
+          update: updateMock,
+        }),
+      ),
+    } as unknown as ReturnType<typeof getExecutor>);
+
+    await service.archiveDungeon(state, settlement);
+
+    expect(insertMock).toHaveBeenCalled();
+    expect(updateMock).not.toHaveBeenCalled();
   });
 });

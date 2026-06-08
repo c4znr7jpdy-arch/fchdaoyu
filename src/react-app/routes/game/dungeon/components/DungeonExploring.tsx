@@ -1,25 +1,29 @@
-import { DungeonProgressCard } from '@app/components/dungeon/DungeonProgressCard';
 import { InkSection } from '@app/components/layout';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
 import { InkChoiceButton } from '@app/components/ui/InkChoiceButton';
 import { InkTag } from '@app/components/ui/InkTag';
+import type { CultivatorDisplaySnapshot } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
 import type {
   DungeonOptionCost,
   DungeonOption,
   DungeonRound,
   DungeonState,
 } from '@shared/lib/dungeon/types';
+import type { Cultivator } from '@shared/types/cultivator';
 import { getResourceIcon } from '@shared/lib/utils/statusDisplay';
 import {
   formatDungeonCostName,
   formatDungeonCostValue,
 } from '@app/lib/dungeon/formatDungeonCost';
 import { useState } from 'react';
+import { DungeonRunPanel } from './DungeonRunPanel';
 
 interface DungeonExploringProps {
   state: DungeonState;
   lastRound: DungeonRound | null;
+  cultivator: Cultivator | null;
+  displayResources?: CultivatorDisplaySnapshot['resources'];
   onAction: (option: DungeonOption) => Promise<unknown>;
   onQuit: () => Promise<boolean>;
   processing: boolean;
@@ -51,6 +55,8 @@ function OptionCostPreview({ costs }: { costs: DungeonOptionCost[] }) {
 export function DungeonExploring({
   state,
   lastRound,
+  cultivator,
+  displayResources,
   onAction,
   onQuit,
   processing,
@@ -62,14 +68,19 @@ export function DungeonExploring({
   }
 
   return (
-    <div className="space-y-6">
-      <InkCard className="mb-6 flex min-h-[200px] flex-col justify-center">
+    <div className="space-y-6 pb-28">
+      <DungeonRunPanel
+        state={state}
+        cultivator={cultivator}
+        displayResources={displayResources}
+        onQuit={onQuit}
+      />
+
+      <InkCard className="mb-6 flex min-h-50 flex-col justify-center">
         <p className="text-ink leading-relaxed">
           {lastRound.scene_description}
         </p>
       </InkCard>
-
-      <DungeonProgressCard state={state} onQuit={onQuit} />
 
       <InkSection title="抉择时刻">
         <div className="space-y-3">

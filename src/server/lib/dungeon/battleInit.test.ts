@@ -6,53 +6,10 @@ import {
 } from './battleInit';
 
 describe('dungeon battle init helpers', () => {
-  test('副本状态可转为统一的 battleInit 配置', () => {
-    const weakness = buildPersistentStatus('weakness', 2);
-    const now = new Date().toISOString();
+  test('副本战斗不从 run state 注入角色气血、法力或状态', () => {
+    const battleInit = buildDungeonBattleInit();
 
-    const battleInit = buildDungeonBattleInit({
-      condition: {
-        version: 1,
-        resources: {
-          hp: { current: 750 },
-          mp: { current: 360 },
-        },
-        gauges: {
-          pillToxicity: 0,
-        },
-        tracks: {
-          tempering: {
-            vitality: { level: 0, progress: 0 },
-            spirit: { level: 0, progress: 0 },
-            wisdom: { level: 0, progress: 0 },
-            speed: { level: 0, progress: 0 },
-            willpower: { level: 0, progress: 0 },
-          },
-          marrowWash: { level: 0, progress: 0 },
-        },
-        counters: {
-          longTermPillUsesByRealm: {},
-          cultivationPillUsesByRealm: {},
-          longevityPillUsesByRealm: {},
-        },
-        statuses: [weakness],
-        timestamps: {
-          lastRecoveryAt: now,
-        },
-      },
-    });
-
-    expect(battleInit.player?.resourceState?.hp).toEqual({
-      mode: 'absolute',
-      value: 750,
-    });
-    expect(battleInit.player?.resourceState?.mp).toEqual({
-      mode: 'absolute',
-      value: 360,
-    });
-    expect(battleInit.player?.statusRefs).toEqual([
-      { version: 1, templateId: 'weakness', stacks: 2 },
-    ]);
+    expect(battleInit).toEqual({});
   });
 
   test('weakness 可叠层，伤势会按轻伤→重伤→濒死晋级', () => {

@@ -1,3 +1,4 @@
+import { GameSceneSection } from '@app/components/game-shell';
 import { InkSection } from '@app/components/layout';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
@@ -7,10 +8,7 @@ import type {
   DungeonRecoverAction,
 } from '@shared/lib/dungeon/types';
 import { getMapNode } from '@shared/lib/game/mapSystem';
-import {
-  getPillToxicityStage,
-  isConditionStatusActive,
-} from '@shared/lib/condition';
+import { isConditionStatusActive } from '@shared/lib/condition';
 import { getConditionStatusTemplate } from '@shared/lib/conditionStatusRegistry';
 import { REALM_ORDER } from '@shared/types/constants';
 import { DungeonViewState } from '@app/lib/hooks/dungeon/useDungeonViewModel';
@@ -20,13 +18,17 @@ import type { CultivatorDisplaySnapshot } from '@shared/engine/battle-v5/adapter
 import { evaluateNoviceReadiness } from '@shared/lib/noviceGuidance';
 import type { TaskInstance } from '@shared/types/task';
 import { DungeonSceneScreen } from '../dungeonScene';
-import { resolveDungeonSceneDescriptor } from '../dungeonSceneRegistry';
+import {
+  resolveDungeonSceneDescriptor,
+  type DungeonSceneState,
+} from '../dungeonSceneRegistry';
 import { BattlePreparation } from './BattlePreparation';
 import { BattleCallbackData, DungeonBattle } from './DungeonBattle';
 import { DungeonExploring } from './DungeonExploring';
 import { DungeonMapSelector } from './DungeonMapSelector';
 import { DungeonSettlement } from './DungeonSettlement';
 import { DungeonLooting } from './DungeonLooting';
+import { DungeonRunPanel } from './DungeonRunPanel';
 
 interface DungeonViewRendererProps {
   viewState: DungeonViewState;
@@ -50,8 +52,24 @@ interface DungeonViewRendererProps {
   onSettlementConfirm?: () => void;
 }
 
+function resolveDungeonRunSceneDescriptor(
+  sceneState: DungeonSceneState,
+  state: DungeonState,
+) {
+  const descriptor = resolveDungeonSceneDescriptor(sceneState);
+  const mapNode = getMapNode(state.mapNodeId);
+
+  if (!mapNode?.name) return descriptor;
+
+  return {
+    ...descriptor,
+    sceneLabel: mapNode.name,
+  };
+}
+
 function renderPreparationNotice(
   cultivator: Cultivator | null,
+  displayResources: CultivatorDisplaySnapshot['resources'] | undefined,
   selectedNode: ReturnType<typeof getMapNode> | null,
   readiness: ReturnType<typeof evaluateNoviceReadiness> | null,
 ) {
@@ -64,7 +82,10 @@ function renderPreparationNotice(
     .slice(0, 2)
     .map((status) => getConditionStatusTemplate(status.key)?.name ?? status.key)
     .join('、');
-  const toxicityStage = getPillToxicityStage(cultivator.condition);
+  const hp = displayResources?.hp;
+  const mp = displayResources?.mp;
+  const hpPercent = Math.max(0, Math.min(100, Math.round(hp?.percent ?? 0)));
+  const mpPercent = Math.max(0, Math.min(100, Math.round(mp?.percent ?? 0)));
   const nodeRealm = selectedNode?.realm_requirement;
   const realmRisk =
     nodeRealm && REALM_ORDER[nodeRealm] > REALM_ORDER[cultivator.realm]
@@ -72,65 +93,95 @@ function renderPreparationNotice(
       : nodeRealm && REALM_ORDER[nodeRealm] === REALM_ORDER[cultivator.realm]
         ? 'warning'
         : 'info';
-  const riskText =
-    realmRisk === 'danger'
-      ? `当前秘境要求${nodeRealm}，已高于你的${cultivator.realm}境界。`
-      : realmRisk === 'warning'
-        ? `当前秘境与 ${cultivator.realm} 境同阶，进场前务必确认气血和法力。`
-        : selectedNode
-          ? '当前秘境境界要求较低，适合用来熟悉查探、撤退和结算。'
-          : '第一次探秘建议从地图选择低境界秘境，先学会查探和撤退。';
-  const bodyWarnings = [
-    statusNames ? `当前有${statusNames}状态` : null,
-    toxicityStage.key !== 'none' ? `丹毒：${toxicityStage.label}` : null,
-  ].filter(Boolean);
+  const reminder =
+    readiness?.shouldBlock
+      ? readiness.reasons[0]
+      : realmRisk === 'danger'
+        ? `秘境要求${nodeRealm}，高于当前${cultivator.realm}境界。`
+        : statusNames
+          ? `当前有${statusNames}状态，出行前可先调息。`
+          : hpPercent < 60 || mpPercent < 60
+            ? '气血或法力偏低，出行前可先补足。'
+            : '状态平稳，可以出行；遇险时优先查探再决断。';
 
   return (
-    <InkSection title="出行准备">
-      <div className="space-y-3 text-sm leading-7">
-        <InkNotice tone={realmRisk === 'danger' ? 'warning' : 'info'}>
-          {riskText}
-        </InkNotice>
-        {bodyWarnings.length > 0 ? (
-          <InkNotice tone="warning">
-            {bodyWarnings.join('，')}。若是第一次云游，建议先去客栈调息或服用疗伤丹。
-          </InkNotice>
-        ) : (
-          <p className="text-ink-secondary">
-            遇敌后先点“神识查探”，看不稳就撤退；撤退不会受伤，失败战斗会影响道体状态。
-          </p>
-        )}
-        {readiness?.shouldBlock ? (
-          <div className="space-y-2">
-            {readiness.reasons.map((reason) => (
-              <InkNotice key={reason} tone="warning">
-                {reason}
-              </InkNotice>
-            ))}
-            {readiness.hints.length > 0 ? (
-              <p className="text-ink-secondary text-xs leading-6">
-                {readiness.hints.slice(0, 2).join(' ')}
-              </p>
-            ) : null}
+    <GameSceneSection
+      title="出行准备"
+      help={{
+        title: '秘境探索说明',
+        content: (
+          <div className="space-y-3 text-sm leading-7">
+            <p>秘境推进以当前轮次、选项代价、危险度和结算结果为准。</p>
+            <p>气血、法力、异常状态用于出行前判断，不作为探索选项的通过条件。</p>
+            <p>遭遇强敌时可先查探；撤退会进入结算或离开流程，继续深入会提高风险与收益预期。</p>
+            <p>丹药仍通过储物袋等通用入口使用，不写入当前副本进度。</p>
           </div>
-        ) : readiness?.hints.length ? (
-          <InkNotice tone="info">
-            {readiness.hints.slice(0, 2).join(' ')}
-          </InkNotice>
-        ) : null}
+        ),
+      }}
+    >
+      <div className="border-ink/20 bg-paper/80 space-y-4 border border-dashed p-4 text-sm leading-7">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div>
+            <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+              <span className="text-ink-secondary">气血</span>
+              <span className="text-ink tabular-nums">
+                {Math.floor(hp?.current ?? 0)}/{Math.floor(hp?.max ?? 0)}
+              </span>
+            </div>
+            <div className="bg-ink/10 h-1.5 overflow-hidden">
+              <div
+                className="bg-crimson h-full"
+                style={{ width: `${hpPercent}%` }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+              <span className="text-ink-secondary">法力</span>
+              <span className="text-ink tabular-nums">
+                {Math.floor(mp?.current ?? 0)}/{Math.floor(mp?.max ?? 0)}
+              </span>
+            </div>
+            <div className="bg-ink/10 h-1.5 overflow-hidden">
+              <div
+                className="bg-[var(--color-tier-xuan)] h-full"
+                style={{ width: `${mpPercent}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-2">
+          <p>异常：{statusNames || '无'}</p>
+          <p>
+            秘境：
+            {realmRisk === 'danger'
+              ? '越阶'
+              : realmRisk === 'warning'
+                ? '同阶'
+                : selectedNode
+                  ? '稳妥'
+                  : '待选'}
+          </p>
+        </div>
+
+        <p className={realmRisk === 'danger' || readiness?.shouldBlock ? 'text-crimson' : 'text-ink-secondary'}>
+          {reminder}
+        </p>
+
         <div className="flex flex-wrap gap-2">
+          <InkButton href="/game/map" variant="secondary">
+            {selectedNode ? '重选秘境' : '前往地图'}
+          </InkButton>
           <InkButton href="/game/inn" variant="secondary">
             去客栈调息
-          </InkButton>
-          <InkButton href="/game/training-room" variant="secondary">
-            去练功房
           </InkButton>
           <InkButton href="/game/craft/alchemy" variant="secondary">
             去炼丹房
           </InkButton>
         </div>
       </div>
-    </InkSection>
+    </GameSceneSection>
   );
 }
 
@@ -173,7 +224,10 @@ export function DungeonViewRenderer({
   if (viewState.type === 'in_battle' && cultivator) {
     return (
       <DungeonSceneScreen
-        descriptor={resolveDungeonSceneDescriptor('in_battle')}
+        descriptor={resolveDungeonRunSceneDescriptor(
+          'in_battle',
+          viewState.state,
+        )}
         className="h-full"
       >
         <DungeonBattle
@@ -187,13 +241,26 @@ export function DungeonViewRenderer({
 
   if (viewState.type === 'battle_preparation' && cultivator) {
     return (
-      <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('battle_preparation')}>
-        <BattlePreparation
-          battleId={viewState.state.activeBattleId!}
-          player={cultivator}
-          onStart={actions.startBattle}
-          onAbandon={actions.abandonBattle}
-        />
+      <DungeonSceneScreen
+        descriptor={resolveDungeonRunSceneDescriptor(
+          'battle_preparation',
+          viewState.state,
+        )}
+      >
+        <div className="pb-28">
+          <DungeonRunPanel
+            state={viewState.state}
+            cultivator={cultivator}
+            displayResources={displayResources}
+            onQuit={actions.quitDungeon}
+          />
+          <BattlePreparation
+            battleId={viewState.state.activeBattleId!}
+            player={cultivator}
+            onStart={actions.startBattle}
+            onAbandon={actions.abandonBattle}
+          />
+        </div>
       </DungeonSceneScreen>
     );
   }
@@ -212,9 +279,13 @@ export function DungeonViewRenderer({
 
   if (viewState.type === 'looting') {
     return (
-      <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('looting')}>
+      <DungeonSceneScreen
+        descriptor={resolveDungeonRunSceneDescriptor('looting', viewState.state)}
+      >
         <DungeonLooting
           state={viewState.state}
+          cultivator={cultivator}
+          displayResources={displayResources}
           onContinue={actions.continueLooting}
           onEscape={actions.escapeLooting}
           onQuit={actions.quitDungeon}
@@ -247,7 +318,12 @@ export function DungeonViewRenderer({
       force_quit: 'ghost',
     };
     return (
-      <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('exploring')}>
+      <DungeonSceneScreen
+        descriptor={resolveDungeonRunSceneDescriptor(
+          'exploring',
+          viewState.state,
+        )}
+      >
         <InkCard className="space-y-4 p-6">
           <div>
             <h2 className="text-crimson mb-2 text-xl font-bold">秘境推演中断</h2>
@@ -274,10 +350,17 @@ export function DungeonViewRenderer({
 
   if (viewState.type === 'exploring') {
     return (
-      <DungeonSceneScreen descriptor={resolveDungeonSceneDescriptor('exploring')}>
+      <DungeonSceneScreen
+        descriptor={resolveDungeonRunSceneDescriptor(
+          'exploring',
+          viewState.state,
+        )}
+      >
         <DungeonExploring
           state={viewState.state}
           lastRound={viewState.lastRound}
+          cultivator={cultivator}
+          displayResources={displayResources}
           onAction={actions.performAction}
           onQuit={actions.quitDungeon}
           processing={processing}
@@ -330,7 +413,12 @@ export function DungeonViewRenderer({
             readiness={readiness}
           />
         </InkSection>
-        {renderPreparationNotice(cultivator, selectedNode ?? null, readiness)}
+        {renderPreparationNotice(
+          cultivator,
+          displayResources,
+          selectedNode ?? null,
+          readiness,
+        )}
         <div className="mt-4 text-center">
           <InkButton href="/game/dungeon/history" variant="ghost">
             📖 查看历史记录

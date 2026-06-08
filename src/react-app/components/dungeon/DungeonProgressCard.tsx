@@ -1,4 +1,3 @@
-import { StatusCard } from '@app/components/cultivator/StatusCard';
 import { InkSection } from '@app/components/layout';
 import type { DungeonState } from '@shared/lib/dungeon/types';
 import { InkButton } from '../ui';
@@ -17,8 +16,6 @@ export function DungeonProgressCard({
   state,
   onQuit,
 }: DungeonProgressCardProps) {
-  const hasBuffs = state.condition.statuses.length > 0;
-
   return (
     <InkSection title="副本状态" subdued>
       <div className="space-y-3">
@@ -34,15 +31,6 @@ export function DungeonProgressCard({
             放弃
           </InkButton>
         </div>
-
-        {/* 角色状态 */}
-        {hasBuffs && (
-          <StatusCard
-            buffs={state.condition.statuses}
-            title="持久状态"
-            compact
-          />
-        )}
 
         {/* 资源损耗 */}
         <ResourceCostCard

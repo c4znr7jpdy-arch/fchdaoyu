@@ -1,11 +1,15 @@
-import { DungeonProgressCard } from '@app/components/dungeon/DungeonProgressCard';
 import { InkSection } from '@app/components/layout';
 import { InkButton } from '@app/components/ui/InkButton';
 import { InkCard } from '@app/components/ui/InkCard';
+import type { CultivatorDisplaySnapshot } from '@shared/engine/battle-v5/adapters/CultivatorDisplayAdapter';
 import type { DungeonState } from '@shared/lib/dungeon/types';
+import type { Cultivator } from '@shared/types/cultivator';
+import { DungeonRunPanel } from './DungeonRunPanel';
 
 interface DungeonLootingProps {
   state: DungeonState;
+  cultivator: Cultivator | null;
+  displayResources?: CultivatorDisplaySnapshot['resources'];
   onContinue: () => Promise<void>;
   onEscape: () => Promise<void>;
   onQuit: () => Promise<boolean>;
@@ -14,13 +18,22 @@ interface DungeonLootingProps {
 
 export function DungeonLooting({
   state,
+  cultivator,
+  displayResources,
   onContinue,
   onEscape,
   onQuit,
   processing,
 }: DungeonLootingProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
+      <DungeonRunPanel
+        state={state}
+        cultivator={cultivator}
+        displayResources={displayResources}
+        onQuit={onQuit}
+      />
+
       <InkCard className="mb-6 p-6">
         <h3 className="text-xl font-bold mb-4 text-center text-ink">战斗胜利</h3>
         <p className="text-ink-secondary text-center mb-6 leading-relaxed">
@@ -29,8 +42,6 @@ export function DungeonLooting({
           目前位于副本第 {state.currentRound} 轮。前方气息变幻，你可以选择继续深入，或就此离去。
         </p>
       </InkCard>
-
-      <DungeonProgressCard state={state} onQuit={onQuit} />
 
       <InkSection title="下一步抉择">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

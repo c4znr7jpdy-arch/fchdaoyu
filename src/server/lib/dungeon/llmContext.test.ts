@@ -53,35 +53,6 @@ function createDungeonState(): DungeonState {
     accumulatedRewards: [],
     accumulatedHpLoss: 0,
     accumulatedMpLoss: 0,
-    condition: {
-      version: 1,
-      resources: {
-        hp: { current: 1000 },
-        mp: { current: 800 },
-      },
-      gauges: {
-        pillToxicity: 0,
-      },
-      tracks: {
-        tempering: {
-          vitality: { level: 0, progress: 0 },
-          spirit: { level: 0, progress: 0 },
-          wisdom: { level: 0, progress: 0 },
-          speed: { level: 0, progress: 0 },
-          willpower: { level: 0, progress: 0 },
-        },
-        marrowWash: { level: 0, progress: 0 },
-      },
-      counters: {
-        longTermPillUsesByRealm: {},
-        cultivationPillUsesByRealm: {},
-        longevityPillUsesByRealm: {},
-      },
-      statuses: [],
-      timestamps: {
-        lastRecoveryAt: new Date(0).toISOString(),
-      },
-    },
   };
 }
 
@@ -114,5 +85,6 @@ describe('buildDungeonRoundLlmContext', () => {
       battleDifficultyCap: 70,
     });
     expect(context.player.realm).toBe('元婴 后期');
+    expect(context).not.toHaveProperty('resourcePressure');
   });
 });

@@ -4,15 +4,7 @@ import type {
 import type {
   ConditionStatusInstance,
   ConditionStatusKey,
-  CultivatorCondition,
 } from '@shared/types/condition';
-import { isConditionStatusActive } from '@shared/lib/condition';
-
-export interface DungeonBattleInitSource {
-  accumulatedHpLoss?: number;
-  accumulatedMpLoss?: number;
-  condition?: CultivatorCondition;
-}
 
 export function buildPersistentStatus(
   statusKey: ConditionStatusKey,
@@ -29,52 +21,8 @@ export function buildPersistentStatus(
   };
 }
 
-export function clampRemainingPercent(lossPercent: number): number {
-  return Math.max(0, Math.min(1, 1 - lossPercent));
-}
-
-export function buildDungeonBattleInit(
-  state: DungeonBattleInitSource,
-): BattleInitConfigV5 {
-  if (state.condition) {
-    return {
-      player: {
-        resourceState: {
-          hp: {
-            mode: 'absolute',
-            value: state.condition.resources.hp.current,
-          },
-          mp: {
-            mode: 'absolute',
-            value: state.condition.resources.mp.current,
-          },
-        },
-        statusRefs: state.condition.statuses
-          .filter((status) => isConditionStatusActive(status))
-          .map((status) => ({
-            version: 1 as const,
-            templateId: status.key,
-            stacks: status.stacks,
-          })),
-      },
-    };
-  }
-
-  return {
-    player: {
-      resourceState: {
-        hp: {
-          mode: 'percent',
-          value: clampRemainingPercent(state.accumulatedHpLoss ?? 0),
-        },
-        mp: {
-          mode: 'percent',
-          value: clampRemainingPercent(state.accumulatedMpLoss ?? 0),
-        },
-      },
-      statusRefs: [],
-    },
-  };
+export function buildDungeonBattleInit(): BattleInitConfigV5 {
+  return {};
 }
 
 export function incrementOrInsertStatus(
