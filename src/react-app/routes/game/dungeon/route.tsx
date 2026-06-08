@@ -32,6 +32,7 @@ function DungeonContent() {
     !!cultivator,
     cultivator?.id,
     preSelectedNodeId,
+    refresh,
   );
 
   // 结算确认回调：刷新库存后跳转首页

@@ -740,8 +740,9 @@ export async function getCultivatorOwnerId(
  */
 export async function getCultivatorByIdUnsafe(
   cultivatorId: string,
+  executor?: DbExecutor | DbTransaction,
 ): Promise<CultivatorWithOwner | null> {
-  const q = getExecutor();
+  const q = executor ?? getExecutor();
   const record = await findActiveCultivatorRecordById(cultivatorId, q);
   if (!record) {
     return null;

@@ -6,6 +6,9 @@ import type {
   DungeonState,
   PlayerInfo,
 } from './types';
+import type { BattleRecord } from '@shared/types/battle';
+import type { UnitStateSnapshot } from '@shared/engine/battle-v5/systems/state/types';
+import type { CultivatorCondition } from '@shared/types/condition';
 
 const {
   buildDraftMock,
@@ -84,6 +87,7 @@ vi.mock('../services/ConditionService', () => ({
     tickNaturalRecovery: vi.fn(),
     applyExternalResourceLoss: vi.fn(),
     addOrStackStatus: vi.fn(),
+    buildBattleInit: vi.fn(),
     applyBattleOutcome: vi.fn(),
   },
 }));
@@ -110,7 +114,9 @@ import { renderPrompt } from '@server/lib/prompts';
 import {
   getCultivatorByIdUnsafe,
   getCultivatorOwnerId,
+  updateCultivator,
 } from '../services/cultivatorService';
+import { ConditionService } from '../services/ConditionService';
 import { getExecutor } from '../drizzle/db';
 
 interface TestableDungeonService {
@@ -246,6 +252,103 @@ function createRound(scene = '你继续深入秘境。') {
       is_final_round: false,
       internal_danger_score: 12,
     },
+  };
+}
+
+function createBattleSnapshot(input: {
+  id: string;
+  name: string;
+  hp: number;
+  mp: number;
+}): UnitStateSnapshot {
+  return {
+    id: input.id,
+    name: input.name,
+    alive: input.hp > 0,
+    hp: { current: input.hp, max: 1000, percent: input.hp / 1000 },
+    mp: { current: input.mp, max: 800, percent: input.mp / 800 },
+    shield: 0,
+    attrs: {
+      spirit: 100,
+      vitality: 100,
+      speed: 100,
+      willpower: 100,
+      wisdom: 100,
+      atk: 0,
+      def: 0,
+      magicAtk: 0,
+      magicDef: 0,
+      critRate: 0,
+      critDamageMult: 1,
+      evasionRate: 0,
+      controlHit: 0,
+      controlResistance: 0,
+      armorPenetration: 0,
+      magicPenetration: 0,
+      critResist: 0,
+      critDamageReduction: 0,
+      accuracy: 0,
+      healAmplify: 0,
+      maxHp: 1000,
+      maxMp: 800,
+    },
+    baseAttrs: {
+      spirit: 100,
+      vitality: 100,
+      speed: 100,
+      willpower: 100,
+      wisdom: 100,
+      atk: 0,
+      def: 0,
+      magicAtk: 0,
+      magicDef: 0,
+      critRate: 0,
+      critDamageMult: 1,
+      evasionRate: 0,
+      controlHit: 0,
+      controlResistance: 0,
+      armorPenetration: 0,
+      magicPenetration: 0,
+      critResist: 0,
+      critDamageReduction: 0,
+      accuracy: 0,
+      healAmplify: 0,
+      maxHp: 1000,
+      maxMp: 800,
+    },
+    buffs: [],
+    cooldowns: [],
+    canAct: input.hp > 0,
+  };
+}
+
+function createBattleRecord(args: {
+  winner: Cultivator;
+  loser: Cultivator;
+  winnerSnapshot: UnitStateSnapshot;
+  loserSnapshot?: UnitStateSnapshot;
+}): BattleRecord {
+  return {
+    winner: args.winner,
+    loser: args.loser,
+    logs: [],
+    turns: 3,
+    player: args.winner.id ?? args.winner.name,
+    opponent: args.loser.id ?? args.loser.name,
+    logSpans: [],
+    stateTimeline: {
+      frames: [],
+      unitIds: [
+        args.winner.id ?? args.winner.name,
+        args.loser.id ?? args.loser.name,
+      ],
+      unitNames: {
+        [args.winner.id ?? args.winner.name]: args.winner.name,
+        [args.loser.id ?? args.loser.name]: args.loser.name,
+      },
+    },
+    winnerSnapshot: args.winnerSnapshot,
+    loserSnapshot: args.loserSnapshot,
   };
 }
 
@@ -469,6 +572,267 @@ describe('DungeonService action recovery', () => {
       },
     });
     expect(result.state?.activeBattleId).toBeUndefined();
+  });
+
+  it('persists hp and mp loss costs when committing a regular dungeon action', async () => {
+    const service = new DungeonService();
+    const state = createDungeonState('easy-map');
+    state.currentOptions = [
+      {
+        id: 1,
+        text: '强行穿过禁制',
+        risk_level: 'medium',
+        potential_cost: '气血与法力受损',
+        costs: [
+          { type: 'hp_loss', value: 0.2 },
+          { type: 'mp_loss', value: 0.15 },
+        ],
+      },
+    ];
+    state.history.push({
+      round: 1,
+      scene: '禁制横在甬道之前。',
+    });
+    const player = createEnemy({
+      realm: '元婴',
+      realmStage: '后期',
+      name: '韩立',
+    });
+    player.id = 'cultivator-1';
+    const nextCondition = {
+      version: 1,
+      resources: {
+        hp: { current: 800 },
+        mp: { current: 680 },
+      },
+      gauges: { pillToxicity: 0 },
+      tracks: {
+        tempering: {
+          vitality: { level: 0, progress: 0 },
+          spirit: { level: 0, progress: 0 },
+          wisdom: { level: 0, progress: 0 },
+          speed: { level: 0, progress: 0 },
+          willpower: { level: 0, progress: 0 },
+        },
+        marrowWash: { level: 0, progress: 0 },
+      },
+      counters: {
+        longTermPillUsesByRealm: {},
+        cultivationPillUsesByRealm: {},
+        longevityPillUsesByRealm: {},
+      },
+      statuses: [],
+      timestamps: {
+        lastRecoveryAt: new Date().toISOString(),
+      },
+      metrics: {
+        totalRecoveredHp: 0,
+        totalRecoveredMp: 0,
+      },
+    } satisfies CultivatorCondition;
+    const tx = { tx: true };
+    resourceConsumeMock.mockImplementation(
+      async (_userId, _cultivatorId, _costs, action, dryRun) => {
+        if (!dryRun && action) {
+          await action(tx);
+        }
+        return { success: true, operations: _costs };
+      },
+    );
+    vi.mocked(getCultivatorByIdUnsafe).mockResolvedValue({
+      cultivator: player,
+      userId: 'user-1',
+      updatedAt: new Date(),
+    });
+    vi.mocked(ConditionService.applyExternalResourceLoss).mockReturnValueOnce(
+      nextCondition,
+    );
+    vi.mocked(updateCultivator).mockResolvedValueOnce(player);
+    vi.spyOn(service, 'getState').mockResolvedValueOnce(state);
+    vi.spyOn(service as any, 'callAI').mockResolvedValueOnce(
+      createRound('穿过禁制后，你来到一片幽暗石室。'),
+    );
+    vi.spyOn(service, 'saveState').mockResolvedValue();
+
+    const result = await service.handleAction(
+      'cultivator-1',
+      1,
+      'cost-action-1',
+    );
+
+    expect(result).toMatchObject({
+      actionId: 'cost-action-1',
+      isFinished: false,
+      state: {
+        accumulatedHpLoss: 0.2,
+        accumulatedMpLoss: 0.15,
+        status: 'EXPLORING',
+      },
+    });
+    expect(ConditionService.applyExternalResourceLoss).toHaveBeenCalledWith(
+      player,
+      player.condition,
+      {
+        hpPercent: 0.2,
+        mpPercent: 0.15,
+      },
+    );
+    expect(updateCultivator).toHaveBeenCalledWith(
+      'cultivator-1',
+      { condition: nextCondition },
+      tx,
+    );
+  });
+});
+
+describe('DungeonService option fallback', () => {
+  it('repairs an exploring final round with no options so the player can settle', () => {
+    const service = new DungeonService();
+    const state = createDungeonState('easy-map');
+    state.currentRound = 5;
+    state.maxRounds = 5;
+    state.status = 'EXPLORING';
+    state.currentOptions = [];
+
+    const normalized = (service as any).normalizeState(state) as DungeonState;
+
+    expect(normalized.currentOptions).toEqual([
+      expect.objectContaining({
+        id: 1,
+        risk_level: 'low',
+        costs: [],
+        costPreview: [],
+      }),
+    ]);
+    expect(normalized.currentOptions?.[0].text).toContain('结束探索');
+  });
+
+  it('adds a continuation fallback when AI returns no options before the final round', () => {
+    const service = new DungeonService();
+    const state = createDungeonState('easy-map');
+    state.currentRound = 3;
+    state.maxRounds = 5;
+    const round = createRound('空荡甬道向前延伸。');
+    round.interaction.options = [];
+
+    const normalized = (service as any).normalizeRoundOptions(
+      round,
+      state,
+    ) as ReturnType<typeof createRound>;
+
+    expect(normalized.interaction.options).toEqual([
+      expect.objectContaining({
+        id: 1,
+        risk_level: 'low',
+        costs: [],
+        costPreview: [],
+      }),
+    ]);
+    expect(normalized.interaction.options[0].text).toContain('继续探索');
+  });
+});
+
+describe('DungeonService battle condition persistence', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    redisSetMock.mockResolvedValue('OK');
+  });
+
+  it('persists player hp and mp from the dungeon battle result', async () => {
+    const service = new DungeonService();
+    const state = createDungeonState('easy-map');
+    state.history.push({
+      round: 1,
+      scene: '守陵阴魂自雾中现身。',
+    });
+    const player = createEnemy({
+      realm: '元婴',
+      realmStage: '后期',
+      name: '韩立',
+    });
+    player.id = 'cultivator-1';
+    const enemy = createEnemy({
+      realm: '筑基',
+      realmStage: '后期',
+      name: '守陵阴魂',
+    });
+    const winnerSnapshot = createBattleSnapshot({
+      id: 'cultivator-1',
+      name: '韩立',
+      hp: 456,
+      mp: 123,
+    });
+    const nextCondition = {
+      version: 1,
+      resources: {
+        hp: { current: 456 },
+        mp: { current: 123 },
+      },
+      gauges: { pillToxicity: 0 },
+      tracks: {
+        tempering: {
+          vitality: { level: 0, progress: 0 },
+          spirit: { level: 0, progress: 0 },
+          wisdom: { level: 0, progress: 0 },
+          speed: { level: 0, progress: 0 },
+          willpower: { level: 0, progress: 0 },
+        },
+        marrowWash: { level: 0, progress: 0 },
+      },
+      counters: {
+        longTermPillUsesByRealm: {},
+        cultivationPillUsesByRealm: {},
+        longevityPillUsesByRealm: {},
+      },
+      statuses: [],
+      timestamps: {
+        lastRecoveryAt: new Date().toISOString(),
+      },
+      metrics: {
+        totalRecoveredHp: 0,
+        totalRecoveredMp: 0,
+      },
+    } satisfies CultivatorCondition;
+    vi.mocked(ConditionService.applyBattleOutcome).mockReturnValueOnce(
+      nextCondition,
+    );
+    vi.mocked(updateCultivator).mockResolvedValueOnce(player);
+    vi.spyOn(service, 'getState').mockResolvedValueOnce(state);
+    vi.spyOn(service, 'saveState').mockResolvedValueOnce();
+
+    const result = await service.handleBattleCallback(
+      'cultivator-1',
+      createBattleRecord({
+        winner: player,
+        loser: enemy,
+        winnerSnapshot,
+        loserSnapshot: createBattleSnapshot({
+          id: 'enemy-1',
+          name: '守陵阴魂',
+          hp: 0,
+          mp: 50,
+        }),
+      }),
+      player,
+    );
+
+    expect(result).toMatchObject({
+      isFinished: false,
+      state: {
+        status: 'LOOTING',
+      },
+    });
+    expect(result.state?.activeBattleId).toBeUndefined();
+    expect(ConditionService.applyBattleOutcome).toHaveBeenCalledWith(
+      player,
+      player.condition,
+      winnerSnapshot,
+      'persistent_pve',
+      false,
+    );
+    expect(updateCultivator).toHaveBeenCalledWith('cultivator-1', {
+      condition: nextCondition,
+    });
   });
 });
 

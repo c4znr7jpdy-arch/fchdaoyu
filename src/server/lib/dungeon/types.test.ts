@@ -93,6 +93,59 @@ describe('dungeon battle metadata schemas', () => {
   });
 
   it.each([
+    ['shared', sharedDungeonRoundSchema],
+    ['server', serverDungeonRoundSchema],
+  ])('%s DungeonRoundSchema requires exactly three options', (_, schema) => {
+    const baseRound = {
+      scene_description: '阴风穿阵，尸气弥散。',
+      interaction: {
+        options: [
+          {
+            id: 1,
+            text: '稳步探查',
+            risk_level: 'low',
+            costs: [],
+          },
+          {
+            id: 2,
+            text: '强闯中枢',
+            risk_level: 'medium',
+            costs: [],
+          },
+          {
+            id: 3,
+            text: '借阵破局',
+            risk_level: 'high',
+            costs: [],
+          },
+        ],
+      },
+      status_update: {
+        is_final_round: false,
+        internal_danger_score: 72,
+      },
+    };
+
+    expect(schema.safeParse(baseRound).success).toBe(true);
+    expect(
+      schema.safeParse({
+        ...baseRound,
+        interaction: {
+          options: [],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({
+        ...baseRound,
+        interaction: {
+          options: baseRound.interaction.options.slice(0, 2),
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each([
     ['shared', sharedDungeonCostSchema],
     ['server', serverDungeonCostSchema],
   ])('%s DungeonCostSchema rejects negative and non-finite values', (_, schema) => {

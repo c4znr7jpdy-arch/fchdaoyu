@@ -23,7 +23,7 @@ import {
 } from '@shared/types/constants';
 import { randomUUID } from 'crypto';
 import type { Cultivator } from '@shared/types/cultivator';
-import { getExecutor } from '../drizzle/db';
+import { getExecutor, type DbTransaction } from '../drizzle/db';
 import { dungeonHistories, dungeonRuns } from '../drizzle/schema';
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { redis } from '../redis';
@@ -33,10 +33,12 @@ import {
   getCultivatorByIdUnsafe,
   getCultivatorOwnerId,
   getPaginatedInventoryByType,
+  updateCultivator,
 } from '../services/cultivatorService';
 import { QiService } from '../services/QiService';
 import { ServerEnemyCopyProvider } from '../services/ServerEnemyCopyProvider';
 import { TaskService } from '../services/TaskService';
+import { ConditionService } from '../services/ConditionService';
 import { buildDungeonBattleInit } from './battleInit';
 import { withPlayerAbilityStrategySettings } from '@shared/lib/battle/abilityStrategyInit';
 import {
@@ -174,6 +176,22 @@ function cloneCosts(costs: DungeonOptionCost[] | undefined): DungeonOptionCost[]
 }
 
 export class DungeonService {
+  private buildFallbackOption(state: Pick<DungeonState, 'currentRound' | 'maxRounds'>) {
+    const isFinalRound = state.currentRound >= state.maxRounds;
+    return {
+      id: 1,
+      text: isFinalRound
+        ? '稳住心神，清点本轮所得并结束探索。'
+        : '稳住心神，沿着当前线索继续探索。',
+      risk_level: 'low' as const,
+      potential_cost: isFinalRound
+        ? '结束本次秘境探索并进入结算。'
+        : '不额外承担风险，继续推进下一轮。',
+      costs: [],
+      costPreview: [],
+    };
+  }
+
   private normalizeOptionCosts(option: { costs?: DungeonOptionCost[] }) {
     const costs = cloneCosts(option.costs)
       .map((cost) => {
@@ -196,7 +214,10 @@ export class DungeonService {
       : costs;
   }
 
-  private normalizeRoundOptions(roundData: DungeonRound) {
+  private normalizeRoundOptions(
+    roundData: DungeonRound,
+    state: Pick<DungeonState, 'currentRound' | 'maxRounds'>,
+  ) {
     roundData.interaction.options = roundData.interaction.options.map((option) => {
       const costPreview = this.normalizeOptionCosts(option);
       return {
@@ -205,6 +226,9 @@ export class DungeonService {
         costPreview,
       };
     });
+    if (roundData.interaction.options.length === 0) {
+      roundData.interaction.options = [this.buildFallbackOption(state)];
+    }
     return roundData;
   }
 
@@ -222,6 +246,9 @@ export class DungeonService {
         costPreview,
       };
     });
+    if (state.status === 'EXPLORING' && (state.currentOptions?.length ?? 0) === 0) {
+      state.currentOptions = [this.buildFallbackOption(state)];
+    }
     if (state.status === 'RECOVERABLE_ERROR') {
       state.recoverableActions ??= DEFAULT_RECOVERABLE_ACTIONS;
     }
@@ -324,6 +351,38 @@ export class DungeonService {
       ...action,
       status: 'committed',
     };
+  }
+
+  private async applyConditionResourceLosses(
+    cultivatorId: string,
+    costs: DungeonOptionCost[],
+    tx: DbTransaction,
+  ) {
+    const hpPercent = costs
+      .filter((cost) => cost.type === 'hp_loss')
+      .reduce((sum, cost) => sum + cost.value, 0);
+    const mpPercent = costs
+      .filter((cost) => cost.type === 'mp_loss')
+      .reduce((sum, cost) => sum + cost.value, 0);
+
+    if (hpPercent <= 0 && mpPercent <= 0) {
+      return;
+    }
+
+    const bundle = await getCultivatorByIdUnsafe(cultivatorId, tx);
+    if (!bundle?.cultivator) {
+      throw new Error('未找到修真者数据');
+    }
+
+    const nextCondition = ConditionService.applyExternalResourceLoss(
+      bundle.cultivator,
+      bundle.cultivator.condition,
+      {
+        hpPercent,
+        mpPercent,
+      },
+    );
+    await updateCultivator(cultivatorId, { condition: nextCondition }, tx);
   }
 
   private async getBattleContext(cultivatorId: string, battleId: string) {
@@ -512,7 +571,7 @@ export class DungeonService {
       };
 
       // 3. 首次 AI 调用
-      const roundData = this.normalizeRoundOptions(await this.callAI(state));
+      const roundData = this.normalizeRoundOptions(await this.callAI(state), state);
 
       // 4. 更新历史并存入 Redis
       const gainedNames = roundData.acquired_items?.map(
@@ -648,7 +707,15 @@ export class DungeonService {
         userId,
         cultivatorId,
         actionCosts as ResourceOperation[],
-        undefined,
+        dryRun
+          ? undefined
+          : async (tx) => {
+              await this.applyConditionResourceLosses(
+                cultivatorId,
+                actionCosts,
+                tx,
+              );
+            },
         dryRun,
       );
 
@@ -757,7 +824,7 @@ export class DungeonService {
     // 3. AI 生成下一轮
     let roundData: DungeonRound;
     try {
-      roundData = this.normalizeRoundOptions(await this.callAI(state));
+      roundData = this.normalizeRoundOptions(await this.callAI(state), state);
     } catch (error) {
       state.currentRound--;
       const recoverable = await this.markRecoverable(
@@ -858,7 +925,7 @@ export class DungeonService {
     );
     const enemy = draft.cultivator;
 
-    // 构建 BattleSession。副本 run 不注入角色 HP/MP/status，交由战斗系统使用默认初始状态。
+    // 构建 BattleSession。角色当前 HP/MP 会在执行战斗时从持久 condition 注入。
     const session: BattleSession = {
       battleId,
       dungeonStateKey,
@@ -870,7 +937,7 @@ export class DungeonService {
         level: `${enemy.realm} ${enemy.realm_stage}`,
         difficulty: enemyDifficulty,
       },
-      battleInit: buildDungeonBattleInit(),
+      battleInit: {},
     };
 
     // Save to Redis
@@ -890,6 +957,7 @@ export class DungeonService {
   async handleBattleCallback(
     cultivatorId: string,
     battleResult: BattleRecord,
+    cultivator: Cultivator,
   ): Promise<{
     state?: DungeonState;
     roundData?: DungeonRound;
@@ -907,11 +975,30 @@ export class DungeonService {
     delete state.activeBattleId;
 
     // Construct Narrative
-    const enemyName =
-      battleResult.loser.name === state.playerInfo.name
-        ? battleResult.winner.name
-        : battleResult.loser.name;
-    const isWin = battleResult.winner.name === state.playerInfo.name;
+    const playerIdentity =
+      cultivator.id ?? state.playerInfo.id ?? state.playerInfo.name;
+    const winnerIdentity = battleResult.winner.id ?? battleResult.winner.name;
+    const loserIdentity = battleResult.loser.id ?? battleResult.loser.name;
+    const loserIsPlayer =
+      loserIdentity === playerIdentity ||
+      battleResult.loser.name === state.playerInfo.name;
+    const enemyName = loserIsPlayer
+      ? battleResult.winner.name
+      : battleResult.loser.name;
+    const isWin =
+      winnerIdentity === playerIdentity ||
+      battleResult.winner.name === state.playerInfo.name;
+    const playerSnapshot = isWin
+      ? battleResult.winnerSnapshot
+      : (battleResult.loserSnapshot ?? battleResult.winnerSnapshot);
+    const nextCondition = ConditionService.applyBattleOutcome(
+      cultivator,
+      cultivator.condition,
+      playerSnapshot,
+      'persistent_pve',
+      !isWin,
+    );
+    await updateCultivator(cultivatorId, { condition: nextCondition });
 
     // 战斗失败处理：生成伤势状态
     if (!isWin) {
@@ -961,7 +1048,13 @@ export class DungeonService {
       cultivatorBundle.cultivator,
       enemyObject,
       withPlayerAbilityStrategySettings(
-        session.battleInit,
+        {
+          ...session.battleInit,
+          player: {
+            ...session.battleInit?.player,
+            ...buildDungeonBattleInit(cultivatorBundle.cultivator).player,
+          },
+        },
         cultivatorBundle.cultivator,
       ),
     );
@@ -970,6 +1063,7 @@ export class DungeonService {
       const callbackData = await this.handleBattleCallback(
         cultivatorId,
         battleResult,
+        cultivatorBundle.cultivator,
       );
       return {
         battleResult,
@@ -1063,7 +1157,7 @@ export class DungeonService {
   ) {
     let roundData: DungeonRound;
     try {
-      roundData = this.normalizeRoundOptions(await this.callAI(state));
+      roundData = this.normalizeRoundOptions(await this.callAI(state), state);
     } catch (error) {
       console.error('[DungeonService] 战后生成失败:', error);
       const recoverable = await this.markRecoverable(
@@ -1265,6 +1359,13 @@ export class DungeonService {
         userId,
         state.cultivatorId,
         options.pendingAction.costs as ResourceOperation[],
+        async (tx) => {
+          await this.applyConditionResourceLosses(
+            state.cultivatorId,
+            options.pendingAction!.costs,
+            tx,
+          );
+        },
       );
       if (!result.success) {
         state.status = 'EXPLORING';

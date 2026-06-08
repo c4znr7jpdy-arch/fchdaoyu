@@ -13,8 +13,8 @@ import type { Artifact, Consumable, Material } from '@shared/types/cultivator';
  * - consumable: 消耗品
  *
  * 副本特有类型（副本系统内部处理）：
- * - hp_loss: 气血损耗（虚拟累积）
- * - mp_loss: 灵力损耗（虚拟累积）
+ * - hp_loss: 气血损耗（副本系统写入持久 condition 并累计展示）
+ * - mp_loss: 灵力损耗（副本系统写入持久 condition 并累计展示）
  * - weak: 陷入虚弱（映射为 weakness 状态）
  * - battle: 遭遇战斗
  * - artifact_damage: 法宝损坏

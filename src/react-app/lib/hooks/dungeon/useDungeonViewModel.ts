@@ -86,6 +86,7 @@ export function useDungeonViewModel(
   hasCultivator: boolean,
   cultivatorId: string | undefined,
   preSelectedNodeId: string | null,
+  refreshCultivator?: () => Promise<void> | void,
 ) {
   // 副本状态管理
   const {
@@ -291,6 +292,7 @@ export function useDungeonViewModel(
     result: DungeonAbandonBattleResult,
   ) => {
     setActiveBattleId(undefined);
+    void refreshCultivator?.();
     if (result.isFinished) {
       setState((prev) =>
         prev
@@ -313,6 +315,7 @@ export function useDungeonViewModel(
    */
   const handleBattleComplete = (data: BattleCallbackData | null) => {
     setActiveBattleId(undefined);
+    void refreshCultivator?.();
 
     if (data?.isFinished) {
       setState((prev) =>

@@ -70,6 +70,13 @@ export function buildCreationListenerGuard(
   effect: EffectConfig,
   guard?: ListenerConfig['guard'],
 ): ListenerConfig['guard'] | undefined {
+  if (eventType === 'DamageTakenEvent' && effect.type === 'death_prevent') {
+    return {
+      ...guard,
+      allowLethalWindow: true,
+    };
+  }
+
   if (eventType !== 'DamageTakenEvent' || effect.type !== 'damage') {
     return guard;
   }

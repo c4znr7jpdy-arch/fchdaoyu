@@ -136,7 +136,7 @@ export const DungeonRoundSchema = z.object({
   scene_description: z.string().describe('场景描述'),
   interaction: z
     .object({
-      options: z.array(DungeonOptionSchema).describe('交互选项'),
+      options: z.array(DungeonOptionSchema).length(3).describe('交互选项'),
     })
     .describe('交互'),
   acquired_items: z.array(RewardBlueprintSchema).optional().describe('当前轮次探索或战斗获得的战利品（仅在合理情况下发放，勿滥发）'),

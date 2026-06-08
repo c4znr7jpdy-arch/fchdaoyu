@@ -5,6 +5,8 @@ import type {
   ConditionStatusInstance,
   ConditionStatusKey,
 } from '@shared/types/condition';
+import type { Cultivator } from '@shared/types/cultivator';
+import { ConditionService } from '../services/ConditionService';
 
 export function buildPersistentStatus(
   statusKey: ConditionStatusKey,
@@ -21,8 +23,12 @@ export function buildPersistentStatus(
   };
 }
 
-export function buildDungeonBattleInit(): BattleInitConfigV5 {
-  return {};
+export function buildDungeonBattleInit(cultivator: Cultivator): BattleInitConfigV5 {
+  return ConditionService.buildBattleInit(
+    cultivator,
+    cultivator.condition,
+    'persistent_pve',
+  );
 }
 
 export function incrementOrInsertStatus(
