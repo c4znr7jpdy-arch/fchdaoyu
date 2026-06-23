@@ -4,7 +4,7 @@ import { db } from '@server/lib/drizzle/db';
 import { eq } from 'drizzle-orm';
 import { redis } from '@server/lib/redis';
 import type { AppEnv } from '@server/lib/hono/types';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 const router = new Hono<AppEnv>();
 
@@ -83,6 +83,9 @@ router.post('/wx/login', async (c) => {
     }
 
     const { openid, session_key } = await code2Session(code);
+    if (!openid || !session_key) {
+      throw new Error('Invalid WeChat response');
+    }
     await storeSessionKey(openid, session_key);
 
     let user = await db()
@@ -100,6 +103,7 @@ router.post('/wx/login', async (c) => {
       const [newUser] = await db()
         .insert(authUsers)
         .values({
+          id: randomUUID(),
           name: '玩家',
           email: syntheticEmail,
           emailVerified: false,
