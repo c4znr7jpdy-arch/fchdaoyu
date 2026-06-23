@@ -1,0 +1,11 @@
+page {
+  min-height: 100%;
+  color: #2d2418;
+  background: #f7f0df;
+  font-family: "STKaiti", "KaiTi", serif;
+}
+
+view,
+text {
+  box-sizing: border-box;
+}

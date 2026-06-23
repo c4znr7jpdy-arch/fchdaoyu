@@ -1,11 +1,15 @@
 import { auth } from '@server/lib/auth/auth';
+import { authUsers } from '@server/lib/auth/schema';
 import type { AuthUser } from '@server/lib/auth/types';
-import { getExecutor } from '@server/lib/drizzle/db';
+import { db, getExecutor } from '@server/lib/drizzle/db';
 import { cultivators } from '@server/lib/drizzle/schema';
 import type { AppEnv } from '@server/lib/hono/types';
+import { isRedisConfigured, redis } from '@server/lib/redis';
 import { and, eq } from 'drizzle-orm';
 import type { Context, MiddlewareHandler } from 'hono';
 import { ZodError, type ZodType } from 'zod';
+
+const MP_SESSION_PREFIX = 'mp:session:';
 
 function toErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) {
@@ -27,11 +31,51 @@ function applyAuthHeaders(context: Context<AppEnv>, headers?: Headers | null) {
   });
 }
 
+async function resolveUserFromBearer(
+  context: Context<AppEnv>,
+): Promise<AuthUser | null> {
+  const authorization = context.req.header('authorization');
+  if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
+    return null;
+  }
+
+  const token = authorization.slice(7).trim();
+  if (!token || !isRedisConfigured()) {
+    return null;
+  }
+
+  const userId = await redis.get(`${MP_SESSION_PREFIX}${token}`);
+  if (!userId) {
+    return null;
+  }
+
+  const user = await db()
+    .select({
+      id: authUsers.id,
+      email: authUsers.email,
+      name: authUsers.name,
+    })
+    .from(authUsers)
+    .where(eq(authUsers.id, userId))
+    .limit(1);
+
+  if (user.length === 0) {
+    return null;
+  }
+
+  return user[0];
+}
+
 async function resolveUser(context: Context<AppEnv>): Promise<AuthUser | null> {
   const existingUser = context.get('user');
 
   if (existingUser) {
     return existingUser;
+  }
+
+  const bearerUser = await resolveUserFromBearer(context);
+  if (bearerUser) {
+    return bearerUser;
   }
 
   const session = await auth.api.getSession({

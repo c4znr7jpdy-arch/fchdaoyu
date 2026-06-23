@@ -23,6 +23,7 @@ import saveCharacterRouter from '@server/routes/api/save-character.router';
 import tasksRouter from '@server/routes/api/tasks.router';
 import towerRouter from '@server/routes/api/tower.router';
 import worldChatRouter from '@server/routes/api/world-chat.router';
+import wxLoginRouter from '@server/routes/wx-login.router';
 import type { AppEnv } from '@server/lib/hono/types';
 import { getRedisHealthStatus } from '@server/lib/redis';
 import playerRouter from '@server/routes/player.router';
@@ -76,5 +77,6 @@ apiRouter.route('/tasks', tasksRouter);
 apiRouter.route('/tower', towerRouter);
 apiRouter.route('/v2/products', productsRouter);
 apiRouter.route('/world-chat', worldChatRouter);
+apiRouter.route('/wx', wxLoginRouter);
 
 export default apiRouter;

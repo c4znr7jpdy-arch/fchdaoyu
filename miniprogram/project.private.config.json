@@ -1,0 +1,23 @@
+{
+  "description": "项目私有配置。开发者工具会按本机环境更新此文件。",
+  "projectname": "xiuxian",
+  "setting": {
+    "compileHotReLoad": true,
+    "urlCheck": true,
+    "coverView": false,
+    "lazyloadPlaceholderEnable": false,
+    "skylineRenderEnable": false,
+    "preloadBackgroundData": false,
+    "autoAudits": false,
+    "useApiHook": true,
+    "showShadowRootInWxmlPanel": false,
+    "useStaticServer": false,
+    "useLanDebug": false,
+    "showES6CompileOption": false,
+    "checkInvalidKey": true,
+    "ignoreDevUnusedFiles": true,
+    "bigPackageSizeSupport": false
+  },
+  "libVersion": "3.15.2",
+  "condition": {}
+}
