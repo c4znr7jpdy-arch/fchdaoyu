@@ -8,13 +8,13 @@ type RuntimeConfig = {
 
 const configs: Record<MiniProgramEnvVersion, RuntimeConfig> = {
   develop: {
-    apiBaseUrl: 'http://127.0.0.1:5173',
+    apiBaseUrl: 'http://47.242.208.64',
   },
   trial: {
-    apiBaseUrl: 'https://api.example.com',
+    apiBaseUrl: 'http://47.242.208.64',
   },
   release: {
-    apiBaseUrl: 'https://api.example.com',
+    apiBaseUrl: 'http://47.242.208.64',
   },
 };
 
