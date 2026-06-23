@@ -1,0 +1,97 @@
+.page {
+  min-height: 100vh;
+  padding: 72px 40px 48px;
+  background:
+    radial-gradient(circle at 24% 12%, rgba(132, 48, 32, 0.16), transparent 28%),
+    linear-gradient(145deg, #f8f1df 0%, #efe0bf 100%);
+}
+
+.hero {
+  padding: 44px 36px;
+  border: 2px solid rgba(75, 54, 30, 0.18);
+  background: rgba(255, 250, 238, 0.76);
+  box-shadow: 0 24px 80px rgba(67, 44, 16, 0.12);
+}
+
+.eyebrow {
+  display: block;
+  color: #8d2f22;
+  font-size: 24px;
+  letter-spacing: 6px;
+}
+
+.title {
+  display: block;
+  margin-top: 28px;
+  color: #2c2115;
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1.22;
+}
+
+.card {
+  margin-top: 28px;
+  padding: 30px 32px;
+  border-left: 8px solid #8d2f22;
+  background: rgba(45, 33, 21, 0.08);
+}
+
+.cardTitle {
+  display: block;
+  color: #8d2f22;
+  font-size: 24px;
+}
+
+.cardBody {
+  display: block;
+  margin-top: 12px;
+  color: #2d2418;
+  font-size: 28px;
+}
+
+.muted {
+  border-left-color: rgba(141, 47, 34, 0.42);
+  background: rgba(255, 250, 238, 0.45);
+}
+
+.task-card {
+  margin-top: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(141, 47, 34, 0.12);
+}
+
+.task-card:last-child {
+  border-bottom: none;
+}
+
+.task-name {
+  display: block;
+  color: #2d2418;
+  font-size: 28px;
+}
+
+.task-category {
+  display: block;
+  color: #8d2f22;
+  font-size: 22px;
+  margin-top: 4px;
+}
+
+.btn-small {
+  margin-top: 12px;
+  padding: 8px 24px;
+  font-size: 24px;
+  line-height: 1.5;
+  border-radius: 8px;
+  background: #8d2f22;
+  color: #fbf3dd;
+}
+
+.status.checking {
+  border-left-color: #876a2f;
+}
+
+.status.error {
+  border-left-color: #9b2e22;
+  background: rgba(155, 46, 34, 0.1);
+}

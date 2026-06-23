@@ -15,7 +15,13 @@ export default function Index() {
   const [hasToken, setHasToken] = useState(false);
 
   useEffect(() => {
-    setHasToken(hasSessionToken());
+    const token = hasSessionToken();
+    setHasToken(token);
+
+    if (token) {
+      Taro.switchTab({ url: '/pages/cave/index' });
+      return;
+    }
 
     getHealthCheck()
       .then((result) => {
@@ -40,13 +46,8 @@ export default function Index() {
         <Text className="eyebrow">万界道友 · 微信小程序</Text>
         <Text className="title">一念入道，万界开卷</Text>
         <Text className="summary">
-          小程序骨架已建立。下一步将接入微信登录与核心游戏闭环。
+          欢迎来到万界道友。登录后开启你的修仙旅程。
         </Text>
-      </View>
-
-      <View className="card">
-        <Text className="cardTitle">当前阶段</Text>
-        <Text className="cardBody">M3：微信登录与后端认证适配</Text>
       </View>
 
       <View className="card muted">
@@ -60,14 +61,9 @@ export default function Index() {
         <Text className="cardBody">{healthMessage}</Text>
       </View>
 
-      <View className="card muted">
-        <Text className="cardTitle">会话状态</Text>
-        <Text className="cardBody">{hasToken ? '已发现本地令牌' : '尚未登录'}</Text>
-      </View>
-
       <View className="actions">
         <Button className="btn primary" onClick={goToLogin}>
-          前往登录
+          微信登录
         </Button>
       </View>
     </View>

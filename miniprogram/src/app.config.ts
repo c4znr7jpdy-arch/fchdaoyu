@@ -1,10 +1,37 @@
 export default defineAppConfig({
-  pages: ['pages/index/index', 'pages/login/index'],
+  pages: [
+    'pages/index/index',
+    'pages/login/index',
+    'pages/cave/index',
+    'pages/create/index',
+    'pages/cultivator/index',
+    'pages/tasks/index',
+  ],
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#f7f0df',
     navigationBarTitleText: '万界道友',
     navigationBarTextStyle: 'black',
     backgroundColor: '#f7f0df',
+  },
+  tabBar: {
+    color: '#8d6a4a',
+    selectedColor: '#8d2f22',
+    backgroundColor: '#f7f0df',
+    borderStyle: 'white',
+    list: [
+      {
+        pagePath: 'pages/cave/index',
+        text: '洞府',
+      },
+      {
+        pagePath: 'pages/cultivator/index',
+        text: '道身',
+      },
+      {
+        pagePath: 'pages/tasks/index',
+        text: '任务',
+      },
+    ],
   },
 });
