@@ -66,15 +66,15 @@
 
 ## 里程碑 M4：核心游戏闭环 V1
 
-- [ ] 迁移或重写创建角色页面。
-- [ ] 跑通 AI 生成角色流程。
-- [ ] 跑通保存角色流程。
-- [ ] 迁移或重写洞府首页。
-- [ ] 迁移或重写道身信息页面。
+- [x] 迁移或重写创建角色页面。
+- [x] 跑通 AI 生成角色流程。
+- [x] 跑通保存角色流程。
+- [x] 迁移或重写洞府首页。
+- [x] 迁移或重写道身信息页面。
 - [ ] 迁移或重写储物袋页面。
-- [ ] 迁移或重写任务中心页面。
+- [x] 迁移或重写任务中心页面。
 - [ ] 迁移或重写静室修行页面。
-- [ ] 实现最小可玩的“登录 → 创建角色 → 查看洞府 → 执行一次核心操作”闭环。
+- [x] 实现最小可玩的”登录 → 创建角色 → 查看洞府 → 执行一次核心操作”闭环。
 
 ## 里程碑 M5：核心玩法扩展
 
@@ -139,6 +139,7 @@
 
 ## 变更记录
 
+- 2026-06-23：完成 M4 核心游戏闭环页面框架。新增 `PlayerProvider` 全局状态管理（调用 `/api/player/active` 加载角色数据）；新增 `game.ts` API 客户端（角色生成、命格、保存、任务）；新增洞府首页 `pages/cave`（角色状态属性展示 + 六宫格快捷导航）；新增创建角色页 `pages/create`（输入描述 → AI 生成 → 预览 → 抽取先天命格 → 保存，含配额检查）；新增道身信息页 `pages/cultivator`（境界、五维属性、灵石、灵气、寿元、身世）；新增任务中心页 `pages/tasks`（进行中/已完成列表 + 奖励领取）；配置 tabBar（洞府/道身/任务三 tab）；首页已登录自动 `switchTab` 到洞府。构建验证通过，储物袋和静室修行待后续实现。最小可玩闭环：登录 → 创建角色 → 查看洞府 → 查看任务。
 - 2026-06-23：完成 M3 全部任务并部署服务器。服务器：阿里云轻量 Ubuntu 22.04 2核2G，IP `47.242.208.64`，已安装 Bun/Node.js 20/PostgreSQL 14/Redis/Nginx/pm2，后端通过 pm2 守护运行在 3000 端口，Nginx 反向代理 80 端口。数据库：创建 `daoyou` 用户和数据库，运行 Better Auth migration，手动创建 `better_auth` schema 并迁移表，添加 `wxOpenid` 字段。后端修复 TypeScript 编译错误（`randomUUID` 生成 id、`openid`/`session_key` 类型守卫）。小程序 `env.ts` 配置指向服务器 IP。微信登录联调成功：`wx.login` → `POST /api/wx/wx/login` → 用户创建 → token 签发 → Bearer 鉴权 → `/api/player/active` 访问通过。GitHub 仓库迁移至 `c4znr7jpdy-arch/fchdaoyu`。
 - 2026-06-23：推进 M3：后端 `authUsers` 表新增 `wxOpenid` 字段并创建迁移 `0051_add_wx_openid.sql`；新增 `POST /api/wx/wx/login` 端点，调用微信 `jscode2session` 换取 `openid`，按 `wxOpenid` 查找或创建用户（synthetic email `wx_{openid}@wx.local`），session_key 存入 Redis，签发 30 天有效期的随机 token 并存入 Redis；改造 `resolveUser` 中间件，优先解析 `Authorization: Bearer <token>`，回退到 Better Auth cookie session；小程序新增登录页面 `pages/login/index` 与 `loginWithWeChat` 客户端，调用 `wx.login` 获取 code 并换取 token；首页新增”前往登录”入口；构建验证通过，实际登录链路需配置后端 `WECHAT_MINI_SECRET` 与合法域名后联调。
 - 2026-06-09：推进 M2：新增本地存储封装、session token 读写与恢复、Authorization 请求头、统一 `ApiRequestError`、`/api/health-check` 客户端和首页后端探针；小程序构建验证通过，实际 health-check 需等待后端服务和域名/本地调试配置。
