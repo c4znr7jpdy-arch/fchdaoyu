@@ -12,7 +12,7 @@
 }
 .hero .section-title { margin-bottom: 0; }
 .eyebrow { color: var(--cinnabar); display: block; font-size: 24rpx; letter-spacing: 6rpx; }
-.title { color: var(--ink); display: block; font-size: 44rpx; font-weight: 700; line-height: 1.22; margin-top: 20rpx; }
+.title { color: var(--ink); display: block; font-size: 52rpx; font-weight: 700; line-height: 1.22; margin-top: 20rpx; }
 
 .filter-row { display: flex; align-items: center; gap: 12rpx; margin-top: 20rpx; }
 .filter-input {

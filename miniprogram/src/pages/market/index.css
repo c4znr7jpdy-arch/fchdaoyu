@@ -12,7 +12,7 @@
 }
 .hero .section-title { margin-bottom: 0; }
 .eyebrow { color: var(--cinnabar); display: block; font-size: 24rpx; letter-spacing: 6rpx; }
-.title { color: var(--ink); display: block; font-size: 44rpx; font-weight: 700; line-height: 1.22; margin-top: 20rpx; }
+.title { color: var(--ink); display: block; font-size: 52rpx; font-weight: 700; line-height: 1.22; margin-top: 20rpx; }
 .summary { color: var(--ink-light); display: block; font-size: 28rpx; line-height: 1.8; margin-top: 28rpx; }
 
 .layer-tabs { display: flex; gap: 12rpx; margin-top: 20rpx; }

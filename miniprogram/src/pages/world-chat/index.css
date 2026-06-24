@@ -5,7 +5,7 @@
   flex-direction: column;
 }
 .chat-header {
-  padding: 72rpx 40rpx 20rpx;
+  padding: 72rpx 40rpx 48rpx;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
