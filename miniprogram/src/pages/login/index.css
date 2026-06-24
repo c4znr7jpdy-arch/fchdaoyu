@@ -97,3 +97,22 @@
   background: var(--cinnabar);
   color: var(--paper-light);
 }
+
+.links {
+  margin-top: 48rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.link {
+  color: var(--ink-faint);
+  font-size: 22rpx;
+  text-decoration: underline;
+}
+
+.link-sep {
+  color: var(--ink-faint);
+  font-size: 22rpx;
+}

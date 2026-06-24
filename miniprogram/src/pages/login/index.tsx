@@ -106,6 +106,16 @@ export default function Login() {
           </BreadButton>
         ) : null}
       </View>
+
+      <View className="links">
+        <Text className="link" onClick={() => Taro.navigateTo({ url: '/pages/privacy/index' })}>
+          隐私协议
+        </Text>
+        <Text className="link-sep">·</Text>
+        <Text className="link" onClick={() => Taro.navigateTo({ url: '/pages/agreement/index' })}>
+          用户协议
+        </Text>
+      </View>
     </View>
   );
 }
