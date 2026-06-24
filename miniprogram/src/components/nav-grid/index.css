@@ -41,3 +41,9 @@
   background: var(--danger);
   border-radius: 50%;
 }
+
+.nav-grid-icon {
+  width: 48rpx;
+  height: 48rpx;
+  margin-bottom: 8rpx;
+}

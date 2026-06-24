@@ -8,23 +8,30 @@ import BreadButton from '@/components/bread-button';
 import NavGrid, { NavItem } from '@/components/nav-grid';
 import SceneBg from '@/components/scene-bg';
 import inkMountainCave from '@/assets/ink-mountain-cave.svg';
+import iconAvatar from '@/assets/icon-avatar.svg';
+import iconBag from '@/assets/icon-bag.svg';
+import iconSkill from '@/assets/icon-skill.svg';
+import iconAlchemy from '@/assets/icon-alchemy.svg';
+import iconMarket from '@/assets/icon-market.svg';
+import iconRank from '@/assets/icon-rank.svg';
+import iconMessage from '@/assets/icon-message.svg';
 import './index.css';
 
 const navItems: NavItem[] = [
-  { icon: '道', label: '道身', onClick: () => Taro.navigateTo({ url: '/pages/cultivator/index' }) },
-  { icon: '任', label: '任务', onClick: () => Taro.navigateTo({ url: '/pages/tasks/index' }) },
-  { icon: '修', label: '静室', onClick: () => Taro.navigateTo({ url: '/pages/retreat/index' }) },
-  { icon: '储', label: '储物袋', onClick: () => Taro.navigateTo({ url: '/pages/inventory/index' }) },
-  { icon: '法', label: '功法神通', onClick: () => Taro.navigateTo({ url: '/pages/abilities/index' }) },
-  { icon: '炼', label: '炼丹', onClick: () => Taro.navigateTo({ url: '/pages/alchemy/index' }) },
-  { icon: '锻', label: '炼器', onClick: () => Taro.navigateTo({ url: '/pages/refine/index' }) },
-  { icon: '战', label: '战纪', onClick: () => Taro.navigateTo({ url: '/pages/battle-history/index' }) },
-  { icon: '市', label: '坊市', onClick: () => Taro.navigateTo({ url: '/pages/market/index' }) },
-  { icon: '榜', label: '排行榜', onClick: () => Taro.navigateTo({ url: '/pages/rankings/index' }) },
-  { icon: '信', label: '邮件', onClick: () => Taro.navigateTo({ url: '/pages/mail/index' }) },
-  { icon: '兑', label: '兑换', onClick: () => Taro.navigateTo({ url: '/pages/redeem/index' }) },
-  { icon: '聊', label: '世界', onClick: () => Taro.navigateTo({ url: '/pages/world-chat/index' }) },
-  { icon: '拍', label: '拍卖', onClick: () => Taro.navigateTo({ url: '/pages/auction/index' }) },
+  { icon: iconAvatar, label: '道身', onClick: () => Taro.navigateTo({ url: '/pages/cultivator/index' }) },
+  { label: '任务', onClick: () => Taro.navigateTo({ url: '/pages/tasks/index' }) },
+  { label: '静室', onClick: () => Taro.navigateTo({ url: '/pages/retreat/index' }) },
+  { icon: iconBag, label: '储物袋', onClick: () => Taro.navigateTo({ url: '/pages/inventory/index' }) },
+  { icon: iconSkill, label: '功法神通', onClick: () => Taro.navigateTo({ url: '/pages/abilities/index' }) },
+  { icon: iconAlchemy, label: '炼丹', onClick: () => Taro.navigateTo({ url: '/pages/alchemy/index' }) },
+  { icon: iconAlchemy, label: '炼器', onClick: () => Taro.navigateTo({ url: '/pages/refine/index' }) },
+  { label: '战纪', onClick: () => Taro.navigateTo({ url: '/pages/battle-history/index' }) },
+  { icon: iconMarket, label: '坊市', onClick: () => Taro.navigateTo({ url: '/pages/market/index' }) },
+  { icon: iconRank, label: '排行榜', onClick: () => Taro.navigateTo({ url: '/pages/rankings/index' }) },
+  { icon: iconMessage, label: '邮件', onClick: () => Taro.navigateTo({ url: '/pages/mail/index' }) },
+  { label: '兑换', onClick: () => Taro.navigateTo({ url: '/pages/redeem/index' }) },
+  { icon: iconMessage, label: '世界', onClick: () => Taro.navigateTo({ url: '/pages/world-chat/index' }) },
+  { label: '拍卖', onClick: () => Taro.navigateTo({ url: '/pages/auction/index' }) },
 ];
 
 export default function CavePage() {

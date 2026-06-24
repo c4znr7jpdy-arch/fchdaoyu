@@ -1,8 +1,8 @@
-import { View, Text } from '@tarojs/components';
+import { View, Text, Image } from '@tarojs/components';
 import './index.css';
 
 export interface NavItem {
-  icon: string;
+  icon?: string;
   label: string;
   badge?: boolean;
   onClick?: () => void;
@@ -19,7 +19,11 @@ export default function NavGrid({ items, columns = 3 }: NavGridProps) {
       {items.map((item, i) => (
         <View key={i} className='nav-item' onClick={item.onClick}>
           <View className='nav-icon-wrap'>
-            <Text className='nav-icon-text'>{item.icon}</Text>
+            {item.icon ? (
+              <Image src={item.icon} className='nav-grid-icon' />
+            ) : (
+              <Text className='nav-icon-text'>{item.label.charAt(0)}</Text>
+            )}
             {item.badge && <View className='badge-dot' />}
           </View>
           <Text className='nav-label'>{item.label}</Text>
