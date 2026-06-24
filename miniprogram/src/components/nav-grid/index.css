@@ -18,8 +18,6 @@
   justify-content: center;
   width: 48rpx;
   height: 48rpx;
-  background-color: var(--paper);
-  border-radius: 8rpx;
 }
 
 .nav-icon-text {
