@@ -16,6 +16,8 @@ import InkDivider from '@/components/ink-divider';
 import TabBar from '@/components/tab-bar';
 import ScrollCard from '@/components/scroll-card';
 import Tag from '@/components/tag';
+import SceneBg from '@/components/scene-bg';
+import inkCloud from '@/assets/ink-cloud.svg';
 import './index.css';
 
 type TabKey = 'battle' | 'artifact' | 'technique' | 'skill' | 'elixir';
@@ -73,6 +75,7 @@ export default function RankingsPage() {
 
   return (
     <View className="page">
+      <SceneBg src={inkCloud} />
       <View className="hero">
         <SectionTitle>天骄榜</SectionTitle>
         <Text className="title">排行榜</Text>

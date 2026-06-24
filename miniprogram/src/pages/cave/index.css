@@ -4,6 +4,8 @@
   background:
     radial-gradient(circle at 24% 12%, rgba(132, 48, 32, 0.16), transparent 28%),
     linear-gradient(145deg, var(--paper-light) 0%, var(--paper) 100%);
+  position: relative;
+  z-index: 1;
 }
 
 .hero {

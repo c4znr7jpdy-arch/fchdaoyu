@@ -6,6 +6,8 @@ import SectionTitle from '@/components/section-title';
 import InkDivider from '@/components/ink-divider';
 import BreadButton from '@/components/bread-button';
 import NavGrid, { NavItem } from '@/components/nav-grid';
+import SceneBg from '@/components/scene-bg';
+import inkMountainCave from '@/assets/ink-mountain-cave.svg';
 import './index.css';
 
 const navItems: NavItem[] = [
@@ -35,6 +37,7 @@ export default function CavePage() {
   if (loading) {
     return (
       <View className="page">
+        <SceneBg src={inkMountainCave} />
         <View className="card status checking">
           <SectionTitle>洞府</SectionTitle>
           <Text className="cardBody">正在探查洞府...</Text>
@@ -46,6 +49,7 @@ export default function CavePage() {
   if (!hasActive || !cultivator) {
     return (
       <View className="page">
+        <SceneBg src={inkMountainCave} />
         <View className="hero">
           <Text className="eyebrow">洞府</Text>
           <Text className="title">空无一人</Text>
@@ -66,6 +70,7 @@ export default function CavePage() {
 
   return (
     <View className="page">
+      <SceneBg src={inkMountainCave} />
       <View className="hero">
         <Text className="eyebrow">洞府</Text>
         <Text className="title">{cultivator.name}</Text>

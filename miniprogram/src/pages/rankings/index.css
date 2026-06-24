@@ -44,3 +44,8 @@
 }
 .item-tag.quality { color: var(--cinnabar); background: rgba(141, 47, 34, 0.12); }
 .item-tag.newcomer { color: var(--jade); background: rgba(47, 125, 77, 0.12); }
+
+.page {
+  position: relative;
+  z-index: 1;
+}

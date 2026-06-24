@@ -167,3 +167,8 @@
   font-size: 26rpx;
   line-height: 1.8;
 }
+
+.page {
+  position: relative;
+  z-index: 1;
+}

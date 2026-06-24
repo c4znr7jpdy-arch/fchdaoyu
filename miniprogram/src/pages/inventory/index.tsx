@@ -18,6 +18,8 @@ import SectionTitle from '@/components/section-title';
 import InkDivider from '@/components/ink-divider';
 import ScrollCard from '@/components/scroll-card';
 import Tag from '@/components/tag';
+import SceneBg from '@/components/scene-bg';
+import inkBamboo from '@/assets/ink-bamboo.svg';
 import './index.css';
 
 type Item = Artifact | Consumable | Material;
@@ -204,6 +206,7 @@ export default function InventoryPage() {
   if (loading) {
     return (
       <View className="page">
+        <SceneBg src={inkBamboo} />
         <ScrollCard>
           <Text className="cardTitle">储物袋</Text>
           <Text className="cardBody">正在开启储物袋...</Text>
@@ -215,6 +218,7 @@ export default function InventoryPage() {
   if (!cultivator) {
     return (
       <View className="page">
+        <SceneBg src={inkBamboo} />
         <View className="hero">
           <Text className="eyebrow">储物袋</Text>
           <Text className="title">尚未入道</Text>
@@ -226,6 +230,7 @@ export default function InventoryPage() {
 
   return (
     <View className="page">
+      <SceneBg src={inkBamboo} />
       <View className="hero">
         <Text className="eyebrow">储物袋</Text>
         <Text className="title">身外之物</Text>

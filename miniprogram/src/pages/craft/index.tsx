@@ -15,6 +15,8 @@ import type { Material } from '@shared/types/cultivator';
 import SectionTitle from '@/components/section-title';
 import InkDivider from '@/components/ink-divider';
 import ScrollCard from '@/components/scroll-card';
+import SceneBg from '@/components/scene-bg';
+import inkSmokeAlchemy from '@/assets/ink-smoke-alchemy.svg';
 import './index.css';
 
 const ALCHEMY_TYPES = ['herb', 'ore', 'monster', 'tcdb', 'aux'];
@@ -223,6 +225,7 @@ export default function CraftPage({
   if (loadingMats && materials.length === 0) {
     return (
       <View className="page">
+        <SceneBg src={inkSmokeAlchemy} />
         <View className="card status checking">
           <SectionTitle>{title}</SectionTitle>
           <Text className="cardBody">正在清点灵材...</Text>
@@ -234,6 +237,7 @@ export default function CraftPage({
   if (!cultivator) {
     return (
       <View className="page">
+        <SceneBg src={inkSmokeAlchemy} />
         <View className="hero">
           <Text className="eyebrow">{eyebrow}</Text>
           <Text className="title">尚未入道</Text>
@@ -245,6 +249,7 @@ export default function CraftPage({
 
   return (
     <View className="page">
+      <SceneBg src={inkSmokeAlchemy} />
       <View className="hero">
         <Text className="eyebrow">{eyebrow}</Text>
         <Text className="title">{title}</Text>

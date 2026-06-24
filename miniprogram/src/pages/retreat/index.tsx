@@ -9,6 +9,8 @@ import InkDivider from '@/components/ink-divider';
 import BreadButton from '@/components/bread-button';
 import ScrollCard from '@/components/scroll-card';
 import ProgressBar from '@/components/progress-bar';
+import SceneBg from '@/components/scene-bg';
+import inkLotus from '@/assets/ink-lotus.svg';
 import './index.css';
 
 export default function RetreatPage() {
@@ -85,6 +87,7 @@ export default function RetreatPage() {
   if (loading) {
     return (
       <View className="page">
+        <SceneBg src={inkLotus} />
         <ScrollCard>
           <Text className="cardTitle">静室</Text>
           <Text className="cardBody">正在步入静室...</Text>
@@ -96,6 +99,7 @@ export default function RetreatPage() {
   if (!cultivator) {
     return (
       <View className="page">
+        <SceneBg src={inkLotus} />
         <View className="hero">
           <Text className="eyebrow">静室</Text>
           <Text className="title">尚未入道</Text>
@@ -107,6 +111,7 @@ export default function RetreatPage() {
 
   return (
     <View className="page">
+      <SceneBg src={inkLotus} />
       <View className="hero">
         <Text className="eyebrow">静室</Text>
         <Text className="title">闭关修行</Text>

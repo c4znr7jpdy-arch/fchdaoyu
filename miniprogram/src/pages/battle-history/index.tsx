@@ -13,6 +13,8 @@ import InkDivider from '@/components/ink-divider';
 import TabBar from '@/components/tab-bar';
 import ScrollCard from '@/components/scroll-card';
 import Tag from '@/components/tag';
+import SceneBg from '@/components/scene-bg';
+import inkMountainBattle from '@/assets/ink-mountain-battle.svg';
 import './index.css';
 
 type TabKey = 'all' | 'challenge' | 'challenged';
@@ -72,6 +74,7 @@ export default function BattleHistoryPage() {
   if (!cultivator) {
     return (
       <View className="page">
+        <SceneBg src={inkMountainBattle} />
         <View className="hero">
           <SectionTitle>战纪</SectionTitle>
           <Text className="title">尚未入道</Text>
@@ -83,6 +86,7 @@ export default function BattleHistoryPage() {
 
   return (
     <View className="page">
+      <SceneBg src={inkMountainBattle} />
       <View className="hero">
         <SectionTitle>战纪</SectionTitle>
         <Text className="title">战斗记录</Text>

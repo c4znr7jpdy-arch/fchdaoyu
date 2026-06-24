@@ -10,6 +10,8 @@ import { usePlayer } from '@/lib/player-context';
 import SectionTitle from '@/components/section-title';
 import InkDivider from '@/components/ink-divider';
 import ScrollCard from '@/components/scroll-card';
+import SceneBg from '@/components/scene-bg';
+import inkMountainBattle from '@/assets/ink-mountain-battle.svg';
 import './index.css';
 
 export default function BattleResultPage() {
@@ -41,6 +43,7 @@ export default function BattleResultPage() {
   if (loading) {
     return (
       <View className="page">
+        <SceneBg src={inkMountainBattle} />
         <ScrollCard>
           <View className="card status checking">
             <Text>加载战斗记录...</Text>
@@ -53,6 +56,7 @@ export default function BattleResultPage() {
   if (error || !detail) {
     return (
       <View className="page">
+        <SceneBg src={inkMountainBattle} />
         <ScrollCard>
           <View className="card status error">
             <Text>{error || '未找到记录'}</Text>
@@ -69,6 +73,7 @@ export default function BattleResultPage() {
 
   return (
     <View className="page">
+      <SceneBg src={inkMountainBattle} />
       <View className="hero">
         <SectionTitle>战纪</SectionTitle>
         <Text className={`title ${isWinner ? 'result-win' : 'result-lose'}`}>

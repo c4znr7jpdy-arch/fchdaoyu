@@ -41,3 +41,8 @@
   border-radius: 10rpx; padding: 12rpx 28rpx; font-size: 24rpx; color: var(--ink-light);
 }
 .btn-small[disabled] { opacity: 0.4; }
+
+.page {
+  position: relative;
+  z-index: 1;
+}
