@@ -3,12 +3,12 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 200rpx;
+  height: 120rpx;
   z-index: 0;
   pointer-events: none;
 }
 .scene-bg-img {
   width: 100%;
   height: 100%;
-  opacity: 0.5;
+  opacity: 0.4;
 }
