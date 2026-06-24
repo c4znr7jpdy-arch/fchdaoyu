@@ -1,0 +1,43 @@
+.page {
+  background: radial-gradient(circle at 24% 12%, rgba(132, 48, 32, 0.16), transparent 28%),
+    linear-gradient(145deg, var(--paper-light), var(--paper));
+  min-height: 100vh;
+  padding: 72rpx 40rpx 48rpx;
+}
+.hero {
+  background: var(--paper-overlay);
+  border: 2rpx solid rgba(75, 54, 30, 0.18);
+  box-shadow: 0 24rpx 80rpx rgba(67, 44, 16, 0.12);
+  padding: 44rpx 36rpx;
+}
+.hero .section-title { margin-bottom: 0; }
+.eyebrow { color: var(--cinnabar); display: block; font-size: 24rpx; letter-spacing: 6rpx; }
+.title { color: var(--ink); display: block; font-size: 52rpx; font-weight: 700; line-height: 1.22; margin-top: 28rpx; }
+.summary { color: var(--ink-light); display: block; font-size: 28rpx; line-height: 1.8; margin-top: 28rpx; }
+
+.record-card {
+  background: rgba(45, 33, 21, 0.08);
+  border-left: 8rpx solid var(--cinnabar);
+  margin-top: 20rpx; padding: 28rpx 32rpx;
+  border-radius: 0 12rpx 12rpx 0;
+}
+.record-head { display: flex; align-items: center; gap: 16rpx; }
+.record-result {
+  display: inline-block; width: 52rpx; height: 52rpx; line-height: 52rpx;
+  text-align: center; border-radius: 50%; font-size: 26rpx; font-weight: 700;
+}
+.record-result.win { background: rgba(47, 125, 77, 0.15); color: var(--jade); }
+.record-result.lose { background: rgba(155, 46, 34, 0.12); color: var(--cinnabar-dark); }
+.record-opponent { color: var(--ink); font-size: 30rpx; font-weight: 600; flex: 1; }
+.record-turns { color: var(--ink-muted); font-size: 24rpx; }
+.record-meta { display: flex; justify-content: space-between; margin-top: 12rpx; }
+.record-type { color: var(--ink-muted); font-size: 24rpx; }
+.record-time { color: var(--ink-faint); font-size: 22rpx; }
+
+.pager { display: flex; align-items: center; justify-content: center; gap: 24rpx; margin-top: 32rpx; }
+.pager-text { color: var(--ink-light); font-size: 26rpx; }
+.btn-small {
+  background: rgba(45, 33, 21, 0.08); border: 2rpx solid rgba(141, 47, 34, 0.18);
+  border-radius: 10rpx; padding: 12rpx 28rpx; font-size: 24rpx; color: var(--ink-light);
+}
+.btn-small[disabled] { opacity: 0.4; }

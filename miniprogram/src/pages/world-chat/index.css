@@ -1,0 +1,74 @@
+.page {
+  background: linear-gradient(145deg, var(--paper-light), var(--paper));
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.chat-header {
+  padding: 72rpx 40rpx 20rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.chat-header .section-title { margin-bottom: 0; }
+.chat-title { color: var(--ink); font-size: 40rpx; font-weight: 700; }
+.chat-hint { color: var(--ink-faint); font-size: 22rpx; }
+
+.chat-messages {
+  flex: 1;
+  padding: 0 32rpx;
+}
+.chat-loading { padding: 80rpx 0; text-align: center; }
+.chat-loading-text { color: var(--ink-faint); font-size: 26rpx; }
+
+.chat-msg {
+  background: var(--paper-overlay);
+  border: 2rpx solid rgba(75, 54, 30, 0.1);
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 16rpx;
+}
+.chat-msg.me {
+  background: rgba(141, 47, 34, 0.08);
+  border-color: rgba(141, 47, 34, 0.2);
+}
+.msg-header { display: flex; align-items: center; gap: 10rpx; margin-bottom: 8rpx; }
+.msg-name { color: var(--cinnabar); font-size: 24rpx; font-weight: 600; }
+.msg-realm { color: var(--ink-muted); font-size: 20rpx; }
+.msg-time { color: var(--ink-faint); font-size: 20rpx; margin-left: auto; }
+.msg-text { color: var(--ink); font-size: 28rpx; line-height: 1.6; word-break: break-all; }
+.msg-showcase {
+  background: rgba(141, 47, 34, 0.06);
+  border-radius: 10rpx;
+  padding: 12rpx 16rpx;
+  margin-top: 6rpx;
+}
+.msg-showcase-label { color: var(--ink-muted); font-size: 22rpx; display: block; margin-bottom: 4rpx; }
+
+.chat-input-bar {
+  display: flex;
+  gap: 12rpx;
+  padding: 16rpx 32rpx;
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 250, 238, 0.9);
+  border-top: 2rpx solid rgba(75, 54, 30, 0.1);
+}
+.chat-input {
+  flex: 1;
+  background: rgba(45, 33, 21, 0.06);
+  border: 2rpx solid rgba(141, 47, 34, 0.15);
+  border-radius: 10rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  color: var(--ink);
+}
+.chat-send-btn {
+  background: var(--cinnabar);
+  color: var(--paper-light);
+  border-radius: 10rpx;
+  padding: 16rpx 28rpx;
+  font-size: 26rpx;
+  min-width: 100rpx;
+  text-align: center;
+}
+.chat-send-btn[disabled] { opacity: 0.4; }

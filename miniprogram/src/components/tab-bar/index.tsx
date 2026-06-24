@@ -10,11 +10,12 @@ interface TabBarProps {
   items: TabItem[];
   active: string;
   onChange: (key: string) => void;
+  className?: string;
 }
 
-export default function TabBar({ items, active, onChange }: TabBarProps) {
+export default function TabBar({ items, active, onChange, className }: TabBarProps) {
   return (
-    <View className='tabs'>
+    <View className={className ? `tabs ${className}` : 'tabs'}>
       {items.map((item) => (
         <View
           key={item.key}
