@@ -1,0 +1,56 @@
+.role-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 28rpx;
+  background: var(--paper-overlay);
+  border: 2rpx solid rgba(80, 60, 40, 0.1);
+  border-radius: 24rpx;
+}
+
+.role-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, var(--cinnabar), var(--cinnabar-light));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.role-avatar-text {
+  font-size: 36rpx;
+  color: #fff;
+  font-weight: 700;
+}
+
+.role-info {
+  flex: 1;
+}
+
+.role-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.role-desc {
+  display: block;
+  font-size: 22rpx;
+  color: var(--ink-muted);
+  margin-top: 4rpx;
+}
+
+.role-level {
+  padding: 6rpx 16rpx;
+  background: rgba(141, 47, 34, 0.08);
+  border-radius: 12rpx;
+}
+
+.role-level-text {
+  font-size: 22rpx;
+  color: var(--cinnabar);
+  font-weight: 600;
+}

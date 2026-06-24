@@ -1,0 +1,29 @@
+.badge-dot {
+  position: absolute;
+  top: -4rpx;
+  right: -4rpx;
+  width: 14rpx;
+  height: 14rpx;
+  background: var(--danger);
+  border-radius: 50%;
+}
+
+.badge-count {
+  position: absolute;
+  top: -8rpx;
+  right: -12rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  padding: 0 6rpx;
+  background: var(--danger);
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badge-count-text {
+  font-size: 18rpx;
+  color: #fff;
+  font-weight: 600;
+}

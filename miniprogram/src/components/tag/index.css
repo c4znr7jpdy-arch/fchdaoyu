@@ -1,0 +1,30 @@
+.tag {
+  display: inline-block;
+  padding: 4rpx 16rpx;
+  border-radius: 6rpx;
+}
+
+.tag-text {
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.tag--default {
+  background: rgba(80, 60, 40, 0.06);
+}
+.tag--default .tag-text { color: var(--ink-light); }
+
+.tag--win {
+  background: rgba(47, 125, 77, 0.1);
+}
+.tag--win .tag-text { color: var(--jade); }
+
+.tag--lose {
+  background: rgba(196, 58, 49, 0.1);
+}
+.tag--lose .tag-text { color: var(--danger); }
+
+.tag--equipped {
+  background: rgba(47, 125, 77, 0.1);
+}
+.tag--equipped .tag-text { color: var(--jade); }
