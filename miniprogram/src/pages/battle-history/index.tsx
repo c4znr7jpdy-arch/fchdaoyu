@@ -14,7 +14,7 @@ import TabBar from '@/components/tab-bar';
 import ScrollCard from '@/components/scroll-card';
 import Tag from '@/components/tag';
 import SceneBg from '@/components/scene-bg';
-import inkMountainBattle from '@/assets/ink-mountain-battle.svg';
+import inkMountainBattle from '@/assets/ink-mountain-battle.png';
 import './index.css';
 
 type TabKey = 'all' | 'challenge' | 'challenged';

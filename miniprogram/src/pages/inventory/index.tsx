@@ -19,7 +19,7 @@ import InkDivider from '@/components/ink-divider';
 import ScrollCard from '@/components/scroll-card';
 import Tag from '@/components/tag';
 import SceneBg from '@/components/scene-bg';
-import inkBamboo from '@/assets/ink-bamboo.svg';
+import inkBamboo from '@/assets/ink-bamboo.png';
 import './index.css';
 
 type Item = Artifact | Consumable | Material;

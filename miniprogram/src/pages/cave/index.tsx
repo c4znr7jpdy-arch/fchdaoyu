@@ -7,14 +7,14 @@ import InkDivider from '@/components/ink-divider';
 import BreadButton from '@/components/bread-button';
 import NavGrid, { NavItem } from '@/components/nav-grid';
 import SceneBg from '@/components/scene-bg';
-import inkMountainCave from '@/assets/ink-mountain-cave.svg';
-import iconAvatar from '@/assets/icon-avatar.svg';
-import iconBag from '@/assets/icon-bag.svg';
-import iconSkill from '@/assets/icon-skill.svg';
-import iconAlchemy from '@/assets/icon-alchemy.svg';
-import iconMarket from '@/assets/icon-market.svg';
-import iconRank from '@/assets/icon-rank.svg';
-import iconMessage from '@/assets/icon-message.svg';
+import inkMountainCave from '@/assets/ink-mountain-cave.png';
+import iconAvatar from '@/assets/icon-avatar.png';
+import iconBag from '@/assets/icon-bag.png';
+import iconSkill from '@/assets/icon-skill.png';
+import iconAlchemy from '@/assets/icon-alchemy.png';
+import iconMarket from '@/assets/icon-market.png';
+import iconRank from '@/assets/icon-rank.png';
+import iconMessage from '@/assets/icon-message.png';
 import './index.css';
 
 const navItems: NavItem[] = [

@@ -10,7 +10,7 @@ import BreadButton from '@/components/bread-button';
 import ScrollCard from '@/components/scroll-card';
 import ProgressBar from '@/components/progress-bar';
 import SceneBg from '@/components/scene-bg';
-import inkLotus from '@/assets/ink-lotus.svg';
+import inkLotus from '@/assets/ink-lotus.png';
 import './index.css';
 
 export default function RetreatPage() {

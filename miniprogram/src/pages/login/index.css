@@ -31,9 +31,9 @@
 
 .summary {
   display: block;
-  margin-top: 56rpx;
+  margin-top: 28rpx;
   color: var(--ink-light);
-  font-size: 56rpx;
+  font-size: 28rpx;
   line-height: 1.8;
 }
 

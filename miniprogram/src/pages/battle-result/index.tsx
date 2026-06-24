@@ -11,7 +11,7 @@ import SectionTitle from '@/components/section-title';
 import InkDivider from '@/components/ink-divider';
 import ScrollCard from '@/components/scroll-card';
 import SceneBg from '@/components/scene-bg';
-import inkMountainBattle from '@/assets/ink-mountain-battle.svg';
+import inkMountainBattle from '@/assets/ink-mountain-battle.png';
 import './index.css';
 
 export default function BattleResultPage() {

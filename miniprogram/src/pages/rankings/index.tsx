@@ -17,7 +17,7 @@ import TabBar from '@/components/tab-bar';
 import ScrollCard from '@/components/scroll-card';
 import Tag from '@/components/tag';
 import SceneBg from '@/components/scene-bg';
-import inkCloud from '@/assets/ink-cloud.svg';
+import inkCloud from '@/assets/ink-cloud.png';
 import './index.css';
 
 type TabKey = 'battle' | 'artifact' | 'technique' | 'skill' | 'elixir';

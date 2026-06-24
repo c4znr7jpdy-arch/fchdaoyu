@@ -16,7 +16,7 @@ import SectionTitle from '@/components/section-title';
 import InkDivider from '@/components/ink-divider';
 import ScrollCard from '@/components/scroll-card';
 import SceneBg from '@/components/scene-bg';
-import inkSmokeAlchemy from '@/assets/ink-smoke-alchemy.svg';
+import inkSmokeAlchemy from '@/assets/ink-smoke-alchemy.png';
 import './index.css';
 
 const ALCHEMY_TYPES = ['herb', 'ore', 'monster', 'tcdb', 'aux'];
