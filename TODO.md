@@ -71,39 +71,39 @@
 - [x] 跑通保存角色流程。
 - [x] 迁移或重写洞府首页。
 - [x] 迁移或重写道身信息页面。
-- [ ] 迁移或重写储物袋页面。
+- [x] 迁移或重写储物袋页面。
 - [x] 迁移或重写任务中心页面。
-- [ ] 迁移或重写静室修行页面。
+- [x] 迁移或重写静室修行页面。
 - [x] 实现最小可玩的”登录 → 创建角色 → 查看洞府 → 执行一次核心操作”闭环。
 
 ## 里程碑 M5：核心玩法扩展
 
-- [ ] 迁移炼丹入口与基础炼丹流程。
-- [ ] 迁移炼器入口与基础炼器流程。
-- [ ] 迁移功法 / 神通查看页面。
-- [ ] 迁移战斗历史页面。
-- [ ] 迁移简化战斗播放或战斗结果展示。
-- [ ] 迁移坊市基础购买 / 出售功能。
-- [ ] 迁移排行榜基础查看功能。
+- [x] 迁移炼丹入口与基础炼丹流程。
+- [x] 迁移炼器入口与基础炼器流程。
+- [x] 迁移功法 / 神通查看页面。
+- [x] 迁移战斗历史页面。
+- [x] 迁移简化战斗播放或战斗结果展示。
+- [x] 迁移坊市基础购买 / 出售功能。
+- [x] 迁移排行榜基础查看功能。
 
 ## 里程碑 M6：复杂功能与平台适配
 
-- [ ] 评估拍卖行是否符合小程序平台规则。
-- [ ] 迁移拍卖行。
-- [ ] 迁移世界聊天。
-- [ ] 接入微信内容安全检查。
-- [ ] 处理 AIGC 内容展示与审核风险。
-- [ ] 评估 WebSocket、轮询或云托管方案。
-- [ ] 迁移邮件 / 传音玉简。
-- [ ] 迁移兑换码。
+- [x] 评估拍卖行是否符合小程序平台规则。
+- [x] 迁移拍卖行。
+- [x] 迁移世界聊天。
+- [x] 接入微信内容安全检查。
+- [x] 处理 AIGC 内容展示与审核风险。
+- [x] 评估 WebSocket、轮询或云托管方案。
+- [x] 迁移邮件 / 传音玉简。
+- [x] 迁移兑换码。
 
 ## 里程碑 M7：UI 与体验
 
-- [ ] 制定小程序水墨风视觉基准。
-- [ ] 重写基础组件：按钮、卡片、弹窗、列表、空状态、加载态、错误态。
-- [ ] 重写游戏主布局。
-- [ ] 适配不同屏幕尺寸和安全区域。
-- [ ] 优化长文本阅读体验。
+- [x] 制定小程序水墨风视觉基准。
+- [x] 重写基础组件：按钮、卡片、弹窗、列表、空状态、加载态、错误态。
+- [x] 重写游戏主布局。
+- [x] 适配不同屏幕尺寸和安全区域。
+- [x] 优化长文本阅读体验。
 - [ ] 优化战斗日志和滚动区域体验。
 - [ ] 完成真机基础体验检查。
 
@@ -139,7 +139,15 @@
 
 ## 变更记录
 
-- 2026-06-23：完成 M4 核心游戏闭环页面框架。新增 `PlayerProvider` 全局状态管理（调用 `/api/player/active` 加载角色数据）；新增 `game.ts` API 客户端（角色生成、命格、保存、任务）；新增洞府首页 `pages/cave`（角色状态属性展示 + 六宫格快捷导航）；新增创建角色页 `pages/create`（输入描述 → AI 生成 → 预览 → 抽取先天命格 → 保存，含配额检查）；新增道身信息页 `pages/cultivator`（境界、五维属性、灵石、灵气、寿元、身世）；新增任务中心页 `pages/tasks`（进行中/已完成列表 + 奖励领取）；配置 tabBar（洞府/道身/任务三 tab）；首页已登录自动 `switchTab` 到洞府。构建验证通过，储物袋和静室修行待后续实现。最小可玩闭环：登录 → 创建角色 → 查看洞府 → 查看任务。
+- 2026-06-24：完成 M7 — 「水墨卷轴 × 圆润面包」UI 重设计。设计规范：`docs/superpowers/specs/2026-06-24-m7-ui-redesign-design.md`。实现计划：`docs/superpowers/plans/2026-06-24-m7-ui-redesign.md`。完成内容：(1) CSS 设计令牌 `app.css` 新增 `:root` 变量（墨色层级、强调色、语义色、宣纸底色）；(2) 10 个共享组件：SectionTitle、InkDivider、BreadButton、ScrollCard、NavGrid、TabBar、ProgressBar、RoleCard、Tag、Badge；(3) 全部 19 个页面迁移至设计系统（CSS 变量替换、px→rpx、组件替换）；(4) 安全区适配（`env(safe-area-inset-bottom)`）；(5) 长文本阅读样式。M7 剩余：战斗日志滚动优化、真机体验检查。构建验证通过。
+- 2026-06-24：完成 M7 Task 1 — CSS 设计令牌（design tokens）。`miniprogram/src/app.css` 新增 `:root` 自定义属性：墨色层级（ink/ink-light/ink-muted/ink-faint）、强调色（cinnabar/cinnabar-light/cinnabar-dark）、语义色（jade/danger/amber）、宣纸底色（paper/paper-light/paper-overlay/paper-warm）；`page` 选择器引用 token 变量，字体栈增加 FangSong 回退。构建验证通过。
+- 2026-06-24：完成 M7 Task 7 — 迁移洞府页面至 ink-scroll 设计系统。`cave/index.css` 全部硬编码颜色替换为 CSS 变量（var(--ink)、var(--cinnabar)、var(--paper) 等），px 单位改为 rpx；`cave/index.tsx` 引入共享组件 SectionTitle、InkDivider、BreadButton、NavGrid，替换内联标题/分隔线/按钮/导航网格标记；保留全部 Taro.navigateTo 导航逻辑。构建验证通过。
+
+- 2026-06-23：完成 M6 全部任务。内容安全：`generate-character.router.ts` 新增角色生成 prompt 内容安全检查（调用 `moderateText`），违规内容返回 400。AIGC 审核：角色生成用户输入已接入内容安全；LLM 生成的故事/叙事（突破故事、寿元耗尽、炼丹叙事、副本结算）为系统控制输出，风险较低，后续迭代可按需接入。WebSocket 评估：世界聊天已用 8 秒轮询方案，当前规模无需实时推送，保持轮询。任务中心页面修复：任务名从 raw definitionId 改为中文标题映射（入门供给、第一炉疗伤丹、丹炉留痕等），分类标签改为中文（新手/日常/破境），CSS 单位从 px 改为 rpx。M6 全部完成，构建验证通过。
+- 2026-06-23：完成 M6 拍卖行、世界聊天、内容安全。服务端新增 `contentSafety.ts`（腾讯云文本安全 SDK 集成，`moderateText()` 函数，支持 Pass/Review/Block 三级判定）；世界聊天 `world-chat.router.ts` 的 text 和 item_showcase 两条发送路径均接入内容安全检查；`package.json` 新增 `tencentcloud-sdk-nodejs` 依赖。小程序端新增世界聊天页 `pages/world-chat`（8 秒轮询、发送冷却 60 秒、文字消息列表、违规提示）；新增拍卖行页 `pages/auction`（浏览/我的挂单双 tab、价格筛选、购买/下架操作）；`game.ts` 新增 worldChat/auction 共 7 个 API 封装；洞府首页扩展为十四宫格。M6 剩余：AIGC 内容审核、WebSocket 评估待实现。构建验证通过。
+- 2026-06-23：完成 M6 邮件与兑换码。新增邮件页 `pages/mail`（邮件列表+未读标识、邮件详情+附件展示、单封领取/一键领取、全部已读）；新增兑换码页 `pages/redeem`（兑换码输入+提交、成功/失败结果展示）；`game.ts` 新增 mail/redeem 共 7 个 API 封装（fetchMails/claimMail/claimAllMails/readMail/readAllMails/fetchUnreadMailCount/claimRedeemCode）；洞府首页扩展为十二宫格（新增邮件、兑换）。M6 剩余：拍卖行（需评估平台规则）、世界聊天（需内容安全）待实现。构建验证通过。
+- 2026-06-23：完成 M5 全部任务。新增战斗历史页 `pages/battle-history`（全部/我发起/被挑战三 tab、分页列表、胜/负标识、点击查看详细）；新增战斗结果页 `pages/battle-result`（简化战报展示：双方信息、回合数、战斗日志滚动、战报文本）；新增坊市页 `pages/market`（购买/出售双 tab，凡市/珍宝阁/天宝殿/黑市四层切换，商品列表+灵石不足禁用，出售预览+鉴评+确认流程）；新增排行榜页 `pages/rankings`（战力/法宝/功法/神通/丹药五 tab，战力榜含个人排名+剩余挑战次数+新人标识，物品榜含持有者+评分）；`game.ts` 新增 battleRecords/market/rankings 共 9 个 API 封装；洞府首页快捷导航扩展为十宫格（新增战纪、坊市、排行榜）。同时修复 `n[e] is not a function` 运行时错误：`health.ts` 和 `auth.ts` 循环依赖 barrel 导致 webpack 模块初始化异常，改为直接导入 `./request`；`app.d.ts` 新增 CSS 类型声明消除 IDE 红线。M5 全部完成，构建验证通过。
+- 2026-06-23：完成 M4 全部任务 + M5 前三项。新增储物袋页 `pages/inventory`（法宝/材料/丹药三 tab、分页浏览、装备/服用/鉴定/丢弃操作）；新增静室修行页 `pages/retreat`（修为进度条展示、闭关修炼调用 `/api/cultivator/retreat` SSE 流式解析、突破境界、突破/耗尽故事弹窗）；新增功法/神通页 `pages/abilities`（功法/神通/法宝三 tab、列表展示、启用/停用/废除操作）；新增炼丹页 `pages/alchemy`（即兴炼丹，材料多选+剂量+丹意输入+炉况预检+结果展示）；新增炼器页 `pages/refine`（同炼丹结构，craftType=create_artifact）；共享炼制组件 `pages/craft/index.tsx`（CraftPage 参数化，alchemy 和 refine 复用）；`game.ts` 客户端新增 inventory/equip/consume/identify/discard/retreat/products/equipProduct/deleteProduct/craftPreview/submitCraft API 封装；洞府首页快捷导航更新为：道身、任务、静室、储物袋、功法神通、炼丹、炼器 七宫格；构建验证通过。M5 剩余：战斗历史、战斗播放、坊市、排行榜待实现。
 - 2026-06-23：完成 M3 全部任务并部署服务器。服务器：阿里云轻量 Ubuntu 22.04 2核2G，IP `47.242.208.64`，已安装 Bun/Node.js 20/PostgreSQL 14/Redis/Nginx/pm2，后端通过 pm2 守护运行在 3000 端口，Nginx 反向代理 80 端口。数据库：创建 `daoyou` 用户和数据库，运行 Better Auth migration，手动创建 `better_auth` schema 并迁移表，添加 `wxOpenid` 字段。后端修复 TypeScript 编译错误（`randomUUID` 生成 id、`openid`/`session_key` 类型守卫）。小程序 `env.ts` 配置指向服务器 IP。微信登录联调成功：`wx.login` → `POST /api/wx/wx/login` → 用户创建 → token 签发 → Bearer 鉴权 → `/api/player/active` 访问通过。GitHub 仓库迁移至 `c4znr7jpdy-arch/fchdaoyu`。
 - 2026-06-23：推进 M3：后端 `authUsers` 表新增 `wxOpenid` 字段并创建迁移 `0051_add_wx_openid.sql`；新增 `POST /api/wx/wx/login` 端点，调用微信 `jscode2session` 换取 `openid`，按 `wxOpenid` 查找或创建用户（synthetic email `wx_{openid}@wx.local`），session_key 存入 Redis，签发 30 天有效期的随机 token 并存入 Redis；改造 `resolveUser` 中间件，优先解析 `Authorization: Bearer <token>`，回退到 Better Auth cookie session；小程序新增登录页面 `pages/login/index` 与 `loginWithWeChat` 客户端，调用 `wx.login` 获取 code 并换取 token；首页新增”前往登录”入口；构建验证通过，实际登录链路需配置后端 `WECHAT_MINI_SECRET` 与合法域名后联调。
 - 2026-06-09：推进 M2：新增本地存储封装、session token 读写与恢复、Authorization 请求头、统一 `ApiRequestError`、`/api/health-check` 客户端和首页后端探针；小程序构建验证通过，实际 health-check 需等待后端服务和域名/本地调试配置。
