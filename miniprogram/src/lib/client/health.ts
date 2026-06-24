@@ -1,4 +1,4 @@
-import { request } from '@/lib/client';
+import { request } from './request';
 
 type HealthCheckResponse = {
   success: boolean;

@@ -47,6 +47,7 @@ export async function request<TResponse, TData = unknown>({
     url: `${API_BASE_URL}${url}`,
     method,
     data,
+    timeout: 15000,
     header: {
       ...header,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

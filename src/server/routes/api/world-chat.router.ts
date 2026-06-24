@@ -6,6 +6,7 @@ import {
   validateQuery,
 } from '@server/lib/hono/middleware';
 import type { AppEnv } from '@server/lib/hono/types';
+import { moderateText } from '@server/lib/services/contentSafety';
 import {
   createMessage,
   listLatestMessages,
@@ -172,6 +173,11 @@ router.post(
           return c.json({ success: false, error: '消息长度需在 1-100 字之间' }, 400);
         }
 
+        const moderation = await moderateText(text);
+        if (!moderation.allowed) {
+          return c.json({ success: false, error: '消息包含违规内容，请修改后重试' }, 400);
+        }
+
         message = await createMessage({
           ...senderBase,
           messageType: 'text',
@@ -182,6 +188,13 @@ router.post(
         const showcaseText = (parsed.textContent ?? parsed.payload?.text ?? '').trim();
         if (countChars(showcaseText) > 100) {
           return c.json({ success: false, error: '附言长度需在 100 字以内' }, 400);
+        }
+
+        if (showcaseText) {
+          const moderation = await moderateText(showcaseText);
+          if (!moderation.allowed) {
+            return c.json({ success: false, error: '附言包含违规内容，请修改后重试' }, 400);
+          }
         }
 
         const payload = await buildItemShowcasePayload({

@@ -1,5 +1,6 @@
 import { requireUser } from '@server/lib/hono/middleware';
 import type { AppEnv } from '@server/lib/hono/types';
+import { moderateText } from '@server/lib/services/contentSafety';
 import {
   consumeCharacterGenerationQuota,
   getCharacterGenerationQuota,
@@ -110,6 +111,14 @@ router.post('/', requireUser(), async (c) => {
         },
       },
       422,
+    );
+  }
+
+  const moderation = await moderateText(userInput);
+  if (!moderation.allowed) {
+    return c.json(
+      { success: false, error: '角色描述包含违规内容，请修改后重试' },
+      400,
     );
   }
 

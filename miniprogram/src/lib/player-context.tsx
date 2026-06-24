@@ -1,4 +1,5 @@
-import { createContext, PropsWithChildren, useContext, useEffect, useState } from 'react';
+import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { hasSessionToken } from '@/lib/auth';
 import { getPlayerActive } from '@/lib/client/game';
 import type { PlayerActiveResponse } from '@shared/contracts/player';
 import type { Cultivator } from '@shared/types/cultivator';
@@ -35,10 +36,17 @@ export function PlayerProvider({ children }: PropsWithChildren) {
   const [unreadMailCount, setUnreadMailCount] = useState(0);
   const [hasActive, setHasActive] = useState(false);
   const [hasDead, setHasDead] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasSessionToken());
   const [error, setError] = useState<string | null>(null);
+  const loadedRef = useRef(false);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
+    if (!hasSessionToken()) {
+      setLoading(false);
+      loadedRef.current = true;
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -54,11 +62,14 @@ export function PlayerProvider({ children }: PropsWithChildren) {
       setError(err instanceof Error ? err.message : '加载失败');
     } finally {
       setLoading(false);
+      loadedRef.current = true;
     }
-  };
+  }, []);
 
   useEffect(() => {
-    refresh();
+    if (!loadedRef.current) {
+      refresh();
+    }
   }, []);
 
   return (
