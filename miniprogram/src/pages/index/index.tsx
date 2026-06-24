@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Button } from '@tarojs/components';
+import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { API_BASE_URL, getMiniProgramEnvVersion } from '@/config';
 import { hasSessionToken } from '@/lib/auth';
 import { ApiRequestError, getHealthCheck } from '@/lib/client';
+import SectionTitle from '@/components/section-title';
+import InkDivider from '@/components/ink-divider';
+import ScrollCard from '@/components/scroll-card';
+import BreadButton from '@/components/bread-button';
 import './index.css';
 
 type HealthStatus = 'checking' | 'ok' | 'error';
@@ -50,21 +54,25 @@ export default function Index() {
         </Text>
       </View>
 
-      <View className="card muted">
-        <Text className="cardTitle">运行环境</Text>
+      <InkDivider />
+
+      <ScrollCard>
+        <SectionTitle>运行环境</SectionTitle>
         <Text className="cardBody">{envVersion}</Text>
         <Text className="endpoint">{API_BASE_URL}</Text>
-      </View>
+      </ScrollCard>
 
       <View className={`card status ${healthStatus}`}>
-        <Text className="cardTitle">后端探针</Text>
+        <SectionTitle>后端探针</SectionTitle>
         <Text className="cardBody">{healthMessage}</Text>
       </View>
 
+      <InkDivider />
+
       <View className="actions">
-        <Button className="btn primary" onClick={goToLogin}>
+        <BreadButton variant="primary" onClick={goToLogin}>
           微信登录
-        </Button>
+        </BreadButton>
       </View>
     </View>
   );

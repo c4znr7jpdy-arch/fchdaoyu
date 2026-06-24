@@ -1,0 +1,252 @@
+.page {
+  min-height: 100vh;
+  padding: 144rpx 80rpx 96rpx;
+  background:
+    radial-gradient(circle at 24% 12%, rgba(141, 47, 34, 0.16), transparent 28%),
+    linear-gradient(145deg, var(--paper-warm) 0%, var(--paper) 100%);
+}
+
+.hero {
+  padding: 88rpx 72rpx;
+  border: 2rpx solid rgba(90, 74, 56, 0.18);
+  background: rgba(255, 250, 238, 0.76);
+  box-shadow: 0 48rpx 160rpx rgba(67, 44, 16, 0.12);
+}
+
+.eyebrow {
+  display: block;
+  color: var(--cinnabar);
+  font-size: 48rpx;
+  letter-spacing: 12rpx;
+}
+
+.title {
+  display: block;
+  margin-top: 56rpx;
+  color: var(--ink);
+  font-size: 104rpx;
+  font-weight: 700;
+  line-height: 1.22;
+}
+
+.summary {
+  display: block;
+  margin-top: 48rpx;
+  color: var(--ink-light);
+  font-size: 52rpx;
+  line-height: 1.6;
+}
+
+.card {
+  margin-top: 56rpx;
+  padding: 60rpx 64rpx;
+  border-left: 16rpx solid var(--cinnabar);
+  background: rgba(44, 33, 21, 0.08);
+}
+
+.cardTitle {
+  display: block;
+  color: var(--cinnabar);
+  font-size: 48rpx;
+}
+
+.cardBody {
+  display: block;
+  margin-top: 24rpx;
+  color: var(--ink);
+  font-size: 56rpx;
+}
+
+.status.checking {
+  border-left-color: var(--amber);
+}
+
+.mat-list {
+  margin-top: 36rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 32rpx;
+}
+
+.mat-item {
+  padding: 40rpx 44rpx;
+  border: 2rpx solid rgba(141, 47, 34, 0.18);
+  background: rgba(255, 250, 238, 0.6);
+}
+
+.mat-item.selected {
+  border-color: var(--cinnabar);
+  background: rgba(141, 47, 34, 0.08);
+}
+
+.mat-head {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  flex-wrap: wrap;
+}
+
+.mat-name {
+  color: var(--ink);
+  font-size: 56rpx;
+  font-weight: 600;
+}
+
+.mat-stock {
+  color: var(--ink-light);
+  font-size: 48rpx;
+}
+
+.item-tag {
+  padding: 8rpx 24rpx;
+  border: 1rpx solid rgba(141, 47, 34, 0.3);
+  color: var(--ink-light);
+  font-size: 44rpx;
+}
+
+.item-tag.quality {
+  color: var(--cinnabar);
+  border-color: rgba(141, 47, 34, 0.5);
+}
+
+.mat-desc {
+  display: block;
+  margin-top: 20rpx;
+  color: var(--ink-light);
+  font-size: 48rpx;
+  line-height: 1.6;
+}
+
+.dose-row {
+  margin-top: 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 32rpx;
+}
+
+.dose-label {
+  color: var(--cinnabar);
+  font-size: 48rpx;
+}
+
+.dose-btn {
+  width: 112rpx;
+  height: 96rpx;
+  font-size: 56rpx;
+  background: rgba(141, 47, 34, 0.15);
+  color: var(--cinnabar);
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+}
+
+.dose-value {
+  color: var(--ink);
+  font-size: 56rpx;
+  font-weight: 600;
+  min-width: 96rpx;
+  text-align: center;
+}
+
+.prompt-input {
+  margin-top: 36rpx;
+  padding: 32rpx;
+  width: 100%;
+  min-height: 280rpx;
+  border: 2rpx solid rgba(141, 47, 34, 0.3);
+  background: rgba(255, 250, 238, 0.7);
+  color: var(--ink);
+  font-size: 52rpx;
+  line-height: 1.7;
+}
+
+.preview-block {
+  margin-top: 28rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.preview-line {
+  color: var(--ink);
+  font-size: 52rpx;
+}
+
+.preview-line.warn {
+  color: var(--danger);
+}
+
+.action-row {
+  margin-top: 64rpx;
+  display: flex;
+  gap: 40rpx;
+}
+
+.btn {
+  flex: 1;
+  padding: 36rpx 0;
+  text-align: center;
+  border-radius: 24rpx;
+  font-size: 60rpx;
+}
+
+.btn.primary {
+  background: var(--cinnabar);
+  color: var(--paper-light);
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 2rpx solid rgba(141, 47, 34, 0.4);
+  color: var(--cinnabar);
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+}
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+}
+
+.modal {
+  width: 82%;
+  max-height: 76vh;
+  overflow-y: auto;
+  padding: 72rpx 64rpx;
+  background: var(--paper-light);
+  border: 2rpx solid rgba(141, 47, 34, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 32rpx;
+}
+
+.modal-title {
+  color: var(--cinnabar);
+  font-size: 60rpx;
+  font-weight: 600;
+}
+
+.modal-headline {
+  font-size: 72rpx;
+  font-weight: 700;
+}
+
+.modal-headline.success {
+  color: var(--jade);
+}
+
+.modal-line {
+  color: var(--ink);
+  font-size: 52rpx;
+  line-height: 1.7;
+}

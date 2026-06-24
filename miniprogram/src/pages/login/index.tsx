@@ -3,6 +3,9 @@ import { View, Text, Button } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { ApiRequestError, loginWithWeChat } from '@/lib/client';
 import { hasSessionToken, clearSessionToken } from '@/lib/auth';
+import SectionTitle from '@/components/section-title';
+import InkDivider from '@/components/ink-divider';
+import BreadButton from '@/components/bread-button';
 import './index.css';
 
 type LoginStatus = 'idle' | 'logging-in' | 'success' | 'error';
@@ -55,8 +58,10 @@ export default function Login() {
         </Text>
       </View>
 
+      <InkDivider />
+
       <View className="card">
-        <Text className="cardTitle">当前会话</Text>
+        <SectionTitle>当前会话</SectionTitle>
         <Text className="cardBody">
           {hasSessionToken() ? '已发现本地令牌' : '尚未登录'}
         </Text>
@@ -64,24 +69,26 @@ export default function Login() {
 
       {status === 'logging-in' || status === 'success' ? (
         <View className={`card status ${status === 'success' ? 'ok' : 'checking'}`}>
-          <Text className="cardTitle">登录状态</Text>
+          <SectionTitle>登录状态</SectionTitle>
           <Text className="cardBody">{message}</Text>
         </View>
       ) : null}
 
       {status === 'error' ? (
         <View className="card status error">
-          <Text className="cardTitle">登录失败</Text>
+          <SectionTitle>登录失败</SectionTitle>
           <Text className="cardBody">{message}</Text>
         </View>
       ) : null}
 
       {isNewUser ? (
         <View className="card muted">
-          <Text className="cardTitle">新道友</Text>
+          <SectionTitle>新道友</SectionTitle>
           <Text className="cardBody">系统已为你创建新道号，下一步可前往创建角色。</Text>
         </View>
       ) : null}
+
+      <InkDivider />
 
       <View className="actions">
         <Button
@@ -94,9 +101,9 @@ export default function Login() {
         </Button>
 
         {hasSessionToken() ? (
-          <Button className="btn ghost" onClick={handleClearSession}>
+          <BreadButton variant="ghost" onClick={handleClearSession}>
             清除本地令牌
-          </Button>
+          </BreadButton>
         ) : null}
       </View>
     </View>

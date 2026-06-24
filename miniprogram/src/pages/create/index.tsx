@@ -4,9 +4,13 @@ import Taro from '@tarojs/taro';
 import { getGenerationQuota, generateCharacter, generateFates, saveCharacter } from '@/lib/client';
 import type { Cultivator } from '@shared/types/cultivator';
 import type { PreHeavenFate } from '@shared/types/cultivator';
+import SectionTitle from '@/components/section-title';
+import InkDivider from '@/components/ink-divider';
+import BreadButton from '@/components/bread-button';
+import ScrollCard from '@/components/scroll-card';
 import './index.css';
 
-type Step = 'input' | 'generating' | 'preview' | 'fates' | 'saving' | 'done';
+type Step = 'input' | 'generating' | 'generating-fates' | 'preview' | 'fates' | 'saving' | 'done';
 
 export default function CreatePage() {
   const [step, setStep] = useState<Step>('input');
@@ -48,6 +52,8 @@ export default function CreatePage() {
   const handleGenerateFates = async () => {
     if (!tempId) return;
 
+    setStep('generating-fates');
+
     try {
       const result = await generateFates(tempId);
       if (result.success && result.data) {
@@ -55,8 +61,12 @@ export default function CreatePage() {
         setRemainingRerolls(result.data.remainingRerolls);
         setSelectedFates([]);
         setStep('fates');
+      } else {
+        setStep('preview');
+        Taro.showToast({ title: '生成命格失败', icon: 'none' });
       }
     } catch (err) {
+      setStep('preview');
       Taro.showToast({ title: '生成命格失败', icon: 'none' });
     }
   };
@@ -88,7 +98,7 @@ export default function CreatePage() {
         setStep('done');
         Taro.showToast({ title: '角色创建成功', icon: 'success' });
         setTimeout(() => {
-          Taro.redirectTo({ url: '/pages/cave/index' });
+          Taro.switchTab({ url: '/pages/cave/index' });
         }, 1500);
       } else {
         setError(result.error || '保存失败');
@@ -107,9 +117,11 @@ export default function CreatePage() {
         <Text className="title">入道</Text>
       </View>
 
+      <InkDivider />
+
       {step === 'input' && (
-        <View className="card">
-          <Text className="cardTitle">描述你的角色</Text>
+        <ScrollCard>
+          <SectionTitle>描述你的角色</SectionTitle>
           <Text className="summary">用几句话描述你想要的角色，AI 将为你创造独特的修仙者。</Text>
           <Textarea
             className="input"
@@ -121,22 +133,29 @@ export default function CreatePage() {
           {quota && (
             <Text className="endpoint">今日剩余生成次数：{quota.remaining}/{quota.limit}</Text>
           )}
-          <Button className="btn primary" onClick={handleGenerate}>
+          <BreadButton variant="primary" onClick={handleGenerate}>
             开始生成
-          </Button>
-        </View>
+          </BreadButton>
+        </ScrollCard>
       )}
 
       {step === 'generating' && (
         <View className="card status checking">
-          <Text className="cardTitle">道韵凝聚中</Text>
+          <SectionTitle>道韵凝聚中</SectionTitle>
           <Text className="cardBody">天道正在为你塑造根骨...</Text>
         </View>
       )}
 
+      {step === 'generating-fates' && (
+        <View className="card status checking">
+          <SectionTitle>推演天命</SectionTitle>
+          <Text className="cardBody">先天命格正在凝聚...</Text>
+        </View>
+      )}
+
       {step === 'preview' && cultivator && (
-        <View className="card">
-          <Text className="cardTitle">角色预览</Text>
+        <ScrollCard>
+          <SectionTitle>角色预览</SectionTitle>
           <View className="info-grid">
             <Text className="info-label">姓名</Text>
             <Text className="info-value">{cultivator.name}</Text>
@@ -150,15 +169,15 @@ export default function CreatePage() {
           {cultivator.background && (
             <Text className="summary">{cultivator.background}</Text>
           )}
-          <Button className="btn primary" onClick={handleGenerateFates}>
+          <BreadButton variant="primary" onClick={handleGenerateFates}>
             抽取先天命格
-          </Button>
-        </View>
+          </BreadButton>
+        </ScrollCard>
       )}
 
       {step === 'fates' && (
-        <View className="card">
-          <Text className="cardTitle">选择 3 个先天命格</Text>
+        <ScrollCard>
+          <SectionTitle>选择 3 个先天命格</SectionTitle>
           <Text className="summary">已选 {selectedFates.length}/3</Text>
           {fates.map((fate, index) => (
             <View
@@ -171,22 +190,22 @@ export default function CreatePage() {
               {fate.description && <Text className="fate-desc">{fate.description}</Text>}
             </View>
           ))}
-          <Button className="btn primary" onClick={handleSave}>
+          <BreadButton variant="primary" onClick={handleSave}>
             确认创建
-          </Button>
-        </View>
+          </BreadButton>
+        </ScrollCard>
       )}
 
       {step === 'saving' && (
         <View className="card status checking">
-          <Text className="cardTitle">录入天命</Text>
+          <SectionTitle>录入天命</SectionTitle>
           <Text className="cardBody">正在将你的道途铭刻于天道...</Text>
         </View>
       )}
 
       {step === 'done' && (
         <View className="card status ok">
-          <Text className="cardTitle">入道成功</Text>
+          <SectionTitle>入道成功</SectionTitle>
           <Text className="cardBody">你的修仙之旅正式开启。</Text>
         </View>
       )}

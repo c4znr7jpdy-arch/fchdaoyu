@@ -1,5 +1,8 @@
 import { View, Text } from '@tarojs/components';
 import { usePlayer } from '@/lib/player-context';
+import SectionTitle from '@/components/section-title';
+import InkDivider from '@/components/ink-divider';
+import ScrollCard from '@/components/scroll-card';
 import './index.css';
 
 export default function CultivatorPage() {
@@ -9,7 +12,7 @@ export default function CultivatorPage() {
     return (
       <View className="page">
         <View className="card status checking">
-          <Text className="cardTitle">道身</Text>
+          <SectionTitle>道身</SectionTitle>
           <Text className="cardBody">正在探查道身...</Text>
         </View>
       </View>
@@ -20,7 +23,7 @@ export default function CultivatorPage() {
     return (
       <View className="page">
         <View className="card status error">
-          <Text className="cardTitle">道身</Text>
+          <SectionTitle>道身</SectionTitle>
           <Text className="cardBody">尚未创建角色</Text>
         </View>
       </View>
@@ -35,13 +38,15 @@ export default function CultivatorPage() {
         {cultivator.title && <Text className="summary">{cultivator.title}</Text>}
       </View>
 
-      <View className="card">
-        <Text className="cardTitle">境界</Text>
-        <Text className="cardBody">{cultivator.realm} · {cultivator.realm_stage}</Text>
-      </View>
+      <InkDivider />
 
-      <View className="card">
-        <Text className="cardTitle">属性</Text>
+      <ScrollCard>
+        <SectionTitle>境界</SectionTitle>
+        <Text className="cardBody">{cultivator.realm} · {cultivator.realm_stage}</Text>
+      </ScrollCard>
+
+      <ScrollCard>
+        <SectionTitle>属性</SectionTitle>
         <View className="attr-grid">
           <View className="attr">
             <Text className="attr-label">生命</Text>
@@ -64,35 +69,37 @@ export default function CultivatorPage() {
             <Text className="attr-value">{cultivator.willpower}</Text>
           </View>
         </View>
-      </View>
+      </ScrollCard>
 
-      <View className="card">
-        <Text className="cardTitle">灵石</Text>
+      <InkDivider />
+
+      <ScrollCard>
+        <SectionTitle>灵石</SectionTitle>
         <Text className="cardBody">{cultivator.spirit_stones}</Text>
-      </View>
+      </ScrollCard>
 
-      <View className="card">
-        <Text className="cardTitle">天地灵气</Text>
+      <ScrollCard>
+        <SectionTitle>天地灵气</SectionTitle>
         <Text className="cardBody">{cultivator.qi}</Text>
-      </View>
+      </ScrollCard>
 
-      <View className="card">
-        <Text className="cardTitle">寿元</Text>
+      <ScrollCard>
+        <SectionTitle>寿元</SectionTitle>
         <Text className="cardBody">第 {cultivator.age} 年 / 寿限 {cultivator.lifespan} 年</Text>
-      </View>
+      </ScrollCard>
 
       {cultivator.background && (
-        <View className="card muted">
-          <Text className="cardTitle">身世</Text>
+        <ScrollCard>
+          <SectionTitle>身世</SectionTitle>
           <Text className="cardBody">{cultivator.background}</Text>
-        </View>
+        </ScrollCard>
       )}
 
       {cultivator.personality && (
-        <View className="card muted">
-          <Text className="cardTitle">性格</Text>
+        <ScrollCard>
+          <SectionTitle>性格</SectionTitle>
           <Text className="cardBody">{cultivator.personality}</Text>
-        </View>
+        </ScrollCard>
       )}
     </View>
   );
