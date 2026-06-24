@@ -1,0 +1,10 @@
+<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <!-- 竹子 -->
+  <line x1="40" y1="80" x2="40" y2="200" stroke="rgba(100,120,80,0.2)" stroke-width="3"/>
+  <line x1="55" y1="100" x2="55" y2="200" stroke="rgba(100,120,80,0.15)" stroke-width="2"/>
+  <line x1="350" y1="90" x2="350" y2="200" stroke="rgba(100,120,80,0.18)" stroke-width="2.5"/>
+  <!-- 竹叶 -->
+  <ellipse cx="35" cy="100" rx="14" ry="8" fill="rgba(100,120,80,0.12)" transform="rotate(-20 35 100)"/>
+  <ellipse cx="50" cy="120" rx="12" ry="7" fill="rgba(100,120,80,0.1)" transform="rotate(15 50 120)"/>
+  <ellipse cx="355" cy="105" rx="13" ry="7" fill="rgba(100,120,80,0.11)" transform="rotate(20 355 105)"/>
+</svg>

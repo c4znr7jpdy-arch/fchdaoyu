@@ -1,0 +1,11 @@
+<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <!-- 莲花 -->
+  <ellipse cx="200" cy="170" rx="30" ry="8" fill="rgba(141,47,34,0.08)"/>
+  <path d="M200,140 Q185,155 190,170 Q200,165 210,170 Q215,155 200,140Z" fill="rgba(141,47,34,0.1)"/>
+  <path d="M200,145 Q180,160 185,170" stroke="rgba(141,47,34,0.08)" fill="none" stroke-width="1"/>
+  <path d="M200,145 Q220,160 215,170" stroke="rgba(141,47,34,0.08)" fill="none" stroke-width="1"/>
+  <!-- 静室轮廓 -->
+  <line x1="160" y1="180" x2="160" y2="150" stroke="rgba(80,70,55,0.1)" stroke-width="1.5"/>
+  <line x1="240" y1="180" x2="240" y2="150" stroke="rgba(80,70,55,0.1)" stroke-width="1.5"/>
+  <path d="M155,150 L200,130 L245,150" stroke="rgba(80,70,55,0.12)" fill="none" stroke-width="1.5"/>
+</svg>

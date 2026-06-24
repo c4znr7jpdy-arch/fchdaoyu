@@ -1,0 +1,11 @@
+<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <!-- 浓墨远山 -->
+  <ellipse cx="60" cy="200" rx="100" ry="100" fill="rgba(90,80,65,0.3)"/>
+  <ellipse cx="200" cy="200" rx="130" ry="85" fill="rgba(100,90,75,0.25)"/>
+  <ellipse cx="350" cy="200" rx="90" ry="75" fill="rgba(85,75,60,0.28)"/>
+  <!-- 战旗 -->
+  <line x1="50" y1="90" x2="50" y2="130" stroke="rgba(141,47,34,0.25)" stroke-width="2"/>
+  <polygon points="52,90 70,96 65,106 52,100" fill="rgba(141,47,34,0.15)"/>
+  <!-- 近景 -->
+  <ellipse cx="180" cy="200" rx="80" ry="45" fill="rgba(80,70,55,0.3)"/>
+</svg>

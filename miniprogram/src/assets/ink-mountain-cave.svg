@@ -1,0 +1,14 @@
+<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <!-- 远山 -->
+  <ellipse cx="80" cy="200" rx="120" ry="90" fill="rgba(160,150,130,0.2)"/>
+  <ellipse cx="250" cy="200" rx="100" ry="70" fill="rgba(140,130,115,0.15)"/>
+  <ellipse cx="360" cy="200" rx="80" ry="60" fill="rgba(150,140,125,0.18)"/>
+  <!-- 近山 -->
+  <ellipse cx="150" cy="200" rx="90" ry="50" fill="rgba(120,110,95,0.25)"/>
+  <ellipse cx="320" cy="200" rx="70" ry="40" fill="rgba(110,100,85,0.22)"/>
+  <!-- 松树 -->
+  <line x1="350" y1="120" x2="350" y2="160" stroke="rgba(80,70,55,0.3)" stroke-width="2"/>
+  <ellipse cx="350" cy="115" rx="18" ry="14" fill="rgba(80,90,60,0.2)"/>
+  <line x1="370" y1="135" x2="370" y2="165" stroke="rgba(80,70,55,0.2)" stroke-width="1.5"/>
+  <ellipse cx="370" cy="132" rx="12" ry="10" fill="rgba(80,90,60,0.15)"/>
+</svg>
