@@ -1,0 +1,11 @@
+.ink-divider {
+  height: 2rpx;
+  margin: 28rpx 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(80, 60, 40, 0.15) 10%,
+    rgba(80, 60, 40, 0.4) 50%,
+    rgba(80, 60, 40, 0.15) 90%,
+    transparent 100%
+  );
+}

@@ -1,0 +1,27 @@
+.bread-btn {
+  padding: 26rpx;
+  text-align: center;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 6rpx;
+}
+
+.bread-btn--primary {
+  background: linear-gradient(135deg, var(--cinnabar), var(--cinnabar-dark));
+  color: #fff;
+  box-shadow: 0 8rpx 32rpx rgba(141, 47, 34, 0.3),
+              inset 0 2rpx 0 rgba(255, 255, 255, 0.15);
+}
+
+.bread-btn--ghost {
+  background: rgba(141, 47, 34, 0.06);
+  color: var(--cinnabar);
+  border: 2rpx solid rgba(141, 47, 34, 0.15);
+}
+
+.bread-btn-text {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
