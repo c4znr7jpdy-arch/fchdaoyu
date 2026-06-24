@@ -27,8 +27,23 @@ page {
   color: var(--ink);
   background: var(--paper);
   font-family: "STKaiti", "KaiTi", "FangSong", serif;
+  padding-bottom: env(safe-area-inset-bottom);
   /* 后续可替换为宣纸纹理 PNG */
   /* background-image: url('/assets/bg-paper.png'); */
+}
+
+/* 长文本阅读优化 */
+.text-body {
+  font-size: 28rpx;
+  line-height: 1.8;
+  color: var(--ink);
+  letter-spacing: 1rpx;
+}
+
+.text-secondary {
+  font-size: 24rpx;
+  line-height: 1.6;
+  color: var(--ink-muted);
 }
 
 view,
