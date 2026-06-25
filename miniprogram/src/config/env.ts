@@ -8,13 +8,13 @@ type RuntimeConfig = {
 
 const configs: Record<MiniProgramEnvVersion, RuntimeConfig> = {
   develop: {
-    apiBaseUrl: 'http://47.242.208.64',
+    apiBaseUrl: 'https://xiuxianjyj.xin',
   },
   trial: {
-    apiBaseUrl: 'http://47.242.208.64',
+    apiBaseUrl: 'https://xiuxianjyj.xin',
   },
   release: {
-    apiBaseUrl: 'http://47.242.208.64',
+    apiBaseUrl: 'https://xiuxianjyj.xin',
   },
 };
 
