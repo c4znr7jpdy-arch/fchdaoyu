@@ -24,6 +24,7 @@ type RequestOptions<TData> = {
   data?: TData;
   header?: Record<string, string>;
   auth?: boolean;
+  timeout?: number;
 };
 
 function getErrorMessage(statusCode: number, payload: unknown) {
@@ -41,13 +42,14 @@ export async function request<TResponse, TData = unknown>({
   data,
   header,
   auth = true,
+  timeout = 15000,
 }: RequestOptions<TData>): Promise<TResponse> {
   const token = auth ? getSessionToken() : null;
   const response = await Taro.request<TResponse>({
     url: `${API_BASE_URL}${url}`,
     method,
     data,
-    timeout: 15000,
+    timeout,
     header: {
       ...header,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

@@ -602,7 +602,7 @@ export function fetchWorldChatMessages(limit = 30) {
     success: boolean;
     data?: WorldChatMessage[];
     error?: string;
-  }>({ url: `/api/world-chat/messages?limit=${limit}` });
+  }>({ url: `/api/world-chat/messages?limit=${limit}`, timeout: 30000 });
 }
 
 export function sendWorldChatMessage(text: string) {
