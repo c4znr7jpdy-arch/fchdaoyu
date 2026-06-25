@@ -140,6 +140,7 @@
 
 ## 变更记录
 
+- 2026-06-25：首页重写为用户友好落地页（去掉调试信息、去掉白底框、登录按钮直接触发微信登录跳过登录页）；创建角色页 AI 字样替换为"系统将为你自动生成"；修复洞府/道身页面属性值不显示（`cultivator.vitality` → `cultivator.attributes?.vitality`）；HTTPS 域名 `xiuxianjyj.xin` 配通（certbot + Nginx）；`env.ts` 全环境指向 `https://xiuxianjyj.xin`；`BETTER_AUTH_URL` 更新为 HTTPS。
 - 2026-06-24：完成 M8 代码侧准备。新增隐私协议页 `pages/privacy`（八条：信息收集/使用/存储/安全/共享/未成年人保护/更新/联系）；新增用户协议页 `pages/agreement`（六条：服务条款/账号注册/行为规范/虚拟物品/免责声明/协议修改）；登录页底部新增"隐私协议·用户协议"链接；`app.config.ts` 注册 21 个页面；核心路径回归测试通过；包体 1.8MB 符合 2MB 限制。M8 剩余均需用户操作：HTTPS 域名配置、微信合法请求域名配置、生产环境变量、体验版上传、提审版本提交。
 - 2026-06-24：完成 M7 全部。战斗日志滚动优化（行分隔、间距改善）；真机体验检查（字体大小归一化：market/auction title 44→52rpx、retreat summary/cardBody 26→28rpx、world-chat padding 20→48rpx）；AI 生成 PNG 素材替换 SVG（8 图标 + 6 场景 + 2 纸纹理），透明背景处理，包体 1.7MB。
 - 2026-06-24：完成 M7 水墨素材库。设计规范：`docs/superpowers/specs/2026-06-24-m7-ink-assets-design.md`。实现计划：`docs/superpowers/plans/2026-06-24-m7-ink-assets.md`。完成内容：(1) 2 个宣纸纹理 SVG（`bg-paper.svg`、`bg-paper-aged.svg`），使用 feTurbulence 滤镜模拟纸张纤维；(2) 全局宣纸纹理 CSS data URI 叠加到 `app.css` page 选择器；(3) `SceneBg` 共享组件，固定定位底部 200rpx 场景背景；(4) 6 个场景背景 SVG（洞府远山松树、战斗浓墨战旗、炼丹烟雾炉火、储物袋竹林、排行榜云海山峰、修行莲花静室）；(5) 8 个水墨白描导航图标 SVG（传音玉简、洞府、储物袋、功法、炼丹、坊市、道身、排行榜）；(6) 场景背景集成到 7 个页面（cave/retreat/craft/battle-history/battle-result/rankings/inventory）；(7) 图标集成到 NavGrid 组件和洞府首页导航。构建验证通过，包体 823K。

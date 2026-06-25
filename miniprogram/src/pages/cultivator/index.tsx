@@ -50,23 +50,23 @@ export default function CultivatorPage() {
         <View className="attr-grid">
           <View className="attr">
             <Text className="attr-label">生命</Text>
-            <Text className="attr-value">{cultivator.vitality}</Text>
+            <Text className="attr-value">{cultivator.attributes?.vitality ?? '-'}</Text>
           </View>
           <View className="attr">
             <Text className="attr-label">灵气</Text>
-            <Text className="attr-value">{cultivator.spirit}</Text>
+            <Text className="attr-value">{cultivator.attributes?.spirit ?? '-'}</Text>
           </View>
           <View className="attr">
             <Text className="attr-label">悟性</Text>
-            <Text className="attr-value">{cultivator.wisdom}</Text>
+            <Text className="attr-value">{cultivator.attributes?.wisdom ?? '-'}</Text>
           </View>
           <View className="attr">
             <Text className="attr-label">速度</Text>
-            <Text className="attr-value">{cultivator.speed}</Text>
+            <Text className="attr-value">{cultivator.attributes?.speed ?? '-'}</Text>
           </View>
           <View className="attr">
             <Text className="attr-label">意志</Text>
-            <Text className="attr-value">{cultivator.willpower}</Text>
+            <Text className="attr-value">{cultivator.attributes?.willpower ?? '-'}</Text>
           </View>
         </View>
       </ScrollCard>

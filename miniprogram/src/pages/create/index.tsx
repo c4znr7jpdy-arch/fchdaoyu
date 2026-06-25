@@ -122,7 +122,7 @@ export default function CreatePage() {
       {step === 'input' && (
         <ScrollCard>
           <SectionTitle>描述你的角色</SectionTitle>
-          <Text className="summary">用几句话描述你想要的角色，AI 将为你创造独特的修仙者。</Text>
+          <Text className="summary">用几句话描述你想要的角色，系统将为你自动生成独特的修仙者。</Text>
           <Textarea
             className="input"
             value={prompt}

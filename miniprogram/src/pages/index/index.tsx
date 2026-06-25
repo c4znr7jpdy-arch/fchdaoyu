@@ -1,79 +1,65 @@
 import { useEffect, useState } from 'react';
-import { View, Text } from '@tarojs/components';
+import { View, Text, Button } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { API_BASE_URL, getMiniProgramEnvVersion } from '@/config';
 import { hasSessionToken } from '@/lib/auth';
-import { ApiRequestError, getHealthCheck } from '@/lib/client';
-import SectionTitle from '@/components/section-title';
+import { ApiRequestError, loginWithWeChat } from '@/lib/client';
 import InkDivider from '@/components/ink-divider';
-import ScrollCard from '@/components/scroll-card';
-import BreadButton from '@/components/bread-button';
+import SceneBg from '@/components/scene-bg';
+import inkMountainCave from '@/assets/ink-mountain-cave.png';
 import './index.css';
 
-type HealthStatus = 'checking' | 'ok' | 'error';
-
 export default function Index() {
-  const envVersion = getMiniProgramEnvVersion();
-  const [healthStatus, setHealthStatus] = useState<HealthStatus>('checking');
-  const [healthMessage, setHealthMessage] = useState('正在探查后端气机');
-  const [hasToken, setHasToken] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const token = hasSessionToken();
-    setHasToken(token);
-
-    if (token) {
+    if (hasSessionToken()) {
       Taro.switchTab({ url: '/pages/cave/index' });
-      return;
     }
-
-    getHealthCheck()
-      .then((result) => {
-        setHealthStatus(result.success ? 'ok' : 'error');
-        setHealthMessage(result.message || result.error || '后端已响应');
-      })
-      .catch((error: unknown) => {
-        setHealthStatus('error');
-        setHealthMessage(
-          error instanceof ApiRequestError ? error.message : '后端暂不可达',
-        );
-      });
   }, []);
 
-  const goToLogin = () => {
-    Taro.navigateTo({ url: '/pages/login/index' });
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const result = await loginWithWeChat();
+      if (result.success && result.token) {
+        Taro.switchTab({ url: '/pages/cave/index' });
+      } else {
+        Taro.showToast({ title: result.error || '登录失败', icon: 'none' });
+      }
+    } catch (error) {
+      Taro.showToast({
+        title: error instanceof ApiRequestError ? error.message : '登录失败',
+        icon: 'none',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View className="page">
-      <View className="hero">
-        <Text className="eyebrow">万界道友 · 微信小程序</Text>
-        <Text className="title">一念入道，万界开卷</Text>
-        <Text className="summary">
-          欢迎来到万界道友。登录后开启你的修仙旅程。
-        </Text>
+      <SceneBg src={inkMountainCave} />
+
+      <Text className="eyebrow">万界道友</Text>
+      <Text className="title">一念入道，万界开卷</Text>
+      <Text className="subtitle">修仙模拟 · 文字冒险</Text>
+
+      <View className="desc-card">
+        <Text className="desc-line">踏入修仙世界，从凡人到大能。</Text>
+        <Text className="desc-line">炼丹炼器、功法神通、洞府修行。</Text>
+        <Text className="desc-line">万界道友，等你入道。</Text>
       </View>
 
       <InkDivider />
 
-      <ScrollCard>
-        <SectionTitle>运行环境</SectionTitle>
-        <Text className="cardBody">{envVersion}</Text>
-        <Text className="endpoint">{API_BASE_URL}</Text>
-      </ScrollCard>
-
-      <View className={`card status ${healthStatus}`}>
-        <SectionTitle>后端探针</SectionTitle>
-        <Text className="cardBody">{healthMessage}</Text>
-      </View>
-
-      <InkDivider />
-
-      <View className="actions">
-        <BreadButton variant="primary" onClick={goToLogin}>
-          微信登录
-        </BreadButton>
-      </View>
+      <Button
+        className="login-btn"
+        loading={loading}
+        disabled={loading}
+        onClick={handleLogin}
+      >
+        微信登录
+      </Button>
     </View>
   );
 }

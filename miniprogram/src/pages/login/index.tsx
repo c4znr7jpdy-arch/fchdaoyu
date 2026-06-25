@@ -92,7 +92,7 @@ export default function Login() {
 
       <View className="actions">
         <Button
-          className="btn primary"
+          className="btn"
           loading={status === 'logging-in'}
           disabled={status === 'logging-in' || status === 'success'}
           onClick={handleLogin}

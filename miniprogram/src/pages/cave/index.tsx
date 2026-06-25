@@ -93,27 +93,27 @@ export default function CavePage() {
         <View className="stats-grid">
           <View className="stat">
             <Text className="stat-label">生命</Text>
-            <Text className="stat-value">{cultivator.vitality}</Text>
+            <Text className="stat-value">{cultivator.attributes?.vitality ?? '-'}</Text>
           </View>
           <View className="stat">
             <Text className="stat-label">灵气</Text>
-            <Text className="stat-value">{cultivator.spirit}</Text>
+            <Text className="stat-value">{cultivator.attributes?.spirit ?? '-'}</Text>
           </View>
           <View className="stat">
             <Text className="stat-label">悟性</Text>
-            <Text className="stat-value">{cultivator.wisdom}</Text>
+            <Text className="stat-value">{cultivator.attributes?.wisdom ?? '-'}</Text>
           </View>
           <View className="stat">
             <Text className="stat-label">速度</Text>
-            <Text className="stat-value">{cultivator.speed}</Text>
+            <Text className="stat-value">{cultivator.attributes?.speed ?? '-'}</Text>
           </View>
           <View className="stat">
             <Text className="stat-label">意志</Text>
-            <Text className="stat-value">{cultivator.willpower}</Text>
+            <Text className="stat-value">{cultivator.attributes?.willpower ?? '-'}</Text>
           </View>
           <View className="stat">
             <Text className="stat-label">灵石</Text>
-            <Text className="stat-value">{cultivator.spirit_stones}</Text>
+            <Text className="stat-value">{cultivator.spirit_stones ?? 0}</Text>
           </View>
         </View>
       </View>
